@@ -4,6 +4,7 @@ import { describe, it, expect, beforeEach } from 'vitest';
 import {
   resetDbForTests, createDoc, listDocs, getDoc, saveContent, renameDoc, duplicateDoc, trashDoc, restoreDoc,
   deleteForever, purgeExpired, daysLeft, saveBank, loadBank, exportAll, restoreAll, parseBackup, TRASH_DAYS,
+  listFonts, putFont, removeFont, saveLayouts, loadLayouts, saveCorrections, loadCorrections, mergeCorrections,
 } from '../../src/storage';
 
 const DAY = 864e5;
@@ -97,5 +98,51 @@ describe('backup and restore', () => {
   it('rejects files that are not ProNotes backups', () => {
     expect(() => parseBackup('{"app":"bornona-pad","version":1,"words":{}}')).toThrow();
     expect(() => parseBackup('not json')).toThrow();
+  });
+});
+
+describe('M5 data: fonts, layouts, corrections', () => {
+  it('upgrading a v1 database keeps the drafts and adds the fonts store', async () => {
+    const { openDB } = await import('idb');
+    const v1 = await openDB('pronotes', 1, {
+      upgrade(d) {
+        d.createObjectStore('docs', { keyPath: 'id' }).createIndex('updatedAt', 'updatedAt');
+        d.createObjectStore('meta');
+      },
+    });
+    await v1.put('docs', { id: 'old', title: 'পুরোনো', content: para('ক'), text: 'ক', createdAt: 1, updatedAt: 1, deletedAt: null });
+    v1.close();
+    resetDbForTests();
+    expect((await listDocs()).map((d) => d.id)).toEqual(['old']);
+    expect(await listFonts()).toEqual([]);
+  });
+  it('fonts are stored, listed oldest first and removed', async () => {
+    const data = new ArrayBuffer(8);
+    await putFont({ id: 'b', family: 'Kalpurush', fileName: 'k.ttf', role: 'uni', data, addedAt: 2 });
+    await putFont({ id: 'a', family: 'SutonnyMJ', fileName: 's.ttf', role: 'ansi', data, addedAt: 1 });
+    expect((await listFonts()).map((f) => f.family)).toEqual(['SutonnyMJ', 'Kalpurush']);
+    await removeFont('a');
+    expect((await listFonts()).map((f) => f.id)).toEqual(['b']);
+  });
+  it('backup carries layouts and corrections (not fonts); restore adds without removing', async () => {
+    const L = { id: 'custom-1', name: 'আমার', dev: '', map: { KeyA: ['া', 'আ'] } };
+    await saveLayouts([L]);
+    await saveCorrections('এক্তিয়ার = এখতিয়ার');
+    await putFont({ id: 'f', family: 'X', fileName: 'x.ttf', role: 'uni', data: new ArrayBuffer(4), addedAt: 1 });
+    const f = parseBackup(JSON.stringify(await exportAll({})));
+    expect(f.layouts).toEqual([L]);
+    expect(JSON.stringify(f)).not.toContain('"fonts"');
+    globalThis.indexedDB = new IDBFactory();
+    resetDbForTests();
+    await saveCorrections('নাই = নেই');
+    await restoreAll(f);
+    expect(await loadLayouts()).toEqual([L]);
+    expect(await loadCorrections()).toBe('নাই = নেই\nএক্তিয়ার = এখতিয়ার');
+    await restoreAll(f);
+    expect(await loadLayouts()).toHaveLength(1);
+    expect(await loadCorrections()).toBe('নাই = নেই\nএক্তিয়ার = এখতিয়ার');
+  });
+  it('mergeCorrections skips duplicates and blank lines', () => {
+    expect(mergeCorrections('ক = খ\n', 'ক = খ\n\nগ = ঘ')).toBe('ক = খ\nগ = ঘ');
   });
 });

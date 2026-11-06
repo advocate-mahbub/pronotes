@@ -1,34 +1,329 @@
 {
-  "sequences": [
-    {"layout":"bornona","vf":true,"oldReph":false,"keys":["KeyK","Shift+KeyF","KeyM"]},
-    {"layout":"bornona","vf":true,"oldReph":false,"keys":["KeyI","KeyE","KeyK","Space","Shift+KeyA","KeyA","Space","KeyV","KeyA","Shift+KeyI"]},
-    {"layout":"bornona","vf":true,"oldReph":false,"keys":["KeyK","KeyH","KeyX","Space","KeyK","Backquote","KeyX","Space","Backslash","KeyA","KeyB","Space","Digit5","Digit0","Shift+Backslash"]},
-    {"layout":"bornona","vf":true,"oldReph":false,"keys":["KeyN","KeyI","Shift+KeyF","KeyD","KeyE","Shift+KeyS","Space","KeyP","Shift+KeyP","KeyT","KeyI","Space","KeyB","Shift+KeyV","KeyA","Shift+KeyB"]},
-    {"layout":"bornona","vf":true,"oldReph":true,"keys":["KeyK","KeyM","Shift+KeyF","Space","KeyD","KeyH","KeyB","Shift+KeyF","Space","KeyK","KeyM","Shift+KeyI","Shift+KeyF"]},
-    {"layout":"bornona","vf":false,"oldReph":false,"keys":["KeyI","KeyE","Space","Shift+KeyA","KeyA"]},
-    {"layout":"bornona","vf":true,"oldReph":false,"keys":["Shift+KeyR","KeyN","Space","Shift+KeyO","KeyR","Shift+KeyI"]},
-    {"layout":"national","vf":true,"oldReph":false,"keys":["KeyJ","KeyK","Space","KeyA","KeyF","KeyG","KeyH","Space","Shift+KeyJ","Shift+KeyK"]},
-    {"layout":"probhat","vf":true,"oldReph":false,"keys":["KeyK","KeyA","KeyM","Space","KeyL","KeyI","KeyK","Space","Backslash","Backquote"]},
-    {"layout":"avroeasy","vf":true,"oldReph":false,"keys":["Alt+KeyF","Alt+KeyG","KeyK","KeyA","Space","Shift+Alt+KeyA"]},
-    {"layout":"munir","vf":true,"oldReph":false,"keys":["KeyK","KeyA","Space","Alt+KeyW","Alt+Digit3"]}
+ "sequences": [
+  {
+   "layout": "bornona",
+   "vf": true,
+   "oldReph": false,
+   "keys": [
+    "KeyK",
+    "Shift+KeyF",
+    "KeyM"
+   ]
+  },
+  {
+   "layout": "bornona",
+   "vf": true,
+   "oldReph": false,
+   "keys": [
+    "KeyI",
+    "KeyE",
+    "KeyK",
+    "Space",
+    "Shift+KeyA",
+    "KeyA",
+    "Space",
+    "KeyV",
+    "KeyA",
+    "Shift+KeyI"
+   ]
+  },
+  {
+   "layout": "bornona",
+   "vf": true,
+   "oldReph": false,
+   "keys": [
+    "KeyK",
+    "KeyH",
+    "KeyX",
+    "Space",
+    "KeyK",
+    "Backquote",
+    "KeyX",
+    "Space",
+    "Backslash",
+    "KeyA",
+    "KeyB",
+    "Space",
+    "Digit5",
+    "Digit0",
+    "Shift+Backslash"
+   ]
+  },
+  {
+   "layout": "bornona",
+   "vf": true,
+   "oldReph": false,
+   "keys": [
+    "KeyN",
+    "KeyI",
+    "Shift+KeyF",
+    "KeyD",
+    "KeyE",
+    "Shift+KeyS",
+    "Space",
+    "KeyP",
+    "Shift+KeyP",
+    "KeyT",
+    "KeyI",
+    "Space",
+    "KeyB",
+    "Shift+KeyV",
+    "KeyA",
+    "Shift+KeyB"
+   ]
+  },
+  {
+   "layout": "bornona",
+   "vf": true,
+   "oldReph": true,
+   "keys": [
+    "KeyK",
+    "KeyM",
+    "Shift+KeyF",
+    "Space",
+    "KeyD",
+    "KeyH",
+    "KeyB",
+    "Shift+KeyF",
+    "Space",
+    "KeyK",
+    "KeyM",
+    "Shift+KeyI",
+    "Shift+KeyF"
+   ]
+  },
+  {
+   "layout": "bornona",
+   "vf": false,
+   "oldReph": false,
+   "keys": [
+    "KeyI",
+    "KeyE",
+    "Space",
+    "Shift+KeyA",
+    "KeyA"
+   ]
+  },
+  {
+   "layout": "bornona",
+   "vf": true,
+   "oldReph": false,
+   "keys": [
+    "Shift+KeyR",
+    "KeyN",
+    "Space",
+    "Shift+KeyO",
+    "KeyR",
+    "Shift+KeyI"
+   ]
+  },
+  {
+   "layout": "national",
+   "vf": true,
+   "oldReph": false,
+   "keys": [
+    "KeyJ",
+    "KeyK",
+    "Space",
+    "KeyA",
+    "KeyF",
+    "KeyG",
+    "KeyH",
+    "Space",
+    "Shift+KeyJ",
+    "Shift+KeyK"
+   ]
+  },
+  {
+   "layout": "probhat",
+   "vf": true,
+   "oldReph": false,
+   "keys": [
+    "KeyK",
+    "KeyA",
+    "KeyM",
+    "Space",
+    "KeyL",
+    "KeyI",
+    "KeyK",
+    "Space",
+    "Backslash",
+    "Backquote"
+   ]
+  },
+  {
+   "layout": "avroeasy",
+   "vf": true,
+   "oldReph": false,
+   "keys": [
+    "Alt+KeyF",
+    "Alt+KeyG",
+    "KeyK",
+    "KeyA",
+    "Space",
+    "Shift+Alt+KeyA"
+   ]
+  },
+  {
+   "layout": "munir",
+   "vf": true,
+   "oldReph": false,
+   "keys": [
+    "KeyK",
+    "KeyA",
+    "Space",
+    "Alt+KeyW",
+    "Alt+Digit3"
+   ]
+  }
+ ],
+ "bijoySamples": [
+  "বিজ্ঞ আদালত সমীপে। বাদী পক্ষ সবিনয় নিবেদন এই যে, নালিশী সম্পত্তি ১৯৮৫ সালের ৫৬৭৮ নং দলিল মূলে খরিদ করেন। এখতিয়ার, রক্ষণীয়তা, উল্লেখ্য, র‍্যাব, অন্তর্বর্তীকালীন, পৌরসভা — ৫০,০০০/- টাকা।\nনতুন লাইন \"উদ্ধৃতি\"",
+  "ঊর্ধ্ব ঊর্ধ্বতন কার্য সূর্য পর্যন্ত সুনির্দিষ্ট ইনস্ট্রুমেন্টস সত্ত্বেও স্ত্রী কৃষ্ণ শ্রী হৃদয় দ্বিতীয় দুঃখ চাঁদ ৎ শক্তি রুল রূপ গুরু হুকুম কৌঁসুলি ফৌজদারী মৌজা তৌজি চৌহদ্দি"
+ ],
+ "bijoyDecodeSamples": [
+  "Avgvi †mvbvi evsjv, Avwg †Zvgvq fv‡jvevwm|",
+  "D‡jøL¨ †h, ˆea gvwjKvbv",
+  "ev`x c¶ mwebq wb‡e`b GB †h"
+ ],
+ "mixedSamples": [
+  "ফাইলের নাম National (Jatiya).avrolayout, দেখুন। Section 151 CPC অনুযায়ী দরখাস্ত।",
+  "The plaintiff বাদী filed মোকদ্দমা on 5 May 2024."
+ ],
+ "htmlPasteSamples": [
+  "<html><head><style>p.MsoNormal{font-family:\"SutonnyMJ\";} span.en{font-family:Calibri}</style></head><body><p class=MsoNormal>Avgvi †mvbvi evsjv <span style='font-family:\"Times New Roman\";mso-bidi-font-family:SutonnyMJ'>National (Jatiya).avrolayout</span></p><p class=MsoNormal>D‡jøL¨ †h, <span class=en>Section 151</span></p></body></html>",
+  "<p><span style=\"font-family:Arial\">Only English here</span></p>"
+ ],
+ "suggestPrefixes": [
+  "দল",
+  "এক",
+  "আপ",
+  "খত",
+  "বিজ্ঞ ",
+  "দলিল ",
+  "plai",
+  "Ca",
+  "res"
+ ],
+ "learnText": "বাদীপক্ষ মষক নিকোত মষক। আপত্তিকারী ধর্মাবতার আপত্তিকারী মষক বলেন।",
+ "voiceRaw": [
+  [
+   "আমি বাদী দাঁড়ি তিনি বিবাদী দাঁড়ি",
+   "bn-BD"
   ],
-  "bijoySamples": [
-    "বিজ্ঞ আদালত সমীপে। বাদী পক্ষ সবিনয় নিবেদন এই যে, নালিশী সম্পত্তি ১৯৮৫ সালের ৫৬৭৮ নং দলিল মূলে খরিদ করেন। এখতিয়ার, রক্ষণীয়তা, উল্লেখ্য, র‍্যাব, অন্তর্বর্তীকালীন, পৌরসভা — ৫০,০০০/- টাকা।\nনতুন লাইন \"উদ্ধৃতি\"",
-    "ঊর্ধ্ব ঊর্ধ্বতন কার্য সূর্য পর্যন্ত সুনির্দিষ্ট ইনস্ট্রুমেন্টস সত্ত্বেও স্ত্রী কৃষ্ণ শ্রী হৃদয় দ্বিতীয় দুঃখ চাঁদ ৎ শক্তি রুল রূপ গুরু হুকুম কৌঁসুলি ফৌজদারী মৌজা তৌজি চৌহদ্দি"
+  [
+   "প্রথম কমা দ্বিতীয় কমা তৃতীয় প্রশ্নবোধক চিহ্ন",
+   "bn-BD"
   ],
-  "bijoyDecodeSamples": [
-    "Avgvi †mvbvi evsjv, Avwg †Zvgvq fv‡jvevwm|",
-    "D‡jøL¨ †h, ˆea gvwjKvbv",
-    "ev`x c¶ mwebq wb‡e`b GB †h"
+  [
+   "নতুন লাইন দফা 5 নতুন অনুচ্ছেদ শেষ",
+   "bn-BD"
   ],
-  "mixedSamples": [
-    "ফাইলের নাম National (Jatiya).avrolayout, দেখুন। Section 151 CPC অনুযায়ী দরখাস্ত।",
-    "The plaintiff বাদী filed মোকদ্দমা on 5 May 2024."
+  [
+   "বন্ধনী শুরু ক বন্ধনী শেষ এবং",
+   "bn-BD"
   ],
-  "htmlPasteSamples": [
-    "<html><head><style>p.MsoNormal{font-family:\"SutonnyMJ\";} span.en{font-family:Calibri}</style></head><body><p class=MsoNormal>Avgvi †mvbvi evsjv <span style='font-family:\"Times New Roman\";mso-bidi-font-family:SutonnyMJ'>National (Jatiya).avrolayout</span></p><p class=MsoNormal>D‡jøL¨ †h, <span class=en>Section 151</span></p></body></html>",
-    "<p><span style=\"font-family:Arial\">Only English here</span></p>"
+  [
+   "জমির পরিমাণ 25 শতাংশ.",
+   "bn-BD"
   ],
-  "suggestPrefixes": ["দল", "এক", "আপ", "খত", "বিজ্ঞ ", "দলিল ", "plai", "Ca", "res"],
-  "learnText": "বাদীপক্ষ মষক নিকোত মষক। আপত্তিকারী ধর্মাবতার আপত্তিকারী মষক বলেন।"
+  [
+   "এক্তিয়ার নাই কমা এক্তিয়ার",
+   "bn-BD"
+  ],
+  [
+   "দশ হাইফেন বারো সেমিকোলন তেরো কোলন চৌদ্দ",
+   "bn-BD"
+  ],
+  [
+   "ভালো বিস্ময়সূচক চিহ্ন দাড়ি পূর্ণচ্ছেদ",
+   "bn-BD"
+  ],
+  [
+   "ভূমি জায়গা দাঁড়ি",
+   "bn-BD"
+  ],
+  [
+   "বাদী full stop comma",
+   "bn-BD"
+  ],
+  [
+   "hello full stop how are you question mark",
+   "en-US"
+  ],
+  [
+   "new line test comma done period",
+   "en-US"
+  ],
+  [
+   "  multiple   spaces  here  ",
+   "en-US"
+  ],
+  [
+   "case 12 open bracket a close bracket hyphen b",
+   "en-GB"
+  ],
+  [
+   "Comma at start",
+   "en-US"
+  ]
+ ],
+ "voiceCorr": "এক্তিয়ার = এখতিয়ার\nনাই = নেই\nbad line\n = x",
+ "voicePut": [
+  [
+   "",
+   "আমি বাদী",
+   "bn-BD"
+  ],
+  [
+   "আমি",
+   "বাদী",
+   "bn-BD"
+  ],
+  [
+   "আমি ",
+   "বাদী",
+   "bn-BD"
+  ],
+  [
+   "আমি",
+   "দাঁড়ি",
+   "bn-BD"
+  ],
+  [
+   "আমি",
+   "কমা তুমি",
+   "bn-BD"
+  ],
+  [
+   "আমি",
+   "নতুন লাইন",
+   "bn-BD"
+  ],
+  [
+   "",
+   "hello there period how are you",
+   "en-US"
+  ],
+  [
+   "Done.",
+   "next one",
+   "en-US"
+  ],
+  [
+   "word",
+   "more words",
+   "en-US"
+  ],
+  [
+   "line\n",
+   "start here",
+   "en-US"
+  ],
+  [
+   "",
+   "   ",
+   "bn-BD"
+  ]
+ ]
 }

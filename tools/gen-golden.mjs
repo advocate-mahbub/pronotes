@@ -5,6 +5,7 @@ import { chromium } from '@playwright/test';
 import fs from 'node:fs';
 import path from 'node:path';
 import url from 'node:url';
+import os from 'node:os';
 
 const root = path.resolve(path.dirname(url.fileURLToPath(import.meta.url)), '..');
 const ref = 'file://' + path.join(root, 'reference/bornona-pad-v8.html');
@@ -116,6 +117,43 @@ const learned = {};
 for (const pre of [...cases.suggestPrefixes, 'মষ', 'মষক ', 'আপত্তিকারী ']) learned[pre] = await sugAt(pre);
 const lex = await p.evaluate(() => new Promise(r => setTimeout(() => r(JSON.parse(localStorage.getItem('bornona.lex'))), 700)));
 out('suggest.json', { fresh, learnText: cases.learnText, learned, lex });
+
+// 6. voice text clean-up (v8 cleanVoice / putVoice; the speech engine itself is not involved).
+// v8 keeps them inside its main closure, so a temporary copy exposes them on window.__voice.
+const hooked = layoutsSrc.replace('function putVoice(raw){',
+  "window.__voice={cleanVoice,putVoice,st,reset:()=>{lastFinal='';lastFinalAt=0}};function putVoice(raw){");
+if (hooked === layoutsSrc) throw new Error('voice hook point not found in v8');
+const tmp = path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'pronotes-golden-')), 'v8-voice.html');
+fs.writeFileSync(tmp, hooked);
+await p.goto('file://' + tmp);
+await p.waitForTimeout(300);
+const voice = await p.evaluate((c) => {
+  const V = window.__voice, st = V.st;
+  const ta = document.getElementById('ta');
+  const clean = [];
+  for (const [vcmd, vdig] of [[true, true], [true, false], [false, true]]) {
+    for (const corr of ['', c.voiceCorr]) {
+      st.vcmd = vcmd; st.vdig = vdig; st.corr = corr;
+      for (const [raw, lang] of c.voiceRaw) clean.push({ raw, lang, vcmd, vdig, corr, out: V.cleanVoice(raw, lang) });
+    }
+  }
+  st.vcmd = true; st.vdig = true; st.corr = '';
+  const put = [];
+  for (const [before, raw, lang] of c.voicePut) {
+    st.vlang = lang; ta.value = before; ta.focus(); ta.setSelectionRange(before.length, before.length);
+    V.reset();
+    V.putVoice(raw);
+    put.push({ before, raw, lang, value: ta.value });
+  }
+  // the same final result twice within 2.5 s is inserted once
+  st.vlang = 'bn-BD'; ta.value = ''; V.reset();
+  V.putVoice('আমি'); V.putVoice('আমি');
+  const dedupe = ta.value;
+  st.vlang = 'auto';
+  return { clean, put, dedupe };
+}, cases);
+out('voice.json', voice);
+fs.rmSync(path.dirname(tmp), { recursive: true, force: true });
 
 const errs = p._errs;
 await browser.close();

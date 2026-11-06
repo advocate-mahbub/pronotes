@@ -1,7 +1,7 @@
 // @vitest-environment happy-dom
 import { describe, it, expect } from 'vitest';
 import fs from 'node:fs';
-import { toBijoy, toUnicode, looksBijoy, bijoyRuns, bijoyFromHtml, runsToClipboardHtml } from '../../src/bijoy';
+import { toBijoy, toUnicode, looksBijoy, bijoyRuns, bijoyFromHtml, runsToClipboardHtml, convertBijoyPaste } from '../../src/bijoy';
 
 const golden = (f: string) => JSON.parse(fs.readFileSync(new URL('../golden/' + f, import.meta.url), 'utf8'));
 const g = golden('bijoy.json');
@@ -44,5 +44,22 @@ describe('mixed Bangla/English', () => {
       const u = bijoyFromHtml(p.html);
       expect(u ?? '').toBe(p.value);
     }
+  });
+});
+
+describe('paste rule (v8)', () => {
+  it('Word HTML with Bijoy runs is converted like the textarea paste', () => {
+    for (const p of ui.pastes) {
+      const r = convertBijoyPaste('x', p.html);
+      if (p.value) expect(r?.text).toBe(p.value);
+      else expect(r).toBeNull();
+    }
+  });
+  it('plain Bijoy text is converted, Unicode and English are left alone', () => {
+    const bj = g.dec[0].b as string;
+    expect(convertBijoyPaste(bj, '')?.text).toBe(toUnicode(bj));
+    expect(convertBijoyPaste('বাদী পক্ষ', '')).toBeNull();
+    expect(convertBijoyPaste('The plaintiff filed the suit on 5 May 2024.', '')).toBeNull();
+    expect(convertBijoyPaste('', '<b>x</b>')).toBeNull();
   });
 });

@@ -9,7 +9,7 @@ import { LegalParagraph } from './legal-format';
  * legal structure comes from paragraph styles, and Markdown-like shortcuts
  * ("- ", "1. ") must not reshape a draft while typing.
  */
-export function editorExtensions(bornona: BornonaOptions) {
+export function editorExtensions(bornona: Partial<BornonaOptions> & Pick<BornonaOptions, 'getConfig'>) {
   return [
     StarterKit.configure({
       link: false, codeBlock: false, code: false, blockquote: false, horizontalRule: false, heading: false,

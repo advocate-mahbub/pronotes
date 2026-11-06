@@ -1,10 +1,11 @@
 /**
  * Local database (IndexedDB). Everything stays on this device.
- * Stores: docs (drafts, including Trash) and meta (word bank, etc.).
+ * Stores: docs (drafts, including Trash), meta (word bank, custom layouts, …) and fonts (v2).
  */
 import { openDB, type DBSchema, type IDBPDatabase } from 'idb';
 import type { JSONContent } from '@tiptap/core';
 import type { WordBank } from '../suggest';
+import type { Layout } from '../bornona-engine';
 
 export interface Doc {
   id: string;
@@ -18,9 +19,23 @@ export interface Doc {
   deletedAt: number | null;
 }
 
+/** A font file the user added (kept only in this browser; never put in backups). */
+export interface StoredFont {
+  id: string;
+  /** Family name from the font file (used on screen and written into .docx). */
+  family: string;
+  /** File name the user picked. */
+  fileName: string;
+  /** 'uni' = Unicode Bangla font, 'ansi' = Bijoy/ANSI font (SutonnyMJ etc.). */
+  role: 'uni' | 'ansi';
+  data: ArrayBuffer;
+  addedAt: number;
+}
+
 interface Schema extends DBSchema {
   docs: { key: string; value: Doc; indexes: { updatedAt: number } };
   meta: { key: string; value: unknown };
+  fonts: { key: string; value: StoredFont };
 }
 
 export const DB_NAME = 'pronotes';
@@ -30,11 +45,14 @@ const DAY = 24 * 60 * 60 * 1000;
 let dbp: Promise<IDBPDatabase<Schema>> | null = null;
 export function db(): Promise<IDBPDatabase<Schema>> {
   if (!dbp) {
-    dbp = openDB<Schema>(DB_NAME, 1, {
-      upgrade(d) {
-        const docs = d.createObjectStore('docs', { keyPath: 'id' });
-        docs.createIndex('updatedAt', 'updatedAt');
-        d.createObjectStore('meta');
+    dbp = openDB<Schema>(DB_NAME, 2, {
+      upgrade(d, oldVersion) {
+        if (oldVersion < 1) {
+          const docs = d.createObjectStore('docs', { keyPath: 'id' });
+          docs.createIndex('updatedAt', 'updatedAt');
+          d.createObjectStore('meta');
+        }
+        if (oldVersion < 2) d.createObjectStore('fonts', { keyPath: 'id' });
       },
     });
   }
@@ -134,3 +152,22 @@ export async function setMeta(key: string, value: unknown): Promise<void> {
 
 export const loadBank = () => getMeta<WordBank>('wordBank');
 export const saveBank = (b: WordBank) => setMeta('wordBank', b);
+
+export const listFonts = async (): Promise<StoredFont[]> => (await (await db()).getAll('fonts')).sort((a, b) => a.addedAt - b.addedAt);
+export const putFont = async (f: StoredFont): Promise<void> => {
+  await (await db()).put('fonts', f);
+};
+export const removeFont = async (id: string): Promise<void> => {
+  await (await db()).delete('fonts', id);
+};
+
+/** Custom .avrolayout layouts the user added. */
+export const loadLayouts = async (): Promise<Layout[]> => {
+  const v = await getMeta<Layout[]>('layouts');
+  return Array.isArray(v) ? v : [];
+};
+export const saveLayouts = (l: Layout[]) => setMeta('layouts', l);
+
+/** Voice corrections ("ভুল = ঠিক" lines) travel with the word bank, as in v8. */
+export const loadCorrections = async (): Promise<string> => (await getMeta<string>('corrections')) ?? '';
+export const saveCorrections = (s: string) => setMeta('corrections', s);

@@ -104,3 +104,18 @@ export function bijoyFromHtml(html: string | null | undefined, parser: DOMParser
   walk(doc.body);
   return found ? out.replace(/[ \t]+\n/g, '\n').replace(/\n{3,}/g, '\n\n').replace(/^\s+|\s+$/g, '') : null;
 }
+
+export const PASTE_MSG_HTML = 'বাংলা অংশ ইউনিকোডে বদলে বসানো হলো, ইংরেজি অংশ যেমন ছিল';
+export const PASTE_MSG_TEXT = 'বিজয় লেখা চেনা গেছে, ইউনিকোডে বসানো হলো';
+
+/**
+ * v8 paste rule: Word HTML with Bijoy-font runs → convert only those runs; plain text that
+ * looks like Bijoy → convert all of it; otherwise null (paste normally).
+ */
+export function convertBijoyPaste(text: string, html: string, parser?: DOMParser): { text: string; message: string } | null {
+  if (!text) return null;
+  const u = html ? bijoyFromHtml(html, parser) : null;
+  if (u !== null) return { text: u, message: PASTE_MSG_HTML };
+  if (looksBijoy(text)) return { text: toUnicode(text), message: PASTE_MSG_TEXT };
+  return null;
+}

@@ -2,10 +2,11 @@
  * Full backup: every document (Trash included), the word bank and settings in one JSON file.
  * Restore never overwrites silently: a document that already exists with different content
  * comes back as a separate copy.
+ * Font files are never included (size, and font licences such as SutonnyMJ's).
  */
 import { db, getMeta, setMeta, type Doc } from './db';
 import { emptyBank, type WordBank } from '../suggest';
-import { fixNukta } from '../bornona-engine';
+import { fixNukta, type Layout } from '../bornona-engine';
 
 export interface BackupFile {
   app: 'pronotes';
@@ -14,12 +15,17 @@ export interface BackupFile {
   docs: Doc[];
   wordBank: WordBank;
   prefs: Record<string, unknown>;
+  /** M5+: custom keyboard layouts and voice corrections (optional, older backups lack them). */
+  layouts?: Layout[];
+  corrections?: string;
 }
 
 export async function exportAll(prefs: Record<string, unknown>, now = new Date()): Promise<BackupFile> {
   const docs = await (await db()).getAll('docs');
   const wordBank = (await getMeta<WordBank>('wordBank')) ?? emptyBank();
-  return { app: 'pronotes', version: 1, exportedAt: now.toISOString(), docs, wordBank, prefs };
+  const layouts = (await getMeta<Layout[]>('layouts')) ?? [];
+  const corrections = (await getMeta<string>('corrections')) ?? '';
+  return { app: 'pronotes', version: 1, exportedAt: now.toISOString(), docs, wordBank, prefs, layouts, corrections };
 }
 
 export function backupFileName(now = new Date()): string {
@@ -77,5 +83,18 @@ export async function restoreAll(f: BackupFile): Promise<RestoreResult> {
   const bank = (await getMeta<WordBank>('wordBank')) ?? emptyBank();
   r.words = mergeBankMax(bank, f.wordBank || emptyBank());
   await setMeta('wordBank', bank);
+  if (Array.isArray(f.layouts) && f.layouts.length) {
+    const have = (await getMeta<Layout[]>('layouts')) ?? [];
+    for (const l of f.layouts) if (l && l.id && l.map && !have.some((h) => h.id === l.id)) have.push(l);
+    await setMeta('layouts', have);
+  }
+  if (f.corrections) await setMeta('corrections', mergeCorrections((await getMeta<string>('corrections')) ?? '', f.corrections));
   return r;
+}
+
+/** Add correction lines that are not there yet (nothing is removed). */
+export function mergeCorrections(have: string, add: string): string {
+  const lines = have.split('\n').filter((l) => l.trim());
+  for (const l of fixNukta(add).split('\n')) if (l.trim() && !lines.includes(l)) lines.push(l);
+  return lines.join('\n');
 }

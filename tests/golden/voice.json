@@ -1,0 +1,793 @@
+{
+ "clean": [
+  {
+   "raw": "আমি বাদী দাঁড়ি তিনি বিবাদী দাঁড়ি",
+   "lang": "bn-BD",
+   "vcmd": true,
+   "vdig": true,
+   "corr": "",
+   "out": "আমি বাদী। তিনি বিবাদী।"
+  },
+  {
+   "raw": "প্রথম কমা দ্বিতীয় কমা তৃতীয় প্রশ্নবোধক চিহ্ন",
+   "lang": "bn-BD",
+   "vcmd": true,
+   "vdig": true,
+   "corr": "",
+   "out": "প্রথম, দ্বিতীয়, তৃতীয়?"
+  },
+  {
+   "raw": "নতুন লাইন দফা 5 নতুন অনুচ্ছেদ শেষ",
+   "lang": "bn-BD",
+   "vcmd": true,
+   "vdig": true,
+   "corr": "",
+   "out": "\nদফা ৫\n\nশেষ"
+  },
+  {
+   "raw": "বন্ধনী শুরু ক বন্ধনী শেষ এবং",
+   "lang": "bn-BD",
+   "vcmd": true,
+   "vdig": true,
+   "corr": "",
+   "out": "(ক) এবং"
+  },
+  {
+   "raw": "জমির পরিমাণ 25 শতাংশ.",
+   "lang": "bn-BD",
+   "vcmd": true,
+   "vdig": true,
+   "corr": "",
+   "out": "জমির পরিমাণ ২৫ শতাংশ।"
+  },
+  {
+   "raw": "এক্তিয়ার নাই কমা এক্তিয়ার",
+   "lang": "bn-BD",
+   "vcmd": true,
+   "vdig": true,
+   "corr": "",
+   "out": "এক্তিয়ার নাই, এক্তিয়ার"
+  },
+  {
+   "raw": "দশ হাইফেন বারো সেমিকোলন তেরো কোলন চৌদ্দ",
+   "lang": "bn-BD",
+   "vcmd": true,
+   "vdig": true,
+   "corr": "",
+   "out": "দশ-বারো; তেরো: চৌদ্দ"
+  },
+  {
+   "raw": "ভালো বিস্ময়সূচক চিহ্ন দাড়ি পূর্ণচ্ছেদ",
+   "lang": "bn-BD",
+   "vcmd": true,
+   "vdig": true,
+   "corr": "",
+   "out": "ভালো!।।"
+  },
+  {
+   "raw": "ভূমি জায়গা দাঁড়ি",
+   "lang": "bn-BD",
+   "vcmd": true,
+   "vdig": true,
+   "corr": "",
+   "out": "ভূমি জায়গা।"
+  },
+  {
+   "raw": "বাদী full stop comma",
+   "lang": "bn-BD",
+   "vcmd": true,
+   "vdig": true,
+   "corr": "",
+   "out": "বাদী.,"
+  },
+  {
+   "raw": "hello full stop how are you question mark",
+   "lang": "en-US",
+   "vcmd": true,
+   "vdig": true,
+   "corr": "",
+   "out": "hello. how are you?"
+  },
+  {
+   "raw": "new line test comma done period",
+   "lang": "en-US",
+   "vcmd": true,
+   "vdig": true,
+   "corr": "",
+   "out": "\ntest, done."
+  },
+  {
+   "raw": "  multiple   spaces  here  ",
+   "lang": "en-US",
+   "vcmd": true,
+   "vdig": true,
+   "corr": "",
+   "out": "multiple spaces here"
+  },
+  {
+   "raw": "case 12 open bracket a close bracket hyphen b",
+   "lang": "en-GB",
+   "vcmd": true,
+   "vdig": true,
+   "corr": "",
+   "out": "case 12  (a)-b"
+  },
+  {
+   "raw": "Comma at start",
+   "lang": "en-US",
+   "vcmd": true,
+   "vdig": true,
+   "corr": "",
+   "out": ", at start"
+  },
+  {
+   "raw": "আমি বাদী দাঁড়ি তিনি বিবাদী দাঁড়ি",
+   "lang": "bn-BD",
+   "vcmd": true,
+   "vdig": true,
+   "corr": "এক্তিয়ার = এখতিয়ার\nনাই = নেই\nbad line\n = x",
+   "out": "আমি বাদী। তিনি বিবাদী।"
+  },
+  {
+   "raw": "প্রথম কমা দ্বিতীয় কমা তৃতীয় প্রশ্নবোধক চিহ্ন",
+   "lang": "bn-BD",
+   "vcmd": true,
+   "vdig": true,
+   "corr": "এক্তিয়ার = এখতিয়ার\nনাই = নেই\nbad line\n = x",
+   "out": "প্রথম, দ্বিতীয়, তৃতীয়?"
+  },
+  {
+   "raw": "নতুন লাইন দফা 5 নতুন অনুচ্ছেদ শেষ",
+   "lang": "bn-BD",
+   "vcmd": true,
+   "vdig": true,
+   "corr": "এক্তিয়ার = এখতিয়ার\nনাই = নেই\nbad line\n = x",
+   "out": "\nদফা ৫\n\nশেষ"
+  },
+  {
+   "raw": "বন্ধনী শুরু ক বন্ধনী শেষ এবং",
+   "lang": "bn-BD",
+   "vcmd": true,
+   "vdig": true,
+   "corr": "এক্তিয়ার = এখতিয়ার\nনাই = নেই\nbad line\n = x",
+   "out": "(ক) এবং"
+  },
+  {
+   "raw": "জমির পরিমাণ 25 শতাংশ.",
+   "lang": "bn-BD",
+   "vcmd": true,
+   "vdig": true,
+   "corr": "এক্তিয়ার = এখতিয়ার\nনাই = নেই\nbad line\n = x",
+   "out": "জমির পরিমাণ ২৫ শতাংশ।"
+  },
+  {
+   "raw": "এক্তিয়ার নাই কমা এক্তিয়ার",
+   "lang": "bn-BD",
+   "vcmd": true,
+   "vdig": true,
+   "corr": "এক্তিয়ার = এখতিয়ার\nনাই = নেই\nbad line\n = x",
+   "out": "এখতিয়ার নেই, এখতিয়ার"
+  },
+  {
+   "raw": "দশ হাইফেন বারো সেমিকোলন তেরো কোলন চৌদ্দ",
+   "lang": "bn-BD",
+   "vcmd": true,
+   "vdig": true,
+   "corr": "এক্তিয়ার = এখতিয়ার\nনাই = নেই\nbad line\n = x",
+   "out": "দশ-বারো; তেরো: চৌদ্দ"
+  },
+  {
+   "raw": "ভালো বিস্ময়সূচক চিহ্ন দাড়ি পূর্ণচ্ছেদ",
+   "lang": "bn-BD",
+   "vcmd": true,
+   "vdig": true,
+   "corr": "এক্তিয়ার = এখতিয়ার\nনাই = নেই\nbad line\n = x",
+   "out": "ভালো!।।"
+  },
+  {
+   "raw": "ভূমি জায়গা দাঁড়ি",
+   "lang": "bn-BD",
+   "vcmd": true,
+   "vdig": true,
+   "corr": "এক্তিয়ার = এখতিয়ার\nনাই = নেই\nbad line\n = x",
+   "out": "ভূমি জায়গা।"
+  },
+  {
+   "raw": "বাদী full stop comma",
+   "lang": "bn-BD",
+   "vcmd": true,
+   "vdig": true,
+   "corr": "এক্তিয়ার = এখতিয়ার\nনাই = নেই\nbad line\n = x",
+   "out": "বাদী.,"
+  },
+  {
+   "raw": "hello full stop how are you question mark",
+   "lang": "en-US",
+   "vcmd": true,
+   "vdig": true,
+   "corr": "এক্তিয়ার = এখতিয়ার\nনাই = নেই\nbad line\n = x",
+   "out": "hello. how are you?"
+  },
+  {
+   "raw": "new line test comma done period",
+   "lang": "en-US",
+   "vcmd": true,
+   "vdig": true,
+   "corr": "এক্তিয়ার = এখতিয়ার\nনাই = নেই\nbad line\n = x",
+   "out": "\ntest, done."
+  },
+  {
+   "raw": "  multiple   spaces  here  ",
+   "lang": "en-US",
+   "vcmd": true,
+   "vdig": true,
+   "corr": "এক্তিয়ার = এখতিয়ার\nনাই = নেই\nbad line\n = x",
+   "out": "multiple spaces here"
+  },
+  {
+   "raw": "case 12 open bracket a close bracket hyphen b",
+   "lang": "en-GB",
+   "vcmd": true,
+   "vdig": true,
+   "corr": "এক্তিয়ার = এখতিয়ার\nনাই = নেই\nbad line\n = x",
+   "out": "case 12  (a)-b"
+  },
+  {
+   "raw": "Comma at start",
+   "lang": "en-US",
+   "vcmd": true,
+   "vdig": true,
+   "corr": "এক্তিয়ার = এখতিয়ার\nনাই = নেই\nbad line\n = x",
+   "out": ", at start"
+  },
+  {
+   "raw": "আমি বাদী দাঁড়ি তিনি বিবাদী দাঁড়ি",
+   "lang": "bn-BD",
+   "vcmd": true,
+   "vdig": false,
+   "corr": "",
+   "out": "আমি বাদী। তিনি বিবাদী।"
+  },
+  {
+   "raw": "প্রথম কমা দ্বিতীয় কমা তৃতীয় প্রশ্নবোধক চিহ্ন",
+   "lang": "bn-BD",
+   "vcmd": true,
+   "vdig": false,
+   "corr": "",
+   "out": "প্রথম, দ্বিতীয়, তৃতীয়?"
+  },
+  {
+   "raw": "নতুন লাইন দফা 5 নতুন অনুচ্ছেদ শেষ",
+   "lang": "bn-BD",
+   "vcmd": true,
+   "vdig": false,
+   "corr": "",
+   "out": "\nদফা 5\n\nশেষ"
+  },
+  {
+   "raw": "বন্ধনী শুরু ক বন্ধনী শেষ এবং",
+   "lang": "bn-BD",
+   "vcmd": true,
+   "vdig": false,
+   "corr": "",
+   "out": "(ক) এবং"
+  },
+  {
+   "raw": "জমির পরিমাণ 25 শতাংশ.",
+   "lang": "bn-BD",
+   "vcmd": true,
+   "vdig": false,
+   "corr": "",
+   "out": "জমির পরিমাণ 25 শতাংশ।"
+  },
+  {
+   "raw": "এক্তিয়ার নাই কমা এক্তিয়ার",
+   "lang": "bn-BD",
+   "vcmd": true,
+   "vdig": false,
+   "corr": "",
+   "out": "এক্তিয়ার নাই, এক্তিয়ার"
+  },
+  {
+   "raw": "দশ হাইফেন বারো সেমিকোলন তেরো কোলন চৌদ্দ",
+   "lang": "bn-BD",
+   "vcmd": true,
+   "vdig": false,
+   "corr": "",
+   "out": "দশ-বারো; তেরো: চৌদ্দ"
+  },
+  {
+   "raw": "ভালো বিস্ময়সূচক চিহ্ন দাড়ি পূর্ণচ্ছেদ",
+   "lang": "bn-BD",
+   "vcmd": true,
+   "vdig": false,
+   "corr": "",
+   "out": "ভালো!।।"
+  },
+  {
+   "raw": "ভূমি জায়গা দাঁড়ি",
+   "lang": "bn-BD",
+   "vcmd": true,
+   "vdig": false,
+   "corr": "",
+   "out": "ভূমি জায়গা।"
+  },
+  {
+   "raw": "বাদী full stop comma",
+   "lang": "bn-BD",
+   "vcmd": true,
+   "vdig": false,
+   "corr": "",
+   "out": "বাদী.,"
+  },
+  {
+   "raw": "hello full stop how are you question mark",
+   "lang": "en-US",
+   "vcmd": true,
+   "vdig": false,
+   "corr": "",
+   "out": "hello. how are you?"
+  },
+  {
+   "raw": "new line test comma done period",
+   "lang": "en-US",
+   "vcmd": true,
+   "vdig": false,
+   "corr": "",
+   "out": "\ntest, done."
+  },
+  {
+   "raw": "  multiple   spaces  here  ",
+   "lang": "en-US",
+   "vcmd": true,
+   "vdig": false,
+   "corr": "",
+   "out": "multiple spaces here"
+  },
+  {
+   "raw": "case 12 open bracket a close bracket hyphen b",
+   "lang": "en-GB",
+   "vcmd": true,
+   "vdig": false,
+   "corr": "",
+   "out": "case 12  (a)-b"
+  },
+  {
+   "raw": "Comma at start",
+   "lang": "en-US",
+   "vcmd": true,
+   "vdig": false,
+   "corr": "",
+   "out": ", at start"
+  },
+  {
+   "raw": "আমি বাদী দাঁড়ি তিনি বিবাদী দাঁড়ি",
+   "lang": "bn-BD",
+   "vcmd": true,
+   "vdig": false,
+   "corr": "এক্তিয়ার = এখতিয়ার\nনাই = নেই\nbad line\n = x",
+   "out": "আমি বাদী। তিনি বিবাদী।"
+  },
+  {
+   "raw": "প্রথম কমা দ্বিতীয় কমা তৃতীয় প্রশ্নবোধক চিহ্ন",
+   "lang": "bn-BD",
+   "vcmd": true,
+   "vdig": false,
+   "corr": "এক্তিয়ার = এখতিয়ার\nনাই = নেই\nbad line\n = x",
+   "out": "প্রথম, দ্বিতীয়, তৃতীয়?"
+  },
+  {
+   "raw": "নতুন লাইন দফা 5 নতুন অনুচ্ছেদ শেষ",
+   "lang": "bn-BD",
+   "vcmd": true,
+   "vdig": false,
+   "corr": "এক্তিয়ার = এখতিয়ার\nনাই = নেই\nbad line\n = x",
+   "out": "\nদফা 5\n\nশেষ"
+  },
+  {
+   "raw": "বন্ধনী শুরু ক বন্ধনী শেষ এবং",
+   "lang": "bn-BD",
+   "vcmd": true,
+   "vdig": false,
+   "corr": "এক্তিয়ার = এখতিয়ার\nনাই = নেই\nbad line\n = x",
+   "out": "(ক) এবং"
+  },
+  {
+   "raw": "জমির পরিমাণ 25 শতাংশ.",
+   "lang": "bn-BD",
+   "vcmd": true,
+   "vdig": false,
+   "corr": "এক্তিয়ার = এখতিয়ার\nনাই = নেই\nbad line\n = x",
+   "out": "জমির পরিমাণ 25 শতাংশ।"
+  },
+  {
+   "raw": "এক্তিয়ার নাই কমা এক্তিয়ার",
+   "lang": "bn-BD",
+   "vcmd": true,
+   "vdig": false,
+   "corr": "এক্তিয়ার = এখতিয়ার\nনাই = নেই\nbad line\n = x",
+   "out": "এখতিয়ার নেই, এখতিয়ার"
+  },
+  {
+   "raw": "দশ হাইফেন বারো সেমিকোলন তেরো কোলন চৌদ্দ",
+   "lang": "bn-BD",
+   "vcmd": true,
+   "vdig": false,
+   "corr": "এক্তিয়ার = এখতিয়ার\nনাই = নেই\nbad line\n = x",
+   "out": "দশ-বারো; তেরো: চৌদ্দ"
+  },
+  {
+   "raw": "ভালো বিস্ময়সূচক চিহ্ন দাড়ি পূর্ণচ্ছেদ",
+   "lang": "bn-BD",
+   "vcmd": true,
+   "vdig": false,
+   "corr": "এক্তিয়ার = এখতিয়ার\nনাই = নেই\nbad line\n = x",
+   "out": "ভালো!।।"
+  },
+  {
+   "raw": "ভূমি জায়গা দাঁড়ি",
+   "lang": "bn-BD",
+   "vcmd": true,
+   "vdig": false,
+   "corr": "এক্তিয়ার = এখতিয়ার\nনাই = নেই\nbad line\n = x",
+   "out": "ভূমি জায়গা।"
+  },
+  {
+   "raw": "বাদী full stop comma",
+   "lang": "bn-BD",
+   "vcmd": true,
+   "vdig": false,
+   "corr": "এক্তিয়ার = এখতিয়ার\nনাই = নেই\nbad line\n = x",
+   "out": "বাদী.,"
+  },
+  {
+   "raw": "hello full stop how are you question mark",
+   "lang": "en-US",
+   "vcmd": true,
+   "vdig": false,
+   "corr": "এক্তিয়ার = এখতিয়ার\nনাই = নেই\nbad line\n = x",
+   "out": "hello. how are you?"
+  },
+  {
+   "raw": "new line test comma done period",
+   "lang": "en-US",
+   "vcmd": true,
+   "vdig": false,
+   "corr": "এক্তিয়ার = এখতিয়ার\nনাই = নেই\nbad line\n = x",
+   "out": "\ntest, done."
+  },
+  {
+   "raw": "  multiple   spaces  here  ",
+   "lang": "en-US",
+   "vcmd": true,
+   "vdig": false,
+   "corr": "এক্তিয়ার = এখতিয়ার\nনাই = নেই\nbad line\n = x",
+   "out": "multiple spaces here"
+  },
+  {
+   "raw": "case 12 open bracket a close bracket hyphen b",
+   "lang": "en-GB",
+   "vcmd": true,
+   "vdig": false,
+   "corr": "এক্তিয়ার = এখতিয়ার\nনাই = নেই\nbad line\n = x",
+   "out": "case 12  (a)-b"
+  },
+  {
+   "raw": "Comma at start",
+   "lang": "en-US",
+   "vcmd": true,
+   "vdig": false,
+   "corr": "এক্তিয়ার = এখতিয়ার\nনাই = নেই\nbad line\n = x",
+   "out": ", at start"
+  },
+  {
+   "raw": "আমি বাদী দাঁড়ি তিনি বিবাদী দাঁড়ি",
+   "lang": "bn-BD",
+   "vcmd": false,
+   "vdig": true,
+   "corr": "",
+   "out": "আমি বাদী দাঁড়ি তিনি বিবাদী দাঁড়ি"
+  },
+  {
+   "raw": "প্রথম কমা দ্বিতীয় কমা তৃতীয় প্রশ্নবোধক চিহ্ন",
+   "lang": "bn-BD",
+   "vcmd": false,
+   "vdig": true,
+   "corr": "",
+   "out": "প্রথম কমা দ্বিতীয় কমা তৃতীয় প্রশ্নবোধক চিহ্ন"
+  },
+  {
+   "raw": "নতুন লাইন দফা 5 নতুন অনুচ্ছেদ শেষ",
+   "lang": "bn-BD",
+   "vcmd": false,
+   "vdig": true,
+   "corr": "",
+   "out": "নতুন লাইন দফা ৫ নতুন অনুচ্ছেদ শেষ"
+  },
+  {
+   "raw": "বন্ধনী শুরু ক বন্ধনী শেষ এবং",
+   "lang": "bn-BD",
+   "vcmd": false,
+   "vdig": true,
+   "corr": "",
+   "out": "বন্ধনী শুরু ক বন্ধনী শেষ এবং"
+  },
+  {
+   "raw": "জমির পরিমাণ 25 শতাংশ.",
+   "lang": "bn-BD",
+   "vcmd": false,
+   "vdig": true,
+   "corr": "",
+   "out": "জমির পরিমাণ ২৫ শতাংশ।"
+  },
+  {
+   "raw": "এক্তিয়ার নাই কমা এক্তিয়ার",
+   "lang": "bn-BD",
+   "vcmd": false,
+   "vdig": true,
+   "corr": "",
+   "out": "এক্তিয়ার নাই কমা এক্তিয়ার"
+  },
+  {
+   "raw": "দশ হাইফেন বারো সেমিকোলন তেরো কোলন চৌদ্দ",
+   "lang": "bn-BD",
+   "vcmd": false,
+   "vdig": true,
+   "corr": "",
+   "out": "দশ হাইফেন বারো সেমিকোলন তেরো কোলন চৌদ্দ"
+  },
+  {
+   "raw": "ভালো বিস্ময়সূচক চিহ্ন দাড়ি পূর্ণচ্ছেদ",
+   "lang": "bn-BD",
+   "vcmd": false,
+   "vdig": true,
+   "corr": "",
+   "out": "ভালো বিস্ময়সূচক চিহ্ন দাড়ি পূর্ণচ্ছেদ"
+  },
+  {
+   "raw": "ভূমি জায়গা দাঁড়ি",
+   "lang": "bn-BD",
+   "vcmd": false,
+   "vdig": true,
+   "corr": "",
+   "out": "ভূমি জায়গা দাঁড়ি"
+  },
+  {
+   "raw": "বাদী full stop comma",
+   "lang": "bn-BD",
+   "vcmd": false,
+   "vdig": true,
+   "corr": "",
+   "out": "বাদী full stop comma"
+  },
+  {
+   "raw": "hello full stop how are you question mark",
+   "lang": "en-US",
+   "vcmd": false,
+   "vdig": true,
+   "corr": "",
+   "out": "hello full stop how are you question mark"
+  },
+  {
+   "raw": "new line test comma done period",
+   "lang": "en-US",
+   "vcmd": false,
+   "vdig": true,
+   "corr": "",
+   "out": "new line test comma done period"
+  },
+  {
+   "raw": "  multiple   spaces  here  ",
+   "lang": "en-US",
+   "vcmd": false,
+   "vdig": true,
+   "corr": "",
+   "out": "multiple spaces here"
+  },
+  {
+   "raw": "case 12 open bracket a close bracket hyphen b",
+   "lang": "en-GB",
+   "vcmd": false,
+   "vdig": true,
+   "corr": "",
+   "out": "case 12 open bracket a close bracket hyphen b"
+  },
+  {
+   "raw": "Comma at start",
+   "lang": "en-US",
+   "vcmd": false,
+   "vdig": true,
+   "corr": "",
+   "out": "Comma at start"
+  },
+  {
+   "raw": "আমি বাদী দাঁড়ি তিনি বিবাদী দাঁড়ি",
+   "lang": "bn-BD",
+   "vcmd": false,
+   "vdig": true,
+   "corr": "এক্তিয়ার = এখতিয়ার\nনাই = নেই\nbad line\n = x",
+   "out": "আমি বাদী দাঁড়ি তিনি বিবাদী দাঁড়ি"
+  },
+  {
+   "raw": "প্রথম কমা দ্বিতীয় কমা তৃতীয় প্রশ্নবোধক চিহ্ন",
+   "lang": "bn-BD",
+   "vcmd": false,
+   "vdig": true,
+   "corr": "এক্তিয়ার = এখতিয়ার\nনাই = নেই\nbad line\n = x",
+   "out": "প্রথম কমা দ্বিতীয় কমা তৃতীয় প্রশ্নবোধক চিহ্ন"
+  },
+  {
+   "raw": "নতুন লাইন দফা 5 নতুন অনুচ্ছেদ শেষ",
+   "lang": "bn-BD",
+   "vcmd": false,
+   "vdig": true,
+   "corr": "এক্তিয়ার = এখতিয়ার\nনাই = নেই\nbad line\n = x",
+   "out": "নতুন লাইন দফা ৫ নতুন অনুচ্ছেদ শেষ"
+  },
+  {
+   "raw": "বন্ধনী শুরু ক বন্ধনী শেষ এবং",
+   "lang": "bn-BD",
+   "vcmd": false,
+   "vdig": true,
+   "corr": "এক্তিয়ার = এখতিয়ার\nনাই = নেই\nbad line\n = x",
+   "out": "বন্ধনী শুরু ক বন্ধনী শেষ এবং"
+  },
+  {
+   "raw": "জমির পরিমাণ 25 শতাংশ.",
+   "lang": "bn-BD",
+   "vcmd": false,
+   "vdig": true,
+   "corr": "এক্তিয়ার = এখতিয়ার\nনাই = নেই\nbad line\n = x",
+   "out": "জমির পরিমাণ ২৫ শতাংশ।"
+  },
+  {
+   "raw": "এক্তিয়ার নাই কমা এক্তিয়ার",
+   "lang": "bn-BD",
+   "vcmd": false,
+   "vdig": true,
+   "corr": "এক্তিয়ার = এখতিয়ার\nনাই = নেই\nbad line\n = x",
+   "out": "এখতিয়ার নেই কমা এখতিয়ার"
+  },
+  {
+   "raw": "দশ হাইফেন বারো সেমিকোলন তেরো কোলন চৌদ্দ",
+   "lang": "bn-BD",
+   "vcmd": false,
+   "vdig": true,
+   "corr": "এক্তিয়ার = এখতিয়ার\nনাই = নেই\nbad line\n = x",
+   "out": "দশ হাইফেন বারো সেমিকোলন তেরো কোলন চৌদ্দ"
+  },
+  {
+   "raw": "ভালো বিস্ময়সূচক চিহ্ন দাড়ি পূর্ণচ্ছেদ",
+   "lang": "bn-BD",
+   "vcmd": false,
+   "vdig": true,
+   "corr": "এক্তিয়ার = এখতিয়ার\nনাই = নেই\nbad line\n = x",
+   "out": "ভালো বিস্ময়সূচক চিহ্ন দাড়ি পূর্ণচ্ছেদ"
+  },
+  {
+   "raw": "ভূমি জায়গা দাঁড়ি",
+   "lang": "bn-BD",
+   "vcmd": false,
+   "vdig": true,
+   "corr": "এক্তিয়ার = এখতিয়ার\nনাই = নেই\nbad line\n = x",
+   "out": "ভূমি জায়গা দাঁড়ি"
+  },
+  {
+   "raw": "বাদী full stop comma",
+   "lang": "bn-BD",
+   "vcmd": false,
+   "vdig": true,
+   "corr": "এক্তিয়ার = এখতিয়ার\nনাই = নেই\nbad line\n = x",
+   "out": "বাদী full stop comma"
+  },
+  {
+   "raw": "hello full stop how are you question mark",
+   "lang": "en-US",
+   "vcmd": false,
+   "vdig": true,
+   "corr": "এক্তিয়ার = এখতিয়ার\nনাই = নেই\nbad line\n = x",
+   "out": "hello full stop how are you question mark"
+  },
+  {
+   "raw": "new line test comma done period",
+   "lang": "en-US",
+   "vcmd": false,
+   "vdig": true,
+   "corr": "এক্তিয়ার = এখতিয়ার\nনাই = নেই\nbad line\n = x",
+   "out": "new line test comma done period"
+  },
+  {
+   "raw": "  multiple   spaces  here  ",
+   "lang": "en-US",
+   "vcmd": false,
+   "vdig": true,
+   "corr": "এক্তিয়ার = এখতিয়ার\nনাই = নেই\nbad line\n = x",
+   "out": "multiple spaces here"
+  },
+  {
+   "raw": "case 12 open bracket a close bracket hyphen b",
+   "lang": "en-GB",
+   "vcmd": false,
+   "vdig": true,
+   "corr": "এক্তিয়ার = এখতিয়ার\nনাই = নেই\nbad line\n = x",
+   "out": "case 12 open bracket a close bracket hyphen b"
+  },
+  {
+   "raw": "Comma at start",
+   "lang": "en-US",
+   "vcmd": false,
+   "vdig": true,
+   "corr": "এক্তিয়ার = এখতিয়ার\nনাই = নেই\nbad line\n = x",
+   "out": "Comma at start"
+  }
+ ],
+ "put": [
+  {
+   "before": "",
+   "raw": "আমি বাদী",
+   "lang": "bn-BD",
+   "value": "আমি বাদী "
+  },
+  {
+   "before": "আমি",
+   "raw": "বাদী",
+   "lang": "bn-BD",
+   "value": "আমি বাদী "
+  },
+  {
+   "before": "আমি ",
+   "raw": "বাদী",
+   "lang": "bn-BD",
+   "value": "আমি বাদী "
+  },
+  {
+   "before": "আমি",
+   "raw": "দাঁড়ি",
+   "lang": "bn-BD",
+   "value": "আমি। "
+  },
+  {
+   "before": "আমি",
+   "raw": "কমা তুমি",
+   "lang": "bn-BD",
+   "value": "আমি, তুমি "
+  },
+  {
+   "before": "আমি",
+   "raw": "নতুন লাইন",
+   "lang": "bn-BD",
+   "value": "আমি\n"
+  },
+  {
+   "before": "",
+   "raw": "hello there period how are you",
+   "lang": "en-US",
+   "value": "Hello there. How are you "
+  },
+  {
+   "before": "Done.",
+   "raw": "next one",
+   "lang": "en-US",
+   "value": "Done. Next one "
+  },
+  {
+   "before": "word",
+   "raw": "more words",
+   "lang": "en-US",
+   "value": "word more words "
+  },
+  {
+   "before": "line\n",
+   "raw": "start here",
+   "lang": "en-US",
+   "value": "line\nStart here "
+  },
+  {
+   "before": "",
+   "raw": "   ",
+   "lang": "bn-BD",
+   "value": ""
+  }
+ ],
+ "dedupe": "আমি "
+}

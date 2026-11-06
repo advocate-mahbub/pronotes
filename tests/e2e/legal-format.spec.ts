@@ -56,6 +56,7 @@ test('format settings change the page and the Word file', async ({ page }) => {
   await start(page);
   await typeKeys(page, ['KeyK']);
   await page.getByTestId('settings').click();
+  await page.locator('summary', { hasText: 'পাতার ফরম্যাট' }).click();
   await page.getByTestId('fmt-size').fill('16');
   await page.getByTestId('fmt-line').selectOption('2');
   await page.getByTestId('settings').click();

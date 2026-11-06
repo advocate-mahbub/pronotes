@@ -81,6 +81,7 @@ test('backup on one device, restore on another', async ({ page, browser }) => {
   await page.getByTestId('title').press('Enter');
   await page.keyboard.press('Control+s');
   await page.getByTestId('settings').click();
+  await page.locator('summary', { hasText: 'ব্যাকআপ' }).click();
   const [dl] = await Promise.all([page.waitForEvent('download'), page.getByTestId('backup').click()]);
   expect(dl.suggestedFilename()).toMatch(/^pronotes-backup-\d{4}-\d{2}-\d{2}\.json$/);
   const file = await dl.path();

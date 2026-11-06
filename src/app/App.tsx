@@ -1,10 +1,16 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { BUILTIN_LAYOUTS, findLayout } from '../bornona-engine';
-import { emptyBank, pruneBank, type WordBank } from '../suggest';
+import type { Editor } from '@tiptap/react';
+import { BUILTIN_LAYOUTS, findLayout, fixNukta, parseAvroLayout, type Layout } from '../bornona-engine';
+import { emptyBank, learnText, mergeBankFile, pruneBank, type WordBank, type WordBankFile } from '../suggest';
 import {
   listDocs, getDoc, createDoc, saveContent, renameDoc, duplicateDoc, trashDoc, restoreDoc, deleteForever, purgeExpired,
-  loadBank, saveBank, requestPersistence, exportAll, restoreAll, parseBackup, backupFileName, type Doc,
+  loadBank, saveBank, requestPersistence, exportAll, restoreAll, parseBackup, backupFileName, mergeCorrections,
+  listFonts, putFont, removeFont, loadLayouts, saveLayouts, loadCorrections, saveCorrections, type Doc,
 } from '../storage';
+import { MAX_FONT_BYTES, familyFor, registerFont, unregisterFont } from '../fonts';
+import { decideVoice, detectVoiceEnv } from '../voice';
+import { Settings, type FontInfo } from './Settings';
+import { DEFAULT_VOICE_PREFS, voiceLang, type VoicePrefs } from './prefs-types';
 import { saveFile } from '../storage/download';
 import { DEFAULT_FORMAT, type DocFormat } from '../docx-export';
 import { Sidebar } from './Sidebar';
@@ -41,6 +47,14 @@ export function App() {
   const [kbVisible, setKbVisible] = useState(() => load('kb', coarse));
   const [sideOpen, setSideOpen] = useState(() => load('side', true));
   const [format, setFormat] = useState<DocFormat>(() => ({ ...DEFAULT_FORMAT, ...load<Partial<DocFormat>>('format', {}) }));
+  const [voice, setVoice] = useState<VoicePrefs>(() => ({ ...DEFAULT_VOICE_PREFS, ...load<Partial<VoicePrefs>>('voice', {}) }));
+  const [autoBijoy, setAutoBijoy] = useState(() => load('autoBijoy', true));
+  const [ansiFont, setAnsiFont] = useState(() => load('ansiFont', 'SutonnyMJ'));
+  const [enFont, setEnFont] = useState(() => load('enFont', 'Times New Roman'));
+  const [corrections, setCorrectionsState] = useState('');
+  const [customLayouts, setCustomLayouts] = useState<Layout[]>([]);
+  const [fonts, setFonts] = useState<FontInfo[]>([]);
+  const editorRef = useRef<Editor | null>(null);
   const [wide, setWide] = useState(() => wideQuery?.matches ?? true);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [docs, setDocs] = useState<Doc[]>([]);
@@ -52,8 +66,8 @@ export function App() {
   const [fatal, setFatal] = useState(false);
   const [bankVersion, setBankVersion] = useState(0);
   const bank = useRef<WordBank>(emptyBank());
-  const map = useMemo(() => findLayout(layoutId).map, [layoutId]);
-  const fileInput = useRef<HTMLInputElement>(null);
+  const layout = useMemo(() => findLayout(layoutId, customLayouts), [layoutId, customLayouts]);
+  const map = layout.map;
 
   useEffect(() => save('layout', layoutId), [layoutId]);
   useEffect(() => save('bangla', bangla), [bangla]);
@@ -62,6 +76,10 @@ export function App() {
   useEffect(() => save('kb', kbVisible), [kbVisible]);
   useEffect(() => save('side', sideOpen), [sideOpen]);
   useEffect(() => save('format', format), [format]);
+  useEffect(() => save('voice', voice), [voice]);
+  useEffect(() => save('autoBijoy', autoBijoy), [autoBijoy]);
+  useEffect(() => save('ansiFont', ansiFont), [ansiFont]);
+  useEffect(() => save('enFont', enFont), [enFont]);
   useEffect(() => {
     const on = () => setWide(wideQuery?.matches ?? true);
     wideQuery?.addEventListener('change', on);
@@ -100,6 +118,9 @@ export function App() {
       await migrateFromM2();
       bank.current = (await loadBank()) ?? emptyBank();
       setBankVersion((v) => v + 1);
+      setCustomLayouts(await loadLayouts());
+      setCorrectionsState(await loadCorrections());
+      loadStoredFonts();
       let list = await listDocs();
       if (!list.length) list = [await createDoc()];
       const last = load<string | null>('current', null);
@@ -141,7 +162,7 @@ export function App() {
     say('ট্র্যাশে পাঠানো হয়েছে, ৩০ দিনের মধ্যে ফেরত আনা যাবে');
   };
 
-  const prefs = () => ({ layout: layoutId, bangla, vf, oldReph, kb: kbVisible, format });
+  const prefs = () => ({ layout: layoutId, bangla, vf, oldReph, kb: kbVisible, format, voice, autoBijoy, ansiFont, enFont });
   const backup = async () => {
     try {
       const f = await exportAll(prefs());
@@ -156,11 +177,121 @@ export function App() {
       const r = await restoreAll(parseBackup(await file.text()));
       bank.current = (await loadBank()) ?? bank.current;
       setBankVersion((v) => v + 1);
+      setCustomLayouts(await loadLayouts());
+      setCorrectionsState(await loadCorrections());
       await refresh();
       say(`ফেরত এসেছে: নতুন ${bnNum(r.added)}টা, আলাদা কপি ${bnNum(r.copies)}টা, আগে থেকেই ছিল ${bnNum(r.unchanged)}টা`);
     } catch {
       say('ফাইলটা ProNotes-এর ব্যাকআপ না, বা পড়া যায়নি');
     }
+  };
+
+  // ---------- custom layouts ----------
+  const addLayout = async (file: File) => {
+    try {
+      const L: Layout = { ...parseAvroLayout(await file.text()), id: 'custom-' + Date.now() };
+      const next = [...customLayouts, L];
+      await saveLayouts(next);
+      setCustomLayouts(next);
+      setLayoutId(L.id);
+      say(L.name + ' লেআউট যোগ হলো');
+    } catch {
+      say('ফাইলটা Avro লেআউট (.avrolayout) হিসেবে পড়া গেল না');
+    }
+  };
+  const deleteLayout = async (id: string) => {
+    const next = customLayouts.filter((l) => l.id !== id);
+    await saveLayouts(next);
+    setCustomLayouts(next);
+    if (layoutId === id) setLayoutId('bornona');
+    say('লেআউট মুছে ফেলা হয়েছে');
+  };
+
+  // ---------- fonts ----------
+  const loadStoredFonts = async () => {
+    const list: FontInfo[] = [];
+    for (const f of await listFonts()) {
+      try {
+        await registerFont(f);
+        list.push({ id: f.id, family: f.family, fileName: f.fileName, role: f.role });
+      } catch {
+        /* unreadable file: keep it stored, skip it on screen */
+      }
+    }
+    setFonts(list);
+  };
+  const addFont = async (file: File, role: 'uni' | 'ansi') => {
+    if (file.size > MAX_FONT_BYTES) return say('ফন্ট ফাইলটা অনেক বড় (১৫ MB-এর বেশি)');
+    const data = await file.arrayBuffer();
+    const rec = { id: 'font-' + Date.now(), family: familyFor(data, file.name), fileName: file.name, role, data, addedAt: Date.now() };
+    try {
+      await registerFont(rec);
+    } catch {
+      return say('এই ফাইলটা ফন্ট হিসেবে খোলা গেল না');
+    }
+    try {
+      await putFont(rec);
+    } catch {
+      say('ফন্ট এবার কাজ করবে, কিন্তু ডিভাইসে সেভ করা গেল না');
+    }
+    setFonts((l) => [...l, { id: rec.id, family: rec.family, fileName: rec.fileName, role }]);
+    if (role === 'ansi') setAnsiFont(rec.family);
+    else setFormat((f) => ({ ...f, font: rec.family }));
+    say(rec.family + ' যোগ হয়েছে');
+  };
+  const deleteFont = async (id: string) => {
+    try {
+      await removeFont(id);
+    } catch {
+      /* already gone */
+    }
+    unregisterFont(id);
+    setFonts((l) => l.filter((f) => f.id !== id));
+    say('ফন্ট মুছে ফেলা হয়েছে');
+  };
+
+  // ---------- voice corrections (IndexedDB, debounced) ----------
+  const corrTimer = useRef<number>(undefined);
+  const setCorrections = (s: string) => {
+    setCorrectionsState(s);
+    clearTimeout(corrTimer.current);
+    corrTimer.current = window.setTimeout(() => saveCorrections(s).catch(() => say('সংশোধনের তালিকা সেভ করা যায়নি')), 500);
+  };
+  const voiceNote = useMemo(() => {
+    const d = decideVoice(voiceLang(voice, bangla), detectVoiceEnv());
+    return d.kind === 'live'
+      ? 'এই ব্রাউজারে সরাসরি ভয়েস চলবে। পাতার কোণের লাল মাইক চাপুন, আবার চাপলে থামবে। ইন্টারনেট লাগে।'
+      : d.message;
+  }, [voice, bangla]);
+
+  // ---------- word bank ----------
+  const learnDoc = () => {
+    const ed = editorRef.current;
+    if (!ed) return;
+    const n = learnText(bank.current, ed.state.doc.textBetween(0, ed.state.doc.content.size, '\n', ' '));
+    onBankChanged();
+    say(n ? `${bnNum(n)}টা শব্দ শেখা হলো` : 'শেখার মতো শব্দ পাওয়া যায়নি');
+  };
+  const exportWords = async () => {
+    const data: WordBankFile = { app: 'bornona-pad', version: 1, exported: new Date().toISOString(), words: bank.current.w, next: bank.current.b, corrections };
+    const ok = await saveFile('bornona-words-' + new Date().toISOString().slice(0, 10) + '.json', new Blob([JSON.stringify(data)], { type: 'application/json' }));
+    if (ok) say(`${bnNum(Object.keys(bank.current.w).length)}টা শব্দ এক্সপোর্ট হলো`);
+  };
+  const importWords = async (file: File) => {
+    try {
+      const d = JSON.parse(await file.text()) as WordBankFile;
+      const n = mergeBankFile(bank.current, d, fixNukta);
+      if (d.corrections) setCorrections(mergeCorrections(corrections, d.corrections));
+      onBankChanged();
+      say(`${bnNum(n)}টা নতুন শব্দ যোগ হলো`);
+    } catch {
+      say('ফাইলটা বর্ণনা প্যাডের শব্দভান্ডার না');
+    }
+  };
+  const resetWords = () => {
+    bank.current = emptyBank();
+    onBankChanged();
+    say('শেখা শব্দ মুছে ফেলা হয়েছে');
   };
 
   const showSide = sideOpen;
@@ -189,7 +320,7 @@ export function App() {
       <header className="top">
         <div className="brand">
           <span className="name">ProNotes</span>
-          <span className="sub">{findLayout(layoutId).name} layout</span>
+          <span className="sub">{layout.name} layout</span>
         </div>
         <span className={'status ' + saveState} data-testid="save-status" role="status">{statusText}</span>
         <div className="seg" role="group" aria-label="ভাষা">
@@ -207,6 +338,8 @@ export function App() {
               onToggleLanguage={() => setBangla((b) => !b)} onSave={onSave}
               onRename={async (id, t) => { await renameDoc(id, t); await refresh(); }}
               onSaveState={setSaveState} format={format} say={say}
+              voice={voice} corrections={corrections} autoBijoy={autoBijoy} ansiFont={ansiFont} enFont={enFont}
+              onEditor={(e) => { editorRef.current = e; }}
               toolbarExtra={
                 <>
                   <button type="button" className={'tb' + (showSide ? ' on' : '')} title="ডকুমেন্টের তালিকা" aria-label="ডকুমেন্টের তালিকা"
@@ -217,7 +350,8 @@ export function App() {
               toolbarRight={
                 <>
         <select className="layout" aria-label="কিবোর্ড লেআউট" data-testid="layout" value={layoutId} onChange={(e) => setLayoutId(e.target.value)}>
-          {BUILTIN_LAYOUTS.map((l) => <option key={l.id} value={l.id}>{l.name}</option>)}
+          <optgroup label="সাথে দেওয়া">{BUILTIN_LAYOUTS.map((l) => <option key={l.id} value={l.id}>{l.name}</option>)}</optgroup>
+          {customLayouts.length > 0 && <optgroup label="আপনার যোগ করা">{customLayouts.map((l) => <option key={l.id} value={l.id}>{l.name}</option>)}</optgroup>}
         </select>
         <button type="button" className={'tb' + (kbVisible ? ' on' : '')} title="অন-স্ক্রিন কিবোর্ড" aria-label="অন-স্ক্রিন কিবোর্ড" data-testid="kb-toggle"
           onPointerDown={(e) => e.preventDefault()} onClick={() => setKbVisible((v) => !v)}>⌨</button>
@@ -231,39 +365,15 @@ export function App() {
 
 
       {settingsOpen && (
-        <section className="settings" aria-label="সেটিংস" data-testid="settings-panel">
-          <h2>টাইপিং</h2>
-          <label><input type="checkbox" data-testid="vf" checked={vf} onChange={(e) => setVf(e.target.checked)} /> স্বর-গঠন: শব্দের শুরুতে বা স্বরবর্ণের পরে কার চাপুন (ি চাপলে হবে ই, ে চাপলে এ, অ-এর পরে া চাপলে আ)</label>
-          <label><input type="checkbox" data-testid="oldreph" checked={oldReph} onChange={(e) => setOldReph(e.target.checked)} /> বিজয়-ধাঁচের রেফ: বর্ণ লেখার পরে রেফ চাপুন (ক ম রেফ লিখলে হবে কর্ম)</label>
-          <h2>পাতার ফরম্যাট (Word ফাইল ও প্রিন্ট)</h2>
-          <div className="grid2">
-            <label>ফন্ট
-              <select data-testid="fmt-font" value={format.font} onChange={(e) => setFormat({ ...format, font: e.target.value })}>
-                {['SutonnyOMJ', 'Nikosh', 'Kalpurush', 'SolaimanLipi', 'Noto Serif Bengali', 'Noto Sans Bengali'].map((f) => <option key={f}>{f}</option>)}
-              </select>
-            </label>
-            <label>লাইন স্পেসিং
-              <select data-testid="fmt-line" value={format.lineSpacing} onChange={(e) => setFormat({ ...format, lineSpacing: Number(e.target.value) })}>
-                <option value={1.5}>১.৫</option><option value={2}>২.০</option>
-              </select>
-            </label>
-            <label>মূল লেখা (pt)
-              <input type="number" min={8} max={40} step={0.5} data-testid="fmt-size" value={format.size} onChange={(e) => setFormat({ ...format, size: Number(e.target.value) || DEFAULT_FORMAT.size })} />
-            </label>
-            <label>বড় শিরোনাম (pt)
-              <input type="number" min={8} max={60} step={0.5} data-testid="fmt-title" value={format.titleSize} onChange={(e) => setFormat({ ...format, titleSize: Number(e.target.value) || DEFAULT_FORMAT.titleSize })} />
-            </label>
-          </div>
-          <p className="note">Legal কাগজ (৮.৫×১৪ ইঞ্চি), মার্জিন: উপরে ৩", বামে ১.৫", ডানে ১", নিচে ১.৫"। ফন্ট এই ডিভাইসে না থাকলে পর্দায় অন্য ফন্টে দেখাবে, কিন্তু Word ফাইলে নাম এটাই থাকবে। নিজের ফন্ট আপলোডের ব্যবস্থা আসছে।</p>
-          <h2>ব্যাকআপ</h2>
-          <p className="note">সব ড্রাফট (ট্র্যাশসহ), শেখা শব্দ আর সেটিংস একটা ফাইলে। iPad-এ ফাইলটা Files বা iCloud Drive-এ রাখুন। ফেরত আনলে আগের কিছু মুছবে না; বদলে যাওয়া ড্রাফট আলাদা কপি হয়ে আসবে।</p>
-          <div className="row">
-            <button type="button" className="btn primary" data-testid="backup" onClick={backup}>সব কিছুর ব্যাকআপ নিন</button>
-            <button type="button" className="btn" data-testid="restore-btn" onClick={() => fileInput.current?.click()}>ব্যাকআপ থেকে ফেরত আনুন</button>
-            <input ref={fileInput} type="file" accept=".json,application/json" hidden data-testid="restore-file"
-              onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ''; if (f) restore(f); }} />
-          </div>
-        </section>
+        <Settings vf={vf} setVf={setVf} oldReph={oldReph} setOldReph={setOldReph}
+          customLayouts={customLayouts} onAddLayout={addLayout} onDeleteLayout={deleteLayout}
+          voice={voice} setVoice={setVoice} voiceNote={voiceNote} corrections={corrections} setCorrections={setCorrections}
+          format={format} setFormat={setFormat} fonts={fonts} onAddFont={addFont} onDeleteFont={deleteFont}
+          ansiFont={ansiFont} setAnsiFont={setAnsiFont} enFont={enFont} setEnFont={setEnFont}
+          autoBijoy={autoBijoy} setAutoBijoy={setAutoBijoy}
+          wordCount={Object.keys(bank.current.w).length + 0 * bankVersion}
+          onLearnDoc={learnDoc} onExportWords={exportWords} onImportWords={importWords} onResetWords={resetWords}
+          onBackup={backup} onRestore={restore} />
       )}
 
       {toast && <div className="toast" role="status" data-testid="toast">{toast}</div>}

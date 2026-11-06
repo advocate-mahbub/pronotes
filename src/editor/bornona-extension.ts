@@ -26,6 +26,12 @@ export interface BornonaOptions {
   onWordDone: (before: string) => void;
   /** Several words were inserted at once (paste, suggestion phrase, voice). */
   onTextInserted: (text: string) => void;
+  /**
+   * Paste hook (Bijoy → Unicode). Return the text to insert instead of the clipboard
+   * contents plus a message for the user, or null to paste normally.
+   */
+  convertPaste: (text: string, html: string) => { text: string; message: string } | null;
+  onNotice: (message: string) => void;
 }
 
 const LEAF = String.fromCharCode(0xfffc);
@@ -43,6 +49,23 @@ export function typeText(view: EditorView, out: string, cfg: BornonaConfig): voi
   const sel = state.selection;
   const edit = planType(textBeforeCaret(view), sel.empty, out, cfg);
   const tr = sel.empty ? state.tr.insertText(edit.text, sel.from - edit.deleteBefore, sel.from) : state.tr.insertText(edit.text, sel.from, sel.to);
+  view.dispatch(tr.scrollIntoView());
+}
+
+/**
+ * Insert plain text at the caret. Each newline starts a new paragraph that keeps the
+ * current paragraph's style (voice "নতুন লাইন", converted Bijoy text).
+ */
+export function insertPlainText(view: EditorView, text: string): void {
+  const tr = view.state.tr;
+  if (!tr.selection.empty) tr.deleteSelection();
+  fixNukta(text)
+    .replace(/\r\n?/g, '\n')
+    .split('\n')
+    .forEach((line, i) => {
+      if (i > 0) tr.split(tr.selection.from);
+      if (line) tr.insertText(line);
+    });
   view.dispatch(tr.scrollIntoView());
 }
 
@@ -70,6 +93,8 @@ export const BornonaExtension = Extension.create<BornonaOptions>({
       onKey: () => {},
       onWordDone: () => {},
       onTextInserted: () => {},
+      convertPaste: () => null,
+      onNotice: () => {},
     };
   },
 
@@ -105,6 +130,17 @@ export const BornonaExtension = Extension.create<BornonaOptions>({
             const r = resolveTypedChar(text, { bangla: cfg.bangla, map: cfg.map, suspended: cfg.suspended });
             if (!r) return false;
             typeText(view, r, cfg);
+            return true;
+          },
+          handlePaste(view, event) {
+            const cd = event.clipboardData;
+            if (!cd) return false;
+            const r = opts.convertPaste(cd.getData('text/plain'), cd.getData('text/html'));
+            if (!r) return false;
+            const before = textBeforeCaret(view);
+            const lead = before && !/\s$/.test(before) && !/^\s/.test(r.text) ? ' ' : '';
+            insertPlainText(view, lead + r.text);
+            opts.onNotice(r.message);
             return true;
           },
           transformPastedText: (text) => fixNukta(text),
