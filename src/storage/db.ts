@@ -1,0 +1,136 @@
+/**
+ * Local database (IndexedDB). Everything stays on this device.
+ * Stores: docs (drafts, including Trash) and meta (word bank, etc.).
+ */
+import { openDB, type DBSchema, type IDBPDatabase } from 'idb';
+import type { JSONContent } from '@tiptap/core';
+import type { WordBank } from '../suggest';
+
+export interface Doc {
+  id: string;
+  title: string;
+  content: JSONContent;
+  /** Plain text, kept for search (Phase 2) and backup readability. */
+  text: string;
+  createdAt: number;
+  updatedAt: number;
+  /** Set when moved to Trash; null otherwise. */
+  deletedAt: number | null;
+}
+
+interface Schema extends DBSchema {
+  docs: { key: string; value: Doc; indexes: { updatedAt: number } };
+  meta: { key: string; value: unknown };
+}
+
+export const DB_NAME = 'pronotes';
+export const TRASH_DAYS = 30;
+const DAY = 24 * 60 * 60 * 1000;
+
+let dbp: Promise<IDBPDatabase<Schema>> | null = null;
+export function db(): Promise<IDBPDatabase<Schema>> {
+  if (!dbp) {
+    dbp = openDB<Schema>(DB_NAME, 1, {
+      upgrade(d) {
+        const docs = d.createObjectStore('docs', { keyPath: 'id' });
+        docs.createIndex('updatedAt', 'updatedAt');
+        d.createObjectStore('meta');
+      },
+    });
+  }
+  return dbp;
+}
+/** For tests: forget the open connection. */
+export function resetDbForTests(): void {
+  dbp = null;
+}
+
+const newId = () => (crypto.randomUUID ? crypto.randomUUID() : Date.now().toString(36) + Math.random().toString(36).slice(2));
+export const EMPTY_DOC: JSONContent = { type: 'doc', content: [{ type: 'paragraph' }] };
+
+/** Ask the browser not to evict our data (best effort; Safari may still decide). */
+export async function requestPersistence(): Promise<boolean> {
+  try {
+    return (await navigator.storage?.persist?.()) ?? false;
+  } catch {
+    return false;
+  }
+}
+
+export async function listDocs(opts: { trash?: boolean } = {}): Promise<Doc[]> {
+  const all = await (await db()).getAll('docs');
+  return all.filter((d) => (opts.trash ? d.deletedAt !== null : d.deletedAt === null)).sort((a, b) => b.updatedAt - a.updatedAt);
+}
+
+export async function getDoc(id: string): Promise<Doc | undefined> {
+  return (await db()).get('docs', id);
+}
+
+export async function createDoc(title = 'নতুন ড্রাফট', content: JSONContent = EMPTY_DOC, text = '', now = Date.now()): Promise<Doc> {
+  const d: Doc = { id: newId(), title, content, text, createdAt: now, updatedAt: now, deletedAt: null };
+  await (await db()).put('docs', d);
+  return d;
+}
+
+/** Read-modify-write in one transaction, so concurrent saves (content, title, trash) never undo each other. */
+async function update(id: string, fn: (d: Doc) => Doc): Promise<boolean> {
+  const tx = (await db()).transaction('docs', 'readwrite');
+  const d = await tx.store.get(id);
+  if (d) await tx.store.put(fn(d));
+  await tx.done;
+  return Boolean(d);
+}
+
+export async function saveContent(id: string, content: JSONContent, text: string, now = Date.now()): Promise<void> {
+  await update(id, (d) => ({ ...d, content, text, updatedAt: now }));
+}
+
+export async function renameDoc(id: string, title: string, now = Date.now()): Promise<void> {
+  await update(id, (d) => ({ ...d, title: title.trim() || 'নামহীন ড্রাফট', updatedAt: now }));
+}
+
+export async function duplicateDoc(id: string, now = Date.now()): Promise<Doc | undefined> {
+  const d = await getDoc(id);
+  if (!d) return;
+  return createDoc(d.title + ' (কপি)', structuredClone(d.content), d.text, now);
+}
+
+export async function trashDoc(id: string, now = Date.now()): Promise<void> {
+  await update(id, (d) => ({ ...d, deletedAt: now }));
+}
+
+export async function restoreDoc(id: string): Promise<void> {
+  await update(id, (d) => ({ ...d, deletedAt: null }));
+}
+
+/** Permanently delete. Only documents already in Trash can be deleted. */
+export async function deleteForever(id: string): Promise<boolean> {
+  const d = await getDoc(id);
+  if (!d || d.deletedAt === null) return false;
+  await (await db()).delete('docs', id);
+  return true;
+}
+
+/** Remove documents that have been in Trash longer than TRASH_DAYS. Returns how many. */
+export async function purgeExpired(now = Date.now()): Promise<number> {
+  const trash = await listDocs({ trash: true });
+  const old = trash.filter((d) => now - (d.deletedAt as number) > TRASH_DAYS * DAY);
+  const tx = (await db()).transaction('docs', 'readwrite');
+  await Promise.all([...old.map((d) => tx.store.delete(d.id)), tx.done]);
+  return old.length;
+}
+
+/** Days left before a trashed document is removed. */
+export function daysLeft(d: Doc, now = Date.now()): number {
+  return d.deletedAt === null ? TRASH_DAYS : Math.max(0, Math.ceil((d.deletedAt + TRASH_DAYS * DAY - now) / DAY));
+}
+
+export async function getMeta<T>(key: string): Promise<T | undefined> {
+  return (await (await db()).get('meta', key)) as T | undefined;
+}
+export async function setMeta(key: string, value: unknown): Promise<void> {
+  await (await db()).put('meta', value, key);
+}
+
+export const loadBank = () => getMeta<WordBank>('wordBank');
+export const saveBank = (b: WordBank) => setMeta('wordBank', b);

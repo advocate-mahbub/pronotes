@@ -7,8 +7,7 @@ const text = (p: Page) => editor(p).evaluate((el) => el.textContent ?? '');
 
 async function open(page: Page, opts: { layout?: string; vf?: boolean; oldReph?: boolean } = {}) {
   await page.goto('./');
-  await page.evaluate(() => localStorage.clear());
-  await page.reload();
+  await expect(editor(page)).toBeVisible();
   if (opts.layout) await page.getByTestId('layout').selectOption(opts.layout);
   if (opts.vf !== undefined || opts.oldReph !== undefined) {
     await page.getByTestId('settings').click();
@@ -65,8 +64,6 @@ test.describe('touch screen (iPad-like)', () => {
   test.use({ viewport: { width: 1180, height: 820 }, hasTouch: true, isMobile: true });
   test('on-screen keyboard types and keeps the system keyboard closed', async ({ page }) => {
     await page.goto('./');
-    await page.evaluate(() => localStorage.clear());
-    await page.reload();
     await expect(page.getByTestId('osk')).toBeVisible();
     await expect(editor(page)).toHaveAttribute('inputmode', 'none');
     await editor(page).tap();
