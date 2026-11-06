@@ -1,6 +1,6 @@
 import { useRef, useState } from 'react';
 import type { Layout } from '../bornona-engine';
-import { DEFAULT_FORMAT, type DocFormat } from '../docx-export';
+import { DEFAULT_FORMAT, type DocFormat } from '../docx-export/format';
 import { ENGLISH_FONTS, LOCAL_ANSI, LOCAL_UNI, WEB_FONTS, isFontAvailable } from '../fonts';
 import type { VoicePrefs } from './prefs-types';
 import { bnNum } from './format';
@@ -43,6 +43,18 @@ interface Props {
   onResetWords: () => void;
   onBackup: () => void;
   onRestore: (f: File) => void;
+  app: AppInfo;
+}
+
+export interface AppInfo {
+  /** Service worker possible here (https/localhost, not the preview). */
+  supported: boolean;
+  offlineReady: boolean;
+  standalone: boolean;
+  apple: boolean;
+  canInstall: boolean;
+  onInstall: () => void;
+  onCheckUpdate: () => void;
 }
 
 /** Hidden file input + button. */
@@ -205,6 +217,30 @@ export function Settings(p: Props) {
           <ArmedButton label="শেখা শব্দ মুছুন" armedLabel="আবার চাপলে মুছে যাবে" testid="words-reset" onConfirm={p.onResetWords} />
         </div>
         <p className="note">মোছার আগে এক্সপোর্ট করে রাখুন; মুছলে ফেরত আনা যায় না।</p>
+      </details>
+
+      <details>
+        <summary>অ্যাপ: অফলাইন ও ইনস্টল</summary>
+        {!p.app.supported ? (
+          <p className="note" data-testid="app-status">এই প্রিভিউতে অফলাইন ও ইনস্টল চলে না। নিজের https সাইটে বসানোর পর চলবে।</p>
+        ) : (
+          <>
+            <p className="note" data-testid="app-status">
+              {p.app.offlineReady ? 'অফলাইন: চালু। একবার খোলার পর ইন্টারনেট ছাড়াও লেখা, সেভ, Word ফাইল ও প্রিন্ট চলবে (সরাসরি ভয়েস বাদে)।' : 'অফলাইন কপি তৈরি হচ্ছে… একবার পুরো লোড হলে ইন্টারনেট ছাড়াও চলবে।'}
+            </p>
+            {p.app.standalone ? (
+              <p className="note">হোম স্ক্রিনের অ্যাপ হিসেবে চলছে।</p>
+            ) : p.app.apple ? (
+              <p className="note" data-testid="install-howto">iPad/iPhone-এ ইনস্টল: Safari-তে এই পাতা খুলে <b>Share</b> (⬆︎) → <b>Add to Home Screen</b> → <b>Add</b>। তারপর হোম স্ক্রিনের ProNotes আইকন থেকে খুলুন। খেয়াল রাখুন: Safari আর হোম স্ক্রিনের অ্যাপের ডেটা আলাদা থাকে, তাই আগে Safari থেকে ব্যাকআপ নিয়ে অ্যাপে ফেরত আনুন।</p>
+            ) : p.app.canInstall ? (
+              <div className="row"><button type="button" className="btn primary" data-testid="install" onClick={p.app.onInstall}>ProNotes ইনস্টল করুন</button></div>
+            ) : (
+              <p className="note">ইনস্টল: ব্রাউজারের ঠিকানার ঘরের ইনস্টল আইকন, বা মেনু → “Install ProNotes / Add to Home screen”।</p>
+            )}
+            <div className="row"><button type="button" className="btn" data-testid="check-update" onClick={p.app.onCheckUpdate}>নতুন ভার্সন আছে কিনা দেখুন</button></div>
+            <p className="note">নতুন ভার্সন এলে উপরে জানানো হবে; আপনি “আপডেট করুন” চাপলে লেখা সেভ করে তবেই আপডেট হবে।</p>
+          </>
+        )}
       </details>
 
       <details>

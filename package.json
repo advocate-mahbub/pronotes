@@ -13,9 +13,13 @@
     "test:watch": "vitest",
     "test:e2e": "playwright test",
     "golden": "node tools/gen-golden.mjs",
-    "preview:file": "npm run build && node tools/make-preview.mjs"
+    "preview:file": "node tools/make-preview.mjs",
+    "icons": "node tools/make-icons.mjs"
   },
   "dependencies": {
+    "@fontsource/hind-siliguri": "5.3.0",
+    "@fontsource/noto-sans-bengali": "5.3.0",
+    "@fontsource/noto-serif-bengali": "5.3.0",
     "@tiptap/core": "3.32.0",
     "@tiptap/extension-highlight": "3.32.0",
     "@tiptap/extension-table": "3.32.0",
@@ -36,6 +40,9 @@
     "happy-dom": "21.0.4",
     "typescript": "5.9.3",
     "vite": "8.3.5",
-    "vitest": "4.1.12"
+    "vite-plugin-pwa": "2.0.0",
+    "vitest": "4.1.12",
+    "workbox-build": "7.4.1",
+    "workbox-window": "7.4.1"
   }
 }

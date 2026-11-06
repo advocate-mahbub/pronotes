@@ -7,7 +7,8 @@ import { VoiceController, VoiceDeduper, cleanVoice, decideVoice, detectVoiceEnv,
 import { voiceLang, type VoicePrefs } from './prefs-types';
 import { BijoyPanel } from './BijoyPanel';
 import { load, save } from './prefs';
-import { docxBlob, docxFileName, type DocFormat } from '../docx-export';
+import { registerFlush } from './flush';
+import type { DocFormat } from '../docx-export/format';
 import { saveFile } from '../storage/download';
 import { learnTail, learnText, type WordBank } from '../suggest';
 import type { Doc } from '../storage';
@@ -108,6 +109,12 @@ export function Workspace(p: Props) {
       timer.current = window.setTimeout(() => flush(editor), 600);
     },
   });
+
+  // Save before the app reloads itself (update).
+  useEffect(() => {
+    if (!editor) return;
+    return registerFlush(() => flush(editor));
+  }, [editor, flush]);
 
   // Save immediately when leaving the document, hiding the app, or pressing Ctrl/⌘+S.
   useEffect(() => {
@@ -249,6 +256,7 @@ export function Workspace(p: Props) {
     pending.current = true;
     await flush(editor);
     try {
+      const { docxBlob, docxFileName } = await import('../docx-export'); // loaded on first use (large)
       const ok = await saveFile(docxFileName(title), await docxBlob(editor.getJSON(), title, p.format));
       if (ok) p.say('Word ফাইল (.docx) তৈরি হয়েছে');
     } catch {
@@ -305,7 +313,7 @@ export function Workspace(p: Props) {
         <span className="sep" />
         {btn('বিজয়', 'ইউনিকোড ⇄ বিজয়', convOpen, () => setConvOpen((v) => !v), 'bijoy-toggle')}
         <span className="grow" />
-        <button type="button" className="btn primary small" data-testid="export-docx" onPointerDown={(e) => e.preventDefault()} onClick={exportDocx}>Word (.docx)</button>
+        <button type="button" className="btn primary small" data-testid="export-docx" title="Word ফাইল (.docx)" onPointerDown={(e) => e.preventDefault()} onClick={exportDocx}>Word</button>
         {btn('⎙', 'প্রিন্ট / PDF', false, print, 'print')}
         {p.toolbarRight}
       </nav>

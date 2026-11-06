@@ -13,3 +13,9 @@ Until the layout permissions are verified, keep this repository **private**.
 
 SutonnyMJ / SutonnyOMJ are commercial fonts (Ananda Computers). They are **not** included;
 users upload their own licensed copy in the app.
+
+## M6 যোগ
+| জিনিস | লাইসেন্স | কোথায় |
+|---|---|---|
+| Noto Sans Bengali, Noto Serif Bengali, Hind Siliguri (Fontsource npm প্যাকেজ) | SIL Open Font License 1.1 (ফন্ট), MIT (প্যাকেজ) | অ্যাপের সাথে বান্ডেল, অফলাইনে চলার জন্য |
+| vite-plugin-pwa, Workbox | MIT | service worker তৈরি (build-time) ও workbox-window (runtime) |

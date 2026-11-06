@@ -17,11 +17,13 @@
 }
 * { box-sizing: border-box; }
 html, body, #root { height: 100%; }
+html { overscroll-behavior: none; }
+body { overscroll-behavior: none; -webkit-tap-highlight-color: transparent; }
 body { margin: 0; background: var(--bg); color: var(--fg); font-family: var(--f-sans); font-size: 15px; -webkit-text-size-adjust: 100%; }
 button { font: inherit; color: inherit; }
 button:focus-visible, select:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
 
-.app { height: 100%; display: flex; flex-direction: column;
+.app { height: var(--app-h, 100%); display: flex; flex-direction: column;
   padding: env(safe-area-inset-top, 0px) max(12px, env(safe-area-inset-right, 0px)) env(safe-area-inset-bottom, 0px) max(12px, env(safe-area-inset-left, 0px)); }
 
 .top { display: flex; align-items: center; gap: 12px; padding-block: 10px 6px; }
@@ -32,12 +34,15 @@ button:focus-visible, select:focus-visible { outline: 2px solid var(--gold); out
 .seg button { border: 0; background: none; padding: 6px 14px; min-height: 36px; border-radius: 999px; font: 600 14px var(--f-display); color: var(--muted); cursor: pointer; }
 .seg button[aria-pressed="true"] { background: var(--accent); color: var(--accent-fg); }
 
-.toolbar { display: flex; align-items: center; gap: 6px; padding: 6px; background: var(--sheet); border: 1px solid var(--line); border-radius: 12px; flex-wrap: wrap; }
+.toolbar { display: flex; align-items: center; gap: 4px; padding: 4px 6px; background: var(--sheet); border: 1px solid var(--line); border-radius: 12px; flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; }
+.toolbar::-webkit-scrollbar { display: none; }
+.toolbar > * { flex: none; }
+.toolbar .pstyle { width: 150px; }
 .tb { min-width: 44px; min-height: 44px; border: 1px solid transparent; background: none; border-radius: 8px; font-weight: 700; cursor: pointer; }
 .tb:hover { border-color: var(--line); }
 .tb.on { background: var(--accent-soft); border-color: var(--gold); }
 .toolbar .sep { width: 1px; height: 28px; background: var(--line); }
-.toolbar .grow { flex: 1; }
+.toolbar .grow { flex: 1 0 4px; }
 .layout { min-height: 44px; border: 1px solid var(--line); border-radius: 8px; background: var(--bg); color: var(--fg); font: 14px var(--f-sans); padding: 0 8px; }
 
 .settings { margin-top: 8px; padding: 10px 14px; background: var(--sheet); border: 1px solid var(--line); border-radius: 12px; display: grid; gap: 8px; }
@@ -194,3 +199,16 @@ button:focus-visible, select:focus-visible { outline: 2px solid var(--gold); out
 .modal p { margin: 0 0 10px; font-size: 15px; }
 .modal .row { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 6px; }
 @media print { .modal { display: none !important; } }
+.update { position: fixed; z-index: 45; left: 50%; bottom: calc(16px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); display: flex; gap: 8px; align-items: center; flex-wrap: wrap;
+  background: var(--accent); color: var(--accent-fg); padding: 10px 12px 10px 16px; border-radius: 12px; box-shadow: 0 10px 30px rgba(0, 0, 0, .3); max-width: calc(100vw - 32px); font-size: 14px; }
+.update .btn:not(.primary) { background: transparent; color: inherit; border-color: currentColor; }
+@media print { .update { display: none !important; } }
+
+/* M6: iPad polish */
+button, select, .chip, .key, summary { touch-action: manipulation; }
+.top .layout { width: 130px; }
+.top .tb { flex: none; }
+.desk { padding-top: 0; }
+.title { position: sticky; top: 0; z-index: 3; max-width: none; background: var(--bg); padding-top: 10px; }
+@media (max-width: 640px) { .brand .sub { display: none; } .top .layout { width: 104px; } }
+@media (pointer: coarse) { input, select, textarea { font-size: 16px !important; } }

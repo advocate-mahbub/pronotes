@@ -12,12 +12,15 @@ import { decideVoice, detectVoiceEnv } from '../voice';
 import { Settings, type FontInfo } from './Settings';
 import { DEFAULT_VOICE_PREFS, voiceLang, type VoicePrefs } from './prefs-types';
 import { saveFile } from '../storage/download';
-import { DEFAULT_FORMAT, type DocFormat } from '../docx-export';
+import { DEFAULT_FORMAT, type DocFormat } from '../docx-export/format';
 import { Sidebar } from './Sidebar';
 import { Workspace, type SaveState } from './Workspace';
 import { load, save } from './prefs';
 import { bnNum } from './format';
+import './fonts.css';
 import './app.css';
+import { flushAll } from './flush';
+import { applyUpdate, canPromptInstall, checkForUpdate, isAppleDevice, isStandalone, onInstallChange, promptInstall, pwaSupported, startPwa } from './pwa';
 
 const coarse = typeof matchMedia === 'function' && matchMedia('(pointer: coarse)').matches;
 const wideQuery = typeof matchMedia === 'function' ? matchMedia('(min-width: 1000px)') : null;
@@ -57,6 +60,10 @@ export function App() {
   const editorRef = useRef<Editor | null>(null);
   const [wide, setWide] = useState(() => wideQuery?.matches ?? true);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [needRefresh, setNeedRefresh] = useState(false);
+  const [offlineReady, setOfflineReady] = useState(() => load('offlineReady', false));
+  const [canInstall, setCanInstall] = useState(canPromptInstall);
+  useEffect(() => onInstallChange(() => setCanInstall(canPromptInstall())), []);
   const [docs, setDocs] = useState<Doc[]>([]);
   const [trash, setTrash] = useState<Doc[]>([]);
   const [current, setCurrent] = useState<Doc | null>(null);
@@ -87,11 +94,20 @@ export function App() {
   }, []);
 
   const toastTimer = useRef<number>(undefined);
+  const toastNow = useRef('');
   const say = useCallback((m: string) => {
     setToast(m);
+    toastNow.current = m;
     clearTimeout(toastTimer.current);
-    toastTimer.current = window.setTimeout(() => setToast(''), m.length > 40 ? 4500 : 2200);
+    toastTimer.current = window.setTimeout(() => {
+      setToast('');
+      toastNow.current = '';
+    }, m.length > 40 ? 4500 : 2200);
   }, []);
+  /** A message that must not push away one the user is reading (background events). */
+  const sayIfIdle = useCallback((m: string) => {
+    if (!toastNow.current) say(m);
+  }, [say]);
 
   const refresh = useCallback(async () => {
     setDocs(await listDocs());
@@ -105,6 +121,40 @@ export function App() {
     save('current', id);
     if (!wideQuery?.matches) setSideOpen(false);
   }, []);
+
+  // iPad/iPhone: keep the app inside the visible area when the device keyboard opens
+  useEffect(() => {
+    const vv = window.visualViewport;
+    if (!vv) return;
+    const fit = () => {
+      document.documentElement.style.setProperty('--app-h', vv.height + 'px');
+      if (window.scrollY) window.scrollTo(0, 0);
+    };
+    fit();
+    vv.addEventListener('resize', fit);
+    return () => vv.removeEventListener('resize', fit);
+  }, []);
+
+  // service worker: offline copy and update notice (once per page load)
+  const pwaStarted = useRef(false);
+  useEffect(() => {
+    if (pwaStarted.current) return;
+    pwaStarted.current = true;
+    startPwa({
+      onNeedRefresh: () => setNeedRefresh(true),
+      onOfflineReady: () => {
+        setOfflineReady(true);
+        save('offlineReady', true);
+        sayIfIdle('অ্যাপ এখন ইন্টারনেট ছাড়াও চলবে');
+      },
+    });
+  }, [sayIfIdle]);
+  const [updating, setUpdating] = useState(false);
+  const doUpdate = async () => {
+    setUpdating(true);
+    await flushAll(); // the open draft is saved before the reload
+    await applyUpdate();
+  };
 
   // start-up
   useEffect(() => {
@@ -323,10 +373,16 @@ export function App() {
           <span className="sub">{layout.name} layout</span>
         </div>
         <span className={'status ' + saveState} data-testid="save-status" role="status">{statusText}</span>
+        <select className="layout" aria-label="কিবোর্ড লেআউট" data-testid="layout" value={layoutId} onChange={(e) => setLayoutId(e.target.value)}>
+          <optgroup label="সাথে দেওয়া">{BUILTIN_LAYOUTS.map((l) => <option key={l.id} value={l.id}>{l.name}</option>)}</optgroup>
+          {customLayouts.length > 0 && <optgroup label="আপনার যোগ করা">{customLayouts.map((l) => <option key={l.id} value={l.id}>{l.name}</option>)}</optgroup>}
+        </select>
         <div className="seg" role="group" aria-label="ভাষা">
           <button type="button" aria-pressed={bangla} data-testid="mode-bn" onClick={() => setBangla(true)}>বাংলা</button>
           <button type="button" aria-pressed={!bangla} data-testid="mode-en" onClick={() => setBangla(false)}>English</button>
         </div>
+        <button type="button" className={'tb' + (settingsOpen ? ' on' : '')} title="সেটিংস" aria-label="সেটিংস" data-testid="settings"
+          onClick={() => setSettingsOpen((v) => !v)}>⚙</button>
       </header>
 
       <div className="body">
@@ -348,16 +404,8 @@ export function App() {
                 </>
               }
               toolbarRight={
-                <>
-        <select className="layout" aria-label="কিবোর্ড লেআউট" data-testid="layout" value={layoutId} onChange={(e) => setLayoutId(e.target.value)}>
-          <optgroup label="সাথে দেওয়া">{BUILTIN_LAYOUTS.map((l) => <option key={l.id} value={l.id}>{l.name}</option>)}</optgroup>
-          {customLayouts.length > 0 && <optgroup label="আপনার যোগ করা">{customLayouts.map((l) => <option key={l.id} value={l.id}>{l.name}</option>)}</optgroup>}
-        </select>
         <button type="button" className={'tb' + (kbVisible ? ' on' : '')} title="অন-স্ক্রিন কিবোর্ড" aria-label="অন-স্ক্রিন কিবোর্ড" data-testid="kb-toggle"
           onPointerDown={(e) => e.preventDefault()} onClick={() => setKbVisible((v) => !v)}>⌨</button>
-        <button type="button" className={'tb' + (settingsOpen ? ' on' : '')} title="সেটিংস" aria-label="সেটিংস" data-testid="settings"
-          onClick={() => setSettingsOpen((v) => !v)}>⚙</button>
-                </>
               } />
           )}
         </div>
@@ -373,7 +421,20 @@ export function App() {
           autoBijoy={autoBijoy} setAutoBijoy={setAutoBijoy}
           wordCount={Object.keys(bank.current.w).length + 0 * bankVersion}
           onLearnDoc={learnDoc} onExportWords={exportWords} onImportWords={importWords} onResetWords={resetWords}
-          onBackup={backup} onRestore={restore} />
+          onBackup={backup} onRestore={restore}
+          app={{
+            supported: pwaSupported(), offlineReady, standalone: isStandalone(), apple: isAppleDevice(), canInstall,
+            onInstall: async () => { if (await promptInstall()) say('ProNotes ইনস্টল হয়েছে'); },
+            onCheckUpdate: async () => { say((await checkForUpdate()) ? 'নতুন ভার্সন খোঁজা হলো; থাকলে উপরে জানানো হবে' : 'এখন খোঁজা গেল না (ইন্টারনেট নেই?)'); },
+          }} />
+      )}
+
+      {needRefresh && (
+        <div className="update" role="status" data-testid="update-banner">
+          <span>ProNotes-এর নতুন ভার্সন এসেছে। আপনার লেখা সেভ করে আপডেট হবে।</span>
+          <button type="button" className="btn primary small" data-testid="update-now" disabled={updating} onClick={doUpdate}>{updating ? 'আপডেট হচ্ছে…' : 'এখন আপডেট করুন'}</button>
+          <button type="button" className="btn small" data-testid="update-later" onClick={() => setNeedRefresh(false)}>পরে</button>
+        </div>
       )}
 
       {toast && <div className="toast" role="status" data-testid="toast">{toast}</div>}

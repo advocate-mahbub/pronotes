@@ -10,17 +10,9 @@ import type { JSONContent } from '@tiptap/core';
 import { STYLE_TWIPS, type ParagraphStyle } from '../editor/legal-format';
 import { toBanglaDigits } from '../bornona-engine';
 
-export interface DocFormat {
-  /** Font name written into the file (SutonnyOMJ by default; it need not be installed here). */
-  font: string;
-  /** Body text, points (owner's drafts: 14). */
-  size: number;
-  /** "বড় শিরোনাম" style, points (owner's drafts: 23). */
-  titleSize: number;
-  /** 1.5 or 2.0 */
-  lineSpacing: number;
-}
-export const DEFAULT_FORMAT: DocFormat = { font: 'SutonnyOMJ', size: 14, titleSize: 23, lineSpacing: 1.5 };
+import { DEFAULT_FORMAT, type DocFormat } from './format';
+
+export { DEFAULT_FORMAT, type DocFormat };
 
 /** Page geometry in twips (from the owner's draft). */
 export const PAGE = { width: 12240, height: 20160, top: 4320, right: 1440, bottom: 2160, left: 2160, header: 706, footer: 1440 };
