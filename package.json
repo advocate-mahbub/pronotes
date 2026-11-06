@@ -12,9 +12,15 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:e2e": "playwright test",
-    "golden": "node tools/gen-golden.mjs"
+    "golden": "node tools/gen-golden.mjs",
+    "preview:file": "npm run build && node tools/make-preview.mjs"
   },
   "dependencies": {
+    "@tiptap/core": "3.32.0",
+    "@tiptap/extension-highlight": "3.32.0",
+    "@tiptap/pm": "3.32.0",
+    "@tiptap/react": "3.32.0",
+    "@tiptap/starter-kit": "3.32.0",
     "react": "19.3.1",
     "react-dom": "19.3.1"
   },

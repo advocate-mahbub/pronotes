@@ -3,8 +3,8 @@
 iPad-এ, internet ছাড়াও চলে এমন বাংলা আইনি ড্রাফটিং অ্যাপ (PWA)। Bornona সহ ৫টা কিবোর্ড লেআউট, শব্দের পরামর্শ,
 ভয়েস টাইপিং, বিজয় ⇄ ইউনিকোড, আর আদালতের ফরম্যাটে `.docx`।
 
-> অবস্থা: **M1** (কিবোর্ড engine, বিজয় রূপান্তর, শব্দের পরামর্শ — বর্ণনা প্যাড v8 থেকে আনা ও পরীক্ষিত)।
-> Editor, ডকুমেন্ট, .docx আর PWA পরের milestone-এ।
+> অবস্থা: **M2** (Tiptap editor + Bornona কিবোর্ড, অন-স্ক্রিন কিবোর্ড, শব্দের পরামর্শ)।
+> ডকুমেন্টের তালিকা (M3), আইনি ফরম্যাট ও .docx (M4), ভয়েস/ফন্ট/বিজয় UI (M5), PWA (M6) পরে।
 
 ## চালানো
 
@@ -25,7 +25,8 @@ npm run test:e2e     # ব্রাউজার test (প্রথমবার: 
 | `src/bornona-engine` | কিবোর্ড engine: লেআউট, স্বর-গঠন, রেফ, `.avrolayout` পড়া, য়/ড়/ঢ় normalisation। কোনো UI নির্ভরতা নেই। |
 | `src/bijoy` | ইউনিকোড ⇄ বিজয় (SutonnyMJ), ইংরেজি না ভেঙে copy/paste |
 | `src/suggest` | শব্দভান্ডার, পরামর্শ, শেখা |
-| `src/app` | UI (এখন শুধু engine-এর preview) |
+| `src/editor` | Tiptap editor + Bornona extension |
+| `src/app` | UI: toolbar, পরামর্শের সারি, অন-স্ক্রিন কিবোর্ড |
 | `reference/` | বর্ণনা প্যাড v8, আচরণের মাপকাঠি। বদলাবেন না। |
 | `tests/golden` | v8 থেকে রেকর্ড করা আচরণ (`npm run golden`) |
 | `docs/decisions.md` | সিদ্ধান্তের খাতা |

@@ -1,0 +1,135 @@
+/**
+ * Tiptap extension that types through the Bornona engine.
+ * Physical keys: handleKeyDown. Touch keyboards that skip keydown: handleTextInput.
+ * The on-screen keyboard calls typeText() directly.
+ */
+import { Extension } from '@tiptap/core';
+import { Plugin, PluginKey } from '@tiptap/pm/state';
+import type { EditorView } from '@tiptap/pm/view';
+import { resolveKey, resolveTypedChar, planType, fixNukta, type LayoutMap } from '../bornona-engine';
+
+export interface BornonaConfig {
+  bangla: boolean;
+  map: LayoutMap;
+  vowelForming: boolean;
+  oldReph: boolean;
+  /** true while the device's own keyboard is used (e.g. voice typing on iPad). */
+  suspended: boolean;
+}
+
+export interface BornonaOptions {
+  getConfig: () => BornonaConfig;
+  onToggleLanguage: () => void;
+  /** A key was typed by the engine (used to flash the on-screen key). */
+  onKey: (code: string) => void;
+  /** A word was finished (space, punctuation, Enter): text before the boundary. */
+  onWordDone: (before: string) => void;
+  /** Several words were inserted at once (paste, suggestion phrase, voice). */
+  onTextInserted: (text: string) => void;
+}
+
+const LEAF = String.fromCharCode(0xfffc);
+const BOUNDARY = /^[\s।,.;:?!)]$/;
+
+/** Text of the current paragraph before the caret. */
+export function textBeforeCaret(view: EditorView): string {
+  const { $from } = view.state.selection;
+  return $from.parent.textBetween(0, $from.parentOffset, undefined, LEAF);
+}
+
+/** Type `out` at the caret, applying vowel forming / reph exactly like v8. */
+export function typeText(view: EditorView, out: string, cfg: BornonaConfig): void {
+  const { state } = view;
+  const sel = state.selection;
+  const edit = planType(textBeforeCaret(view), sel.empty, out, cfg);
+  const tr = sel.empty ? state.tr.insertText(edit.text, sel.from - edit.deleteBefore, sel.from) : state.tr.insertText(edit.text, sel.from, sel.to);
+  view.dispatch(tr.scrollIntoView());
+}
+
+/** Delete one character before the caret (on-screen ⌫). */
+export function deleteBackward(view: EditorView, joinBackward: () => boolean): void {
+  const { state } = view;
+  const sel = state.selection;
+  if (!sel.empty) return view.dispatch(state.tr.deleteSelection().scrollIntoView());
+  if (sel.$from.parentOffset > 0) {
+    const before = textBeforeCaret(view);
+    const cp = before.codePointAt(before.length - 1) ?? 0;
+    const len = cp > 0xffff ? 2 : 1;
+    return view.dispatch(state.tr.delete(sel.from - len, sel.from).scrollIntoView());
+  }
+  joinBackward();
+}
+
+export const BornonaExtension = Extension.create<BornonaOptions>({
+  name: 'bornona',
+
+  addOptions() {
+    return {
+      getConfig: () => ({ bangla: false, map: {}, vowelForming: true, oldReph: false, suspended: false }),
+      onToggleLanguage: () => {},
+      onKey: () => {},
+      onWordDone: () => {},
+      onTextInserted: () => {},
+    };
+  },
+
+  addProseMirrorPlugins() {
+    const opts = this.options;
+    return [
+      new Plugin({
+        key: new PluginKey('bornona'),
+        props: {
+          handleKeyDown(view, event) {
+            if (view.composing) return false;
+            const cfg = opts.getConfig();
+            if (event.key === 'Enter' && !event.isComposing) opts.onWordDone(textBeforeCaret(view));
+            const a = resolveKey(
+              {
+                code: event.code, key: event.key, shiftKey: event.shiftKey, altKey: event.altKey, ctrlKey: event.ctrlKey,
+                metaKey: event.metaKey, altGraph: event.getModifierState?.('AltGraph'), isComposing: event.isComposing,
+              },
+              { bangla: cfg.bangla, map: cfg.map, suspended: cfg.suspended },
+            );
+            if (!a) return false;
+            if (a.kind === 'toggle-language') {
+              opts.onToggleLanguage();
+              return true;
+            }
+            if (a.kind === 'swallow') return true;
+            typeText(view, a.text, cfg);
+            opts.onKey(a.code);
+            return true;
+          },
+          handleTextInput(view, _from, _to, text) {
+            const cfg = opts.getConfig();
+            const r = resolveTypedChar(text, { bangla: cfg.bangla, map: cfg.map, suspended: cfg.suspended });
+            if (!r) return false;
+            typeText(view, r, cfg);
+            return true;
+          },
+          transformPastedText: (text) => fixNukta(text),
+          transformPastedHTML: (html) => fixNukta(html),
+        },
+      }),
+    ];
+  },
+
+  onTransaction({ transaction }) {
+    // ignore undo/redo and programmatic document loads
+    if (!transaction.docChanged || transaction.getMeta('history$') || transaction.getMeta('pronotes-load')) return;
+    let inserted = '';
+    for (const step of transaction.steps) {
+      const slice = (step as unknown as { slice?: { content: { size: number; textBetween: (a: number, b: number, s?: string) => string } } }).slice;
+      if (slice && slice.content.size) inserted += slice.content.textBetween(0, slice.content.size, ' ');
+    }
+    if (!inserted) return;
+    if (/\S\s+\S/.test(inserted)) {
+      this.options.onTextInserted(inserted);
+      return;
+    }
+    if (BOUNDARY.test(inserted.slice(-1))) {
+      const before = textBeforeCaret(this.editor.view);
+      this.options.onWordDone(before.slice(0, -1));
+    }
+  },
+});
