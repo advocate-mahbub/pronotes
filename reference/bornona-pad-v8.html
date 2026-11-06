@@ -1,0 +1,1272 @@
+<!doctype html>
+<html lang="bn">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>বর্ণনা প্যাড · Bornona Pad</title>
+<meta name="robots" content="noindex">
+<meta name="theme-color" content="#f5efe3" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#050a12" media="(prefers-color-scheme: dark)">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="বর্ণনা প্যাড">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Hind+Siliguri:wght@400;500;600;700&family=Noto+Sans+Bengali:wght@400;500&family=Noto+Serif+Bengali:wght@400;500&display=swap">
+<style>
+/* Layout: one writing sheet on top, the Bornona keyboard docked beneath it — a typing desk, not a website */
+:root{
+  --bg:#f5efe3; --sheet:#fffcf6; --fg:#0b1b33; --muted:#5f6878; --line:#e2d8c4;
+  --key:#fffcf6; --key-2:#ece3d1; --key-shadow:#c9bb9f;
+  --accent:#0f2a4f; --accent-fg:#ffffff; --accent-soft:#f3e6c4; --dot:#c8a45d;
+  --gold:#c8a45d; --gold-fg:#050a12; --rec:#c62828; --rec-fg:#ffffff;
+  --f-display:"Hind Siliguri","Noto Sans Bengali",system-ui,sans-serif;
+  --f-sans:"Noto Sans Bengali","Hind Siliguri",system-ui,sans-serif;
+  --f-serif:"Noto Serif Bengali","Noto Sans Bengali",Georgia,serif;
+  --f-mono:ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+  --write-size:20px;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#050a12; --sheet:#0b1524; --fg:#efe7d6; --muted:#9aa3b2; --line:#1f2c42;
+  --key:#14213a; --key-2:#0d1829; --key-shadow:#02050a;
+  --accent:#c8a45d; --accent-fg:#050a12; --accent-soft:#3a3120; --dot:#c8a45d;
+  --gold:#c8a45d; --gold-fg:#050a12; --rec:#ff5252; --rec-fg:#050a12; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#050a12; --sheet:#0b1524; --fg:#efe7d6; --muted:#9aa3b2; --line:#1f2c42;
+  --key:#14213a; --key-2:#0d1829; --key-shadow:#02050a;
+  --accent:#c8a45d; --accent-fg:#050a12; --accent-soft:#3a3120; --dot:#c8a45d;
+  --gold:#c8a45d; --gold-fg:#050a12; --rec:#ff5252; --rec-fg:#050a12; color-scheme:dark}
+
+*{box-sizing:border-box}
+html{color-scheme:light;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);-webkit-text-size-adjust:100%;text-size-adjust:100%;background:var(--bg)}
+body{margin:0}
+[hidden]{display:none!important}
+body{background:var(--bg);color:var(--fg);font-family:var(--f-sans);font-size:15px;line-height:1.5}
+.wrap{max-width:1000px;margin:0 auto;padding-block:14px 24px;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));
+  display:flex;flex-direction:column;gap:12px}
+
+header{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.brand{display:flex;align-items:baseline;gap:8px;margin-right:auto;min-width:0}
+.brand h1{font-family:var(--f-display);font-weight:700;font-size:26px;margin:0;letter-spacing:.01em;line-height:1.1}
+.brand h1 i{font-style:normal;color:var(--dot)}
+.brand small{color:var(--muted);font-size:13px}
+
+.mode{display:inline-flex;border:1px solid var(--line);border-radius:999px;padding:3px;background:var(--sheet)}
+.mode button{border:0;background:none;color:var(--muted);font:600 14px var(--f-display);padding:6px 14px;border-radius:999px;cursor:pointer}
+.mode button[aria-pressed="true"]{background:var(--accent);color:var(--accent-fg)}
+
+.sheet{background:var(--sheet);border:1px solid var(--line);border-radius:14px;display:flex;flex-direction:column;min-width:0}
+.write{position:relative}
+.write textarea{padding-bottom:76px}
+.fab{position:absolute;right:14px;bottom:14px;width:54px;height:54px;border-radius:50%;border:0;background:var(--rec);color:var(--rec-fg);
+  display:grid;place-items:center;cursor:pointer;box-shadow:0 4px 14px color-mix(in srgb,var(--rec) 35%,transparent);-webkit-tap-highlight-color:transparent}
+.fab svg{width:25px;height:25px}
+.fab.live{animation:pulse 1.4s ease-in-out infinite}
+.fab:focus-visible{outline:3px solid var(--accent);outline-offset:3px}
+.k .m.tiny{font:600 11px var(--f-mono);letter-spacing:.02em}
+textarea{display:block;width:100%;min-height:34vh;resize:vertical;border:0;outline:none;background:transparent;color:var(--fg);
+  font-family:var(--f-sans);font-size:var(--write-size);line-height:1.75;padding:18px 20px;border-radius:14px 14px 0 0}
+textarea.serif{font-family:var(--f-serif)}
+textarea::placeholder{color:var(--muted)}
+.sheet:focus-within{border-color:var(--accent)}
+
+.bar{display:flex;flex-wrap:wrap;align-items:center;gap:6px;padding:8px 10px;border-top:1px solid var(--line)}
+.bar .count{color:var(--muted);font-size:13px;margin-right:auto;font-variant-numeric:tabular-nums;padding-left:6px}
+.btn{border:1px solid var(--line);background:var(--sheet);color:var(--fg);font:500 14px var(--f-sans);padding:6px 12px;border-radius:8px;cursor:pointer;min-height:36px}
+.btn:hover{border-color:var(--muted)}
+.btn.primary{background:var(--gold);color:var(--gold-fg);border-color:var(--gold);font-weight:600}
+.btn.warn{border-color:var(--dot);color:var(--dot)}
+.btn[aria-pressed="true"]{background:var(--accent-soft);border-color:var(--accent)}
+button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+/* keyboard */
+.kb{background:var(--key-2);border:1px solid var(--line);border-radius:14px;padding:8px;display:flex;flex-direction:column;gap:6px;user-select:none;-webkit-user-select:none;touch-action:manipulation}
+.row{display:flex;gap:5px}
+.k{flex:1 1 0;min-width:0;position:relative;height:52px;border:0;border-radius:8px;background:var(--key);color:var(--fg);
+  box-shadow:0 1.5px 0 var(--key-shadow);cursor:pointer;padding:0;font-family:var(--f-display);-webkit-tap-highlight-color:transparent}
+.k .m{font-size:22px;font-weight:600;line-height:1}
+.k .s{position:absolute;top:4px;right:6px;font-size:12px;color:var(--muted);line-height:1}
+.k .l{position:absolute;bottom:4px;left:6px;font:10px var(--f-mono);color:var(--muted);opacity:.8}
+.k.fn{background:var(--key-2);box-shadow:0 1.5px 0 var(--key-shadow), inset 0 0 0 1px var(--line);font-size:14px;font-weight:600;color:var(--muted)}
+.k.w15{flex-grow:1.5}.k.w2{flex-grow:2}.k.w6{flex-grow:6}
+.k.on{background:var(--accent);color:var(--accent-fg)}
+.k.hit,.k:active{transform:translateY(1px);box-shadow:0 .5px 0 var(--key-shadow);background:var(--accent-soft)}
+.kb.shift .k .m{color:var(--accent)}
+
+.sug{display:flex;gap:6px;overflow-x:auto;min-height:46px;align-items:center;padding:2px;scrollbar-width:none;touch-action:pan-x;margin-block:-4px}
+.sug::-webkit-scrollbar{display:none}
+.kb[hidden]{display:none}
+.chip{flex:0 0 auto;border:1px solid var(--line);background:var(--sheet);color:var(--fg);font:500 17px var(--f-sans);padding:5px 14px;border-radius:999px;cursor:pointer;min-height:38px;white-space:nowrap;-webkit-tap-highlight-color:transparent}
+.chip:first-child{border-color:var(--accent);background:var(--accent-soft)}
+.chip:active{transform:translateY(1px)}
+.sug .hint{color:var(--muted);font-size:13px;padding-left:8px;white-space:nowrap}
+.voice{display:flex;align-items:center;gap:10px;width:100%;padding-left:6px;font-size:14px}
+.voice svg{width:20px;height:20px;color:var(--dot);flex:none}
+.voice span{flex:1;min-width:0}
+.k.mic{color:var(--rec)}
+.k.mic.live{background:var(--rec);color:var(--rec-fg);animation:pulse 1.4s ease-in-out infinite}
+@keyframes pulse{50%{box-shadow:0 0 0 6px color-mix(in srgb,var(--rec) 25%,transparent)}}
+.btn.live{background:var(--rec);color:var(--rec-fg);border-color:var(--rec)}
+.voice .interim{color:var(--muted);font-style:italic;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.voice .dotrec{width:10px;height:10px;border-radius:50%;background:var(--rec);flex:none;animation:blink 1s steps(2) infinite}
+@keyframes blink{50%{opacity:.25}}
+.set{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:4px 28px;padding-bottom:14px}
+.set label{display:flex;align-items:center;gap:8px;font-size:14px;margin:6px 0}
+.set select,.set textarea{font:15px var(--f-sans);color:var(--fg);background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:6px 8px;width:100%}
+.set textarea{min-height:110px;resize:vertical}
+.set .note{color:var(--muted);font-size:13px;margin:2px 0 6px}
+.stat{font-variant-numeric:tabular-nums;color:var(--muted);font-size:14px}
+.bar2{display:flex;justify-content:flex-end;gap:6px;padding:0 10px 8px;flex-wrap:wrap}
+.conv{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px 20px;padding:12px 14px 14px;border-top:1px solid var(--line)}
+.conv>div{display:flex;flex-direction:column;gap:6px;min-width:0}
+.conv h3{font:600 14px var(--f-display);margin:0;color:var(--fg)}
+.conv .note{color:var(--muted);font-size:13px;margin:0}
+.bjprev{font:15px var(--f-sans);color:var(--fg);background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:8px;min-height:84px;max-height:220px;overflow:auto;white-space:pre-wrap;word-break:break-word;user-select:text;-webkit-user-select:text}
+.bjprev:empty::before{content:attr(data-ph);color:var(--muted)}
+.bjprev .bn{font-family:var(--f-mono);font-size:14px}
+.bjprev.ansi .bn{font-family:var(--f-ansi,var(--f-mono));font-size:19px}
+.bjprev .en{font-family:var(--f-en,"Times New Roman"),Georgia,serif}
+.conv textarea{font:14px var(--f-mono);color:var(--fg);background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:8px;min-height:84px;resize:vertical;width:100%}
+.conv textarea.ansi{font-family:var(--f-ansi,var(--f-mono));font-size:19px;line-height:1.6}
+.fontrow{display:flex;align-items:center;gap:8px;font-size:14px;padding:4px 0;border-bottom:1px solid var(--line)}
+.fontrow span{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.fontrow small{color:var(--muted)}
+.fontrow .btn{min-height:30px;padding:2px 10px;font-size:13px}
+.conv .btn{align-self:flex-start}.k.mic svg{width:22px;height:22px;display:block;margin:auto}
+.helpbtns{display:flex;flex-wrap:wrap;gap:6px;margin:6px 0 4px}
+details{background:var(--sheet);border:1px solid var(--line);border-radius:14px;padding:4px 16px}
+summary{cursor:pointer;font:600 15px var(--f-display);padding:10px 0}
+.help{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:4px 28px;padding-bottom:12px}
+.help h3,.set .help-h{font:600 14px var(--f-display);margin:10px 0 4px;color:var(--accent)}
+.help p,.help li{margin:0 0 4px;font-size:14px;max-width:65ch}
+.help ul{padding-left:18px;margin:0}
+kbd{font:12px var(--f-mono);border:1px solid var(--line);border-bottom-width:2px;border-radius:4px;padding:0 5px;background:var(--key-2)}
+
+.toast{position:fixed;left:50%;top:calc(12px + env(safe-area-inset-top,0px));transform:translateX(-50%);background:var(--fg);color:var(--bg);
+  width:max-content;max-width:calc(100% - 32px);text-align:center;box-shadow:0 6px 24px rgba(0,0,0,.25);z-index:20;
+  padding:10px 16px;border-radius:12px;font-size:14px;opacity:0;pointer-events:none;transition:opacity .2s}
+.toast.show{opacity:1}
+
+@media (max-width:640px){
+  .k{height:46px;border-radius:6px}.row{gap:3px}.kb{padding:5px;gap:5px}
+  .k .m{font-size:19px}.k .s{font-size:10px;top:3px;right:4px}.k .l{display:none}
+  .k.fn{font-size:12px}
+  textarea{min-height:26vh;padding:14px}
+  .brand small{display:none}
+}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="brand"><h1>বর্ণনা প্যাড<i>.</i></h1><small id="layoutName">Bornona layout</small></div>
+    <div class="mode" role="group" aria-label="ভাষা">
+      <button id="mBn" aria-pressed="true">বাংলা</button>
+      <button id="mEn" aria-pressed="false">English</button>
+    </div>
+  </header>
+
+  <section class="sheet">
+    <div class="write">
+    <textarea id="ta" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"
+      placeholder="এখানে লিখুন… (ফিজিক্যাল কিবোর্ডে সরাসরি, বা নিচের কিবোর্ডে চাপ দিয়ে)"></textarea>
+      <button class="fab" id="voiceBtn" type="button" aria-label="ভয়েস টাইপিং" aria-pressed="false" title="ভয়েস টাইপিং"></button>
+    </div>
+    <div class="bar">
+      <span class="count" id="count">০ অক্ষর · ০ শব্দ</span>
+      <button class="btn" id="fsMinus" aria-label="লেখা ছোট">অ−</button>
+      <button class="btn" id="fsPlus" aria-label="লেখা বড়">অ+</button>
+      <button class="btn" id="kbBtn" aria-pressed="true">কিবোর্ড</button>
+      <button class="btn" id="clear">মুছুন</button>
+      <button class="btn primary" id="copy">কপি</button>
+    </div>
+    <div class="bar2">
+      <button class="btn" id="convBtn" aria-expanded="false" aria-controls="conv">ইউনিকোড ⇄ বিজয়</button>
+    </div>
+    <div class="conv" id="conv" hidden>
+      <div>
+        <h3>ইউনিকোড → বিজয় (ANSI)</h3>
+        <p class="note">উপরের পুরো লেখা, বা সিলেক্ট করা অংশ, বিজয়ে বদলে কপি হবে। Word-এ পেস্ট করলে বাংলা অংশ SutonnyMJ আর ইংরেজি অংশ ইংরেজি ফন্টে নিজে থেকে বসবে।</p>
+        <div id="bjOut" class="bjprev" tabindex="0" data-ph="বিজয় লেখা এখানে দেখাবে"></div>
+        <button class="btn primary" id="toBj" type="button">বিজয়ে বদলে কপি করুন</button>
+      </div>
+      <div>
+        <h3>বিজয় → ইউনিকোড</h3>
+        <p class="note">Word থেকে সরাসরি কপি করে এখানে বা লেখার ঘরে পেস্ট করুন। শুধু SutonnyMJ ফন্টের অংশ বদলাবে, ইংরেজি অংশ যেমন আছে থাকবে। ফন্টের তথ্য ছাড়া সাদা লেখা হলে সবটাই বিজয় ধরে বদলাবে।</p>
+        <textarea id="bjIn" spellcheck="false" placeholder="Avgvi †mvbvi evsjv"></textarea>
+        <button class="btn primary" id="toUni" type="button">ইউনিকোডে বদলে বসান</button>
+      </div>
+    </div>
+  </section>
+
+  <div class="sug" id="sug" aria-label="শব্দের পরামর্শ"></div>
+
+  <div class="kb" id="kb" aria-label="বর্ণনা অন-স্ক্রিন কিবোর্ড"></div>
+
+  <details id="helpBox">
+    <summary>কীভাবে ব্যবহার করবেন</summary>
+    <div class="help">
+      <div>
+        <h3>পিসি ও iPad (ফিজিক্যাল কিবোর্ড)</h3>
+        <ul>
+          <li>ডিভাইসের কিবোর্ড ভাষা <b>English (US)</b> রাখুন, তারপর লেখার ঘরে টাইপ করুন।</li>
+          <li><kbd>Ctrl</kbd>+<kbd>Space</kbd> চাপলে বাংলা ↔ English বদলাবে। iPad-এ এটা ডিভাইসের নিজের ভাষা বদলের শর্টকাট হলে উপরের বাটন ব্যবহার করুন।</li>
+          <li>iPad-এ ফিজিক্যাল কিবোর্ড থাকলে নিচের “কিবোর্ড” বন্ধ করে দিলে জায়গা বাঁচবে।</li>
+        </ul>
+        <h3>মোবাইল</h3>
+        <ul>
+          <li>নিচের বর্ণনা কিবোর্ডে চাপ দিন। ফোনের নিজের কিবোর্ড তখন উঠবে না।</li>
+          <li><b>⇧</b> একবার চাপলে পরের একটা অক্ষর Shift হবে, দুবার চাপলে লক থাকবে।</li>
+        </ul>
+      </div>
+      <div>
+        <h3>যুক্তবর্ণ ও ফলা (Bornona লেআউটে)</h3>
+        <ul>
+          <li>হসন্ত <kbd>H</kbd>: ক <kbd>H</kbd> ষ = ক্ষ, ন <kbd>H</kbd> ত = ন্ত</li>
+          <li>র-ফলা <kbd>⇧P</kbd>: প্র · য-ফলা <kbd>⇧V</kbd>: ব্য</li>
+          <li>রেফ <kbd>⇧F</kbd> আগে, পরে বর্ণ: ক র্ ম = কর্ম। বিজয়ের মতো পরে চাপতে চাইলে সেটিংসে “বিজয়-ধাঁচের রেফ” চালু করুন।</li>
+          <li>কার সবসময় বর্ণের <b>পরে</b> দিন: ক <kbd>I</kbd> = কি, ক <kbd>E</kbd> = কে</li>
+          <li><kbd>`</kbd> = দৃশ্যমান হসন্ত (্‌), যুক্তবর্ণ না বানিয়ে: ক <kbd>`</kbd> ষ = ক্‌ষ</li>
+          <li><kbd>\</kbd> = র‍্য (র‍্যাব, র‍্যালি) · <kbd>⇧\</kbd> = /- (টাকার অঙ্কে)</li>
+        </ul>
+        <h3>স্বর-গঠন ও রেফ</h3>
+        <p>শব্দের শুরুতে বা স্বরের পরে কার চাপলে পূর্ণ স্বরবর্ণ হয়: <kbd>I</kbd> = ই, <kbd>E</kbd> = এ, <kbd>O</kbd> = ও, <kbd>⇧R</kbd> = ঋ, অ + া = আ। চালু বা বন্ধ করুন “সেটিংস ও ব্যাকআপ → ফন্ট”-এর নিচে, রেফের অপশনের পাশেই।</p>
+        <h3>শব্দের পরামর্শ</h3>
+        <p>এক-দুই অক্ষর লিখলেই কিবোর্ডের উপরের সারিতে শব্দ আসে, চাপ দিলে বসে যায়। শুরুতে কিছু আইনি ও সাধারণ শব্দ দেওয়া আছে। এরপর আপনি যা লেখেন, সেখান থেকে নতুন শব্দ আর কোন শব্দের পর কোনটা আসে, সেটাও শিখে নেয়।</p>
+        <p>পুরোনো ড্রাফট লেখার ঘরে পেস্ট করে নিচের বাটন চাপলে সেখান থেকেও শিখবে।</p>
+        <div class="helpbtns"><button class="btn" id="learnAll">এই লেখা থেকে শব্দ শিখুন</button><button class="btn" id="resetLex">শেখা শব্দ মুছুন</button></div>
+        <h3>ভয়েস টাইপিং</h3>
+        <p>লেখার ঘরের ডান কোণের লাল মাইক চাপুন, তারপর বলুন। আবার চাপলে থামবে। কিবোর্ড লুকানো থাকলেও মাইক থাকে। এই পেজে ফোনের নিজের কিবোর্ডের মাইক খোলে; mahbuburrahman.bd-এর ভার্সনে Android ও পিসির Chrome/Edge-এ সরাসরি শুনবে।</p>
+        <p>বলার সময় যতিচিহ্ন: “দাঁড়ি” = ।, “কমা” = ,, “প্রশ্নবোধক চিহ্ন” = ?, “নতুন লাইন”, “নতুন অনুচ্ছেদ”। ইংরেজিতে “full stop”, “comma”, “new line”।</p>
+        <p>iPhone/iPad-এ Apple বাংলা ভয়েস সাপোর্ট করে না। সেখানে মাইক চাপলে ফোনের কিবোর্ড খুলবে, Gboard-এর মাইক দিয়ে বলুন।</p>
+        <h3>ইউনিকোড ⇄ বিজয়</h3>
+        <p>লেখার ঘরের নিচের “ইউনিকোড ⇄ বিজয়” বাটন চাপুন। ইউনিকোড লেখা বিজয়ে বদলে কপি হয়, Word-এ SutonnyMJ ফন্টে পেস্ট করুন। বিজয় লেখা সরাসরি লেখার ঘরে পেস্ট করলেও নিজে থেকে ইউনিকোড হয়ে যায়।</p>
+        <p>লেখা আর শেখা শব্দ এই ব্রাউজারেই সেভ থাকে। অন্য ডিভাইসে নিতে “সেটিংস ও ব্যাকআপ” থেকে শব্দভান্ডার এক্সপোর্ট/ইমপোর্ট করুন।</p>
+      </div>
+    </div>
+  </details>
+
+  <details id="setBox">
+    <summary>সেটিংস ও ব্যাকআপ</summary>
+    <div class="set">
+      <div>
+        <h3 class="help-h">ভয়েস</h3>
+        <label for="vlang">ভাষা</label>
+        <select id="vlang">
+          <option value="auto">লেখার মোড অনুযায়ী (বাংলা / English)</option>
+          <option value="bn-BD">বাংলা (বাংলাদেশ)</option>
+          <option value="bn-IN">বাংলা (ভারত)</option>
+          <option value="en-US">English (US)</option>
+          <option value="en-GB">English (UK)</option>
+          <option value="en-IN">English (India)</option>
+        </select>
+        <label><input type="checkbox" id="vcmd"> বলা যতিচিহ্ন বসাও (দাঁড়ি, কমা, নতুন লাইন)</label>
+        <label><input type="checkbox" id="vdig"> ভয়েসের সংখ্যা বাংলায় লেখো (১২৩)</label>
+        <label><input type="checkbox" id="autoBj"> বিজয় লেখা পেস্ট করলে নিজে থেকে ইউনিকোডে বদলাও</label>
+        <label for="corr">ভয়েসের ভুল সংশোধন</label>
+        <p class="note">প্রতি লাইনে একটা: ভুল = ঠিক। যেমন: এক্তিয়ার = এখতিয়ার</p>
+        <textarea id="corr" spellcheck="false" placeholder="এক্তিয়ার = এখতিয়ার"></textarea>
+      </div>
+      <div>
+        <h3 class="help-h">কিবোর্ড লেআউট</h3>
+        <label for="layoutSel">লেআউট</label>
+        <select id="layoutSel"></select>
+        <p class="note">অন্য কোনো Avro লেআউট (.avrolayout) ব্যবহার করতে চাইলে ফাইলটা যোগ করুন। এটা শুধু এই ব্রাউজারে থাকে।</p>
+        <div class="helpbtns">
+          <button class="btn" id="addLayout" type="button">লেআউট যোগ করুন (.avrolayout)</button>
+          <input type="file" id="layoutFile" accept=".avrolayout,.xml,text/xml" hidden>
+        </div>
+        <div id="layoutList"></div>
+        <h3 class="help-h">ফন্ট</h3>
+        <label for="fontSel">লেখার ফন্ট (ইউনিকোড)</label>
+        <select id="fontSel"></select>
+        <label for="enFont">Word-এ বিজয় লেখার সাথে ইংরেজি অংশের ফন্ট</label>
+        <select id="enFont"><option>Times New Roman</option><option>Arial</option><option>Calibri</option><option>Cambria</option><option>Georgia</option></select>
+        <label for="ansiSel">বিজয় (ANSI) লেখা দেখার ফন্ট</label>
+        <select id="ansiSel"></select>
+        <p class="note">SolaimanLipi, Kalpurush, SutonnyOMJ বা SutonnyMJ কম্পিউটারে ইনস্টল থাকলে তালিকা থেকে বাছাই করা যাবে। ফোনে বা যেখানে ইনস্টল নেই, সেখানে নিজের ফন্ট ফাইল (.ttf, .otf, .woff) যোগ করুন। ফাইলটা শুধু এই ব্রাউজারে থাকে।</p>
+        <div class="helpbtns">
+          <button class="btn" id="addUni" type="button">ইউনিকোড ফন্ট যোগ করুন</button>
+          <button class="btn" id="addAnsi" type="button">ANSI ফন্ট যোগ করুন</button>
+          <input type="file" id="fontFile" accept=".ttf,.otf,.woff,.woff2,font/ttf,font/otf,font/woff,font/woff2" hidden>
+        </div>
+        <div id="fontList"></div>
+        <label><input type="checkbox" id="vf"> স্বর-গঠন: শব্দের শুরুতে বা স্বরবর্ণের পরে কার চাপুন (ি চাপলে হবে ই, ে চাপলে এ, অ-এর পরে া চাপলে আ)</label>
+        <p class="note">Bornona-য় ই, উ, এ, ও-এর আলাদা key নেই, তাই এটা চালু রাখতে হয়। যে লেআউটে পূর্ণ স্বরবর্ণের আলাদা key আছে (যেমন National, Probhat), সেখানে চাইলে বন্ধ রাখতে পারেন।</p>
+        <label><input type="checkbox" id="oldReph"> বিজয়-ধাঁচের রেফ: বর্ণ লেখার পরে রেফ চাপুন (ক ম রেফ লিখলে হবে কর্ম)</label>
+        <h3 class="help-h">শব্দভান্ডার</h3>
+        <p class="stat" id="lexStat"></p>
+        <p class="note">আপনি যা লেখেন, ভয়েসে বলেন বা পেস্ট করেন, প্রতিটা শব্দ এখানে জমা হয়। মাঝে মাঝে এক্সপোর্ট করে রাখুন, ব্রাউজারের ডেটা মুছলে এটা দিয়ে ফেরত আনা যাবে।</p>
+        <div class="helpbtns">
+          <button class="btn" id="learnAll2">এই লেখা থেকে শিখুন</button>
+          <button class="btn primary" id="exportLex">এক্সপোর্ট</button>
+          <button class="btn" id="importLex">ইমপোর্ট</button>
+          <input type="file" id="importFile" accept=".json,application/json" hidden>
+        </div>
+        <p class="note">ইমপোর্ট করলে আগের শব্দ মুছবে না, যোগ হবে। অন্য ডিভাইসের শব্দ আনতেও এটা ব্যবহার করুন।</p>
+      </div>
+    </div>
+  </details>
+</div>
+<div class="toast" id="toast" role="status"></div>
+
+<script>
+/* Bijoy converter.
+   Unicode -> Bijoy: unicode2ascii 1.1.0 by Md. Nimuzzaman (MIT).
+   Bijoy -> Unicode: @codesigntheory/bnbijoy2unicode 1.3.0 (MIT), patched for ৌ.
+   Wrappers (র‍্য, ল-ফলা ø, double reph, য় normalisation) written for Bornona Pad. */
+(function(){
+var __g={};
+(function(){ var exports=undefined,module=undefined,define=undefined; var self=__g;
+(function(g,u){typeof exports=="object"&&typeof module<"u"?u(exports):typeof define=="function"&&define.amd?define(["exports"],u):(u(g.Unicode2ASCII={}))})(__g,function(g){"use strict";function u(e){return e=="ি"||e=="ৈ"||e=="ে"}function t(e){return e=="ক"||e=="খ"||e=="গ"||e=="ঘ"||e=="ঙ"||e=="চ"||e=="ছ"||e=="জ"||e=="ঝ"||e=="ঞ"||e=="ট"||e=="ঠ"||e=="ড"||e=="ঢ"||e=="ণ"||e=="ত"||e=="থ"||e=="দ"||e=="ধ"||e=="ন"||e=="প"||e=="ফ"||e=="ব"||e=="ভ"||e=="ম"||e=="শ"||e=="ষ"||e=="স"||e=="হ"||e=="য"||e=="র"||e=="ল"||e=="য়"||e=="ং"||e=="ঃ"||e=="ঁ"||e=="ৎ"}function h(e){return e=="্"}function A(e){return e=="া"||e=="ো"||e=="ৌ"||e=="ৗ"||e=="ু"||e=="ূ"||e=="ী"||e=="ৃ"}function o(e){return!!(u(e)||A(e))}function v(e){return e=="ং"||e=="ঃ"||e=="ঁ"}function p(e){return e==" "||e=="	"||e==`
+`||e=="\r"}var b={"।":"|","‘":"Ô","’":"Õ","“":"Ò","”":"Ó","্র্য":"ª¨",র‌্য:"i¨",ক্ক:"°",ক্ট:"±",ক্ত:"³",ক্ব:"K¡",স্ক্র:"¯Œ",ক্র:"µ",ক্ল:"K¬",ক্ষ:"¶",ক্স:"·",গু:"¸",গ্ধ:"»",গ্ন:"Mœ",গ্ম:"M¥",গ্ল:"M­",গ্রু:"Mªy",ঙ্ক:"¼",ঙ্ক্ষ:"•¶",ঙ্খ:"•L",ঙ্গ:"½",ঙ্ঘ:"•N",চ্চ:"”P",চ্ছ:"”Q",চ্ছ্ব:"”Q¡",চ্ঞ:"”T",জ্জ্ব:"¾¡",জ্জ:"¾",জ্ঝ:"À",জ্ঞ:"Á",জ্ব:"R¡",ঞ্চ:"Â",ঞ্ছ:"Ã",ঞ্জ:"Ä",ঞ্ঝ:"Å",ট্ট:"Æ",ট্ব:"U¡",ট্ম:"U¥",ড্ড:"Ç",ণ্ট:"È",ণ্ঠ:"É",ন্স:"Ý",ণ্ড:"Ê",ন্তু:"š‘",ণ্ব:"Y^",ত্ত:"Ë",ত্ত্ব:"Ë¡",ত্থ:"Ì",ত্ন:"Zœ",ত্ম:"Z¥",ন্ত্ব:"š—¡",ত্ব:"Z¡",থ্ব:"_¡",দ্গ:"˜M",দ্ঘ:"˜N",দ্দ:"Ï",দ্ধ:"×",দ্ব:"˜¡",দ্ব:"Ø",দ্ভ:"™¢",দ্ম:"Ù",দ্রু:"`ª“",ধ্ব:"aŸ",ধ্ম:"a¥",ন্ট:"›U",ন্ঠ:"Ú",ন্ড:"Û",ন্ত্র:"š¿",ন্ত:"š—",স্ত্র:"¯¿",ত্র:"Î",ন্থ:"š’",ন্দ:"›`",ন্দ্ব:"›Ø",ন্ধ:"Ü",ন্ন:"bœ",ন্ব:"š^",ন্ম:"b¥",প্ট:"Þ",প্ত:"ß",প্ন:"cœ",প্প:"à",প্ল:"c­",প্স:"á",ফ্ল:"d¬",ব্জ:"â",ব্দ:"ã",ব্ধ:"ä",ব্ব:"eŸ",ব্ল:"e­",ভ্র:"å",ম্ন:"gœ",ম্প:"¤ú",ম্ফ:"ç",ম্ব:"¤^",ম্ভ:"¤¢",ম্ভ্র:"¤£",ম্ম:"¤§",ম্ল:"¤­",রু:"i“",রূ:"iƒ",ল্ক:"é",ল্গ:"ê",ল্প:"í",ল্ট:"ë",ল্ড:"ì",ল্ফ:"î",ল্ব:"j¦",ল্ম:"j¥",ল্ল:"jø",শু:"ï",শ্চ:"ð",শ্ন:"kœ",শ্ব:"k¦",শ্ম:"k¥",শ্ল:"kø",ষ্ক:"®‹",ষ্ক্র:"®Œ",ষ্ট:"ó",ষ্ঠ:"ô",ষ্ণ:"ò",ষ্প:"®ú",ষ্ফ:"õ",ষ্ম:"®§",স্ক:"¯‹",স্ট:"÷",স্খ:"ö",স্ত:"¯—",স্তু:"¯‘",স্থ:"¯’",স্ন:"mœ",স্প:"¯ú",স্ফ:"ù",স্ব:"¯^",স্ম:"¯§",স্ল:"¯­",হু:"û",হ্ণ:"nè",হ্ন:"ý",হ্ম:"þ",হ্ল:"n¬",হৃ:"ü",র্:"©","্র":"«","্য":"¨","্":"&",আ:"Av",অ:"A",ই:"B",ঈ:"C",উ:"D",ঊ:"E",ঋ:"F",এ:"G",ঐ:"H",ও:"I",ঔ:"J",ক:"K",খ:"L",গ:"M",ঘ:"N",ঙ:"O",চ:"P",ছ:"Q",জ:"R",ঝ:"S",ঞ:"T",ট:"U",ঠ:"V",ড:"W",ঢ:"X",ণ:"Y",ত:"Z",থ:"_",দ:"`",ধ:"a",ন:"b",প:"c",ফ:"d",ব:"e",ভ:"f",ম:"g",য:"h",র:"i",ল:"j",শ:"k",ষ:"l",স:"m",হ:"n",ড়:"o",ঢ়:"p",য়:"q","ৎ":"r","০":"0","১":"1","২":"2","৩":"3","৪":"4","৫":"5","৬":"6","৭":"7","৮":"8","৯":"9","া":"v","ি":"w","ী":"x","ু":"y","ূ":"~","ৃ":"…","ে":"‡","ৈ":"‰","ৗ":"Š","ং":"s","ঃ":"t","ঁ":"u"};function d(e){for(var a=0,r=0;r<e.length;r++){if(r<e.length&&u(e.charAt(r))){for(var c=1;t(e.charAt(r-c))&&!(r-c<0||r-c<=a);)if(h(e.charAt(r-c-1)))c+=2;else break;var n=e.substring(0,r-c);n+=e.charAt(r),n+=e.substring(r-c,r),n+=e.substring(r+1,e.length),e=n,a=r+1;continue}if(r<e.length-1&&h(e.charAt(r))&&e.charAt(r-1)=="র"&&!h(e.charAt(r-2))){for(var c=1,f=0;;)if(t(e.charAt(r+c))&&h(e.charAt(r+c+1)))c+=2;else if(t(e.charAt(r+c))&&u(e.charAt(r+c+1))){f=1;break}else break;var n=e.substring(0,r-1);n+=e.substring(r+c+1,r+c+f+1),n+=e.substring(r+1,r+c+1),n+=e.charAt(r-1),n+=e.charAt(r),n+=e.substring(r+c+f+1,e.length),e=n,r+=c+f,a=r+1;continue}}return e}function k(e,a){var r=b;e==="bijoy"&&(r=b);var c;c=new RegExp("ো","g"),a=a.replace(c,"ো"),c=new RegExp("ৌ","g"),a=a.replace(c,"ৌ"),a=d(a);for(var n in r)c=new RegExp(n,"g"),a=a.replace(c,r[n]);return a}var l={"i¨":"র‌্য","ª¨":"্র্য","°":"ক্ক","±":"ক্ট","³":"ক্ত","K¡":"ক্ব","¯Œ":"স্ক্র",µ:"ক্র","K¬":"ক্ল","¶":"ক্ষ",ÿ:"ক্ষ","·":"ক্স","¸":"গু","»":"গ্ধ",Mœ:"গ্ন","M¥":"গ্ম","M­":"গ্ল","¼":"ঙ্ক","•¶":"ঙ্ক্ষ","•L":"ঙ্খ","½":"ঙ্গ","•N":"ঙ্ঘ","•":"ক্স","”P":"চ্চ","”Q":"চ্ছ","”Q¡":"চ্ছ্ব","”T":"চ্ঞ","¾¡":"জ্জ্ব","¾":"জ্জ",À:"জ্ঝ",Á:"জ্ঞ","R¡":"জ্ব",Â:"ঞ্চ",Ã:"ঞ্ছ",Ä:"ঞ্জ",Å:"ঞ্ঝ",Æ:"ট্ট","U¡":"ট্ব","U¥":"ট্ম",Ç:"ড্ড",È:"ণ্ট",É:"ণ্ঠ",Ý:"ন্স",Ê:"ণ্ড","š‘":"ন্তু","Y\\^":"ণ্ব",Ë:"ত্ত","Ë¡":"ত্ত্ব",Ì:"ত্থ","Z¥":"ত্ম","š—¡":"ন্ত্ব","Z¡":"ত্ব",Î:"ত্র","_¡":"থ্ব","˜M":"দ্গ","˜N":"দ্ঘ",Ï:"দ্দ","×":"দ্ধ","˜¡":"দ্ব",Ø:"দ্ব","™¢":"দ্ভ",Ù:"দ্ম","`ª“":"দ্রু",aŸ:"ধ্ব","a¥":"ধ্ম","›U":"ন্ট",Ú:"ন্ঠ",Û:"ন্ড",šÍ:"ন্ত","š—":"ন্ত","š¿":"ন্ত্র","š’":"ন্থ","›`":"ন্দ","›Ø":"ন্দ্ব",Ü:"ন্ধ",bœ:"ন্ন","š\\^":"ন্ব","b¥":"ন্ম",Þ:"প্ট",ß:"প্ত",cœ:"প্ন",à:"প্প",cø:"প্ল","c­":"প্ল",á:"প্স","d¬":"ফ্ল",â:"ব্জ",ã:"ব্দ",ä:"ব্ধ",eŸ:"ব্ব","e­":"ব্ল",å:"ভ্র",gœ:"ম্ন","¤ú":"ম্প",ç:"ম্ফ","¤\\^":"ম্ব","¤¢":"ম্ভ","¤£":"ম্ভ্র","¤§":"ম্ম","¤­":"ম্ল","i“":"রু",iæ:"রু",iƒ:"রূ",é:"ল্ক",ê:"ল্গ",ë:"ল্ট",ì:"ল্ড",í:"ল্প",î:"ল্ফ","j¦":"ল্ব","j¥":"ল্ম",jø:"ল্ল",ï:"শু",ð:"শ্চ",kœ:"শ্ন",kø:"শ্ল","k¦":"শ্ব","k¥":"শ্ম","k­":"শ্ল","®‹":"ষ্ক","®Œ":"ষ্ক্র",ó:"ষ্ট",ô:"ষ্ঠ",ò:"ষ্ণ","®ú":"ষ্প",õ:"ষ্ফ","®§":"ষ্ম","¯‹":"স্ক","÷":"স্ট",ö:"স্খ","¯—":"স্ত","¯Í":"স্ত","¯‘":"স্তু","¯¿":"স্ত্র","¯’":"স্থ",mœ:"স্ন","¯ú":"স্প",ù:"স্ফ","¯\\^":"স্ব","¯§":"স্ম","¯­":"স্ল",û:"হু",nè:"হ্ণ",ý:"হ্ন",þ:"হ্ম","n¬":"হ্ল",ü:"হৃ","©":"র্",Av:"আ",A:"অ",B:"ই",C:"ঈ",D:"উ",E:"ঊ",F:"ঋ",G:"এ",H:"ঐ",I:"ও",J:"ঔ",K:"ক",L:"খ",M:"গ",N:"ঘ",O:"ঙ",P:"চ",Q:"ছ",R:"জ",S:"ঝ",T:"ঞ",U:"ট",V:"ঠ",W:"ড",X:"ঢ",Y:"ণ",Z:"ত",_:"থ","`":"দ",a:"ধ",b:"ন",c:"প",d:"ফ",e:"ব",f:"ভ",g:"ম",h:"য",i:"র",j:"ল",k:"শ",l:"ষ",m:"স",n:"হ",o:"ড়",p:"ঢ়",q:"য়",r:"ৎ",0:"০",1:"১",2:"২",3:"৩",4:"৪",5:"৫",6:"৬",7:"৭",8:"৮",9:"৯",v:"া",w:"ি",x:"ী",y:"ু",z:"ু","~":"ূ","„":"ৃ","‡":"ে","†":"ে","‰":"ৈ","\\ˆ":"ৈ",Š:"ৗ",Ô:"‘",Õ:"’","\\|":"।",Ò:"“",Ó:"”",s:"ং",t:"ঃ",u:"ঁ",ª:"্র",Ö:"্র","«":"্র","¨":"্য","\\&":"্","…":"ৃ"};function I(e){for(var a=0;a<e.length;a++){if(a>0&&e.charAt(a)=="্"&&(o(e.charAt(a-1))||v(e.charAt(a-1)))&&a<e.length-1){var r=e.substring(0,a-1);r+=e.charAt(a),r+=e.charAt(a+1),r+=e.charAt(a-1),r+=e.substring(a+2,e.length),e=r}if(a>0&&a<e.length-1&&e.charAt(a)=="্"&&e.charAt(a-1)=="র"&&e.charAt(a-2)!="্"&&o(e.charAt(a+1))){var r=e.substring(0,a-1);r+=e.charAt(a+1),r+=e.charAt(a-1),r+=e.charAt(a),r+=e.substring(a+2,e.length),e=r}if(a<e.length-1&&e.charAt(a)=="র"&&h(e.charAt(a+1))&&!h(e.charAt(a-1))){for(var c=1;!(a-c<0);)if(t(e.charAt(a-c))&&h(e.charAt(a-c-1)))c+=2;else if(c==1&&o(e.charAt(a-c)))c++;else break;var r=e.substring(0,a-c);r+=e.charAt(a),r+=e.charAt(a+1),r+=e.substring(a-c,a),r+=e.substring(a+2,e.length),e=r,a+=1;continue}if(a<e.length-1&&u(e.charAt(a))&&p(e.charAt(a+1))==!1){for(var r=e.substring(0,a),c=1;t(e.charAt(a+c))&&h(e.charAt(a+c+1));)c+=2;r+=e.substring(a+1,a+c+1);var n=0;e.charAt(a)=="ে"&&e.charAt(a+c+1)=="া"?(r+="ো",n=1):e.charAt(a)=="ে"&&e.charAt(a+c+1)=="ৗ"?(r+="ৌ",n=1):r+=e.charAt(a),r+=e.substring(a+c+n+1,e.length),e=r,a+=c}if(a<e.length-1&&e.charAt(a)=="ঁ"&&A(e.charAt(a+1))){var r=e.substring(0,a);r+=e.charAt(a+1),r+=e.charAt(a),r+=e.substring(a+2,e.length),e=r}}return e}function y(e,a){var r=l;e=="bijoy"&&(r=l);for(var c in r){var n=new RegExp(c,"g");a=a.toString().replace(n,r[c])}a=I(a);var n=new RegExp("অা","g");return a=a.replace(n,"আ"),a}g.ConvertToASCII=k,g.ConvertToUnicode=y,Object.defineProperty(g,Symbol.toStringTag,{value:"Module"})});
+
+}).call(__g);
+var __dec=(function(){var exports={};
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+var PRE_CONVERSION_MAP = {
+    " +": " ",
+    yy: "y",
+    vv: "v",
+    "„„": "„",
+    "­­": "­",
+    "y&": "y",
+    "„&": "„",
+    "‡u": "u‡",
+    wu: "uw",
+    " ,": ",",
+    " \\|": "\\|",
+    "\\\\ ": "",
+    " \\\\": "",
+    "\\\\": "",
+    "\n +": "\n",
+    " +\n": "\n",
+    "\n\n\n\n\n": "\n\n",
+    "\n\n\n\n": "\n\n",
+    "\n\n\n": "\n\n"
+};
+var CONVERSION_MAP = {
+    "°": "ক্ক",
+    "±": "ক্ট",
+    "²": "ক্ষ্ণ",
+    "³": "ক্ত",
+    "´": "ক্ম",
+    µ: "ক্র",
+    "¶": "ক্ষ",
+    "·": "ক্স",
+    "¸": "গু",
+    "¹": "জ্ঞ",
+    º: "গ্দ",
+    "»": "গ্ধ",
+    "¼": "ঙ্ক",
+    "½": "ঙ্গ",
+    "¾": "জ্জ",
+    "¿": "্ত্র",
+    À: "জ্ঝ",
+    Á: "জ্ঞ",
+    Â: "ঞ্চ",
+    Ã: "ঞ্ছ",
+    Ä: "ঞ্জ",
+    Å: "ঞ্ঝ",
+    Æ: "ট্ট",
+    Ç: "ড্ড",
+    È: "ণ্ট",
+    É: "ণ্ঠ",
+    Ê: "ণ্ড",
+    Ë: "ত্ত",
+    Ì: "ত্থ",
+    Î: "ত্র",
+    Ï: "দ্দ",
+    Ð: "ণ্ড",
+    Ñ: "-",
+    Ò: '"',
+    Ó: '"',
+    Ô: "'",
+    Õ: "'",
+    "×": "দ্ধ",
+    Ø: "দ্ব",
+    Ù: "দ্ম",
+    Ú: "ন্ঠ",
+    Û: "ন্ড",
+    Ü: "ন্ধ",
+    Ý: "ন্স",
+    Þ: "প্ট",
+    ß: "প্ত",
+    à: "প্প",
+    á: "প্স",
+    â: "ব্জ",
+    ã: "ব্দ",
+    ä: "ব্ধ",
+    å: "ভ্র",
+    ç: "ম্ফ",
+    é: "ল্ক",
+    ê: "ল্গ",
+    ë: "ল্ট",
+    ì: "ল্ড",
+    í: "ল্প",
+    î: "ল্ফ",
+    ï: "শু",
+    ð: "শ্চ",
+    ñ: "শ্ছ",
+    ò: "ষ্ণ",
+    ó: "ষ্ট",
+    ô: "ষ্ঠ",
+    õ: "ষ্ফ",
+    ö: "স্খ",
+    "÷": "স্ট",
+    ø: "স্ন",
+    ù: "স্ফ",
+    û: "হু",
+    ü: "হৃ",
+    ý: "হ্ন",
+    ÿ: "ক্ষ",
+    þ: "হ্ম",
+    A: "অ",
+    B: "ই",
+    C: "ঈ",
+    D: "উ",
+    E: "ঊ",
+    F: "ঋ",
+    G: "এ",
+    H: "ঐ",
+    I: "ও",
+    J: "ঔ",
+    K: "ক",
+    L: "খ",
+    M: "গ",
+    N: "ঘ",
+    O: "ঙ",
+    P: "চ",
+    Q: "ছ",
+    R: "জ",
+    S: "ঝ",
+    T: "ঞ",
+    U: "ট",
+    V: "ঠ",
+    W: "ড",
+    X: "ঢ",
+    Y: "ণ",
+    Z: "ত",
+    _: "থ",
+    "`": "দ",
+    a: "ধ",
+    b: "ন",
+    c: "প",
+    d: "ফ",
+    e: "ব",
+    f: "ভ",
+    g: "ম",
+    h: "য",
+    i: "র",
+    j: "ল",
+    k: "শ",
+    l: "ষ",
+    m: "স",
+    n: "হ",
+    o: "ড়",
+    p: "ঢ়",
+    q: "য়",
+    r: "ৎ",
+    s: "ং",
+    t: "ঃ",
+    u: "ঁ",
+    "0": "০",
+    "1": "১",
+    "2": "২",
+    "3": "৩",
+    "4": "৪",
+    "5": "৫",
+    "6": "৬",
+    "7": "৭",
+    "8": "৮",
+    "9": "৯",
+    "•": "ঙ্",
+    "|": "।"
+};
+var PRE_SYMBOLS_MAP = {
+    "®": "ষ্",
+    "¯": "স্",
+    "”": "চ্",
+    "˜": "দ্",
+    "™": "দ্",
+    š: "ন্",
+    "›": "ন্",
+    "¤": "ম্"
+};
+var REFF = {
+    "©": "র্"
+};
+var POST_SYMBOLS_MAP = {
+    "&": "্‌",
+    ú: "্প",
+    è: "্ন",
+    "^": "্ব",
+    "‘": "্তু",
+    "’": "্থ",
+    "‹": "্ক",
+    Œ: "্ক্র",
+    "—": "্ত",
+    Í: "্ত",
+    œ: "্ন",
+    Ÿ: "্ব",
+    "¡": "্ব",
+    "¢": "্ভ",
+    "£": "্ভ্র",
+    "¥": "্ম",
+    "¦": "্ব",
+    "§": "্ম",
+    "¨": "্য",
+    ª: "্র",
+    "«": "্র",
+    "¬": "্ল",
+    "­": "্ল",
+    Ö: "্র"
+};
+var KAARS = {
+    v: "া",
+    w: "ি",
+    x: "ী",
+    y: "ু",
+    z: "ু",
+    æ: "ু",
+    "“": "ু",
+    "–": "ু",
+    "~": "ূ",
+    ƒ: "ূ",
+    "‚": "ূ",
+    "„": "ৃ",
+    "…": "ৃ",
+    "†": "ে",
+    "‡": "ে",
+    ˆ: "ৈ",
+    "‰": "ৈ",
+    Š: "ৗ"
+};
+var KAAR_POST_CONVERSION = {
+    "ো": "ো",
+    "ৌ": "ৌ"
+};
+var POST_CONVERSION_MAP = {
+    অা: "আ",
+    "্‌্‌": "্‌"
+};
+var ALL_SYMBOLS = Object.assign({}, CONVERSION_MAP, PRE_SYMBOLS_MAP, POST_SYMBOLS_MAP);
+function escapeRegExp(string) {
+    return string.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+function createConversionPattern(symbols, delimiter) {
+    if (delimiter === void 0) { delimiter = ""; }
+    return Object.keys(symbols)
+        .map(function (val) {
+        return escapeRegExp(val);
+    })
+        .join(delimiter);
+}
+var SYMBOLS_CONVERSION_PATTERN = new RegExp("([" + createConversionPattern(ALL_SYMBOLS, "") + "])", "g");
+var MAIN_CONVERSION_PATTERN = new RegExp("([w\u2020\u2021\u02C6\u2030\u0160]?)(([" + createConversionPattern(PRE_SYMBOLS_MAP) + "])*([" + createConversionPattern(CONVERSION_MAP, "") + "])?([" + createConversionPattern(POST_SYMBOLS_MAP) + "])*)([" + createConversionPattern(REFF) + "])?([\u00E6vxyz\u201C\u2013~\u0192\u201A\u201E\u2026\u0160]?)([" + createConversionPattern(POST_SYMBOLS_MAP) + "])*", "g");
+var HASAANT_PATTERN = new RegExp("(" + escapeRegExp("্") + ")+");
+var PRE_CONVERSION_PATTERN = new RegExp("(" + createConversionPattern(PRE_CONVERSION_MAP, "|") + ")", "g");
+var POST_CONVERSION_PATTERN = new RegExp("(" + createConversionPattern(POST_CONVERSION_MAP, "|") + ")", "g");
+function replaceSymbol(m) {
+    return ALL_SYMBOLS[m] || "";
+}
+function mainConverter(match, preKaar, mUnit, g3, g4, g5, reff, postKaar, postPhala, offset, string) {
+    var core = mUnit.replace(SYMBOLS_CONVERSION_PATTERN, replaceSymbol);
+    core = core.replace(HASAANT_PATTERN, function (m) { return "্"; });
+    core = reff ? "র্" + core : core;
+    core = postPhala ? core + POST_SYMBOLS_MAP[postPhala] : core;
+    var kaarString = "" + (preKaar ? KAARS[preKaar] : "") + (postKaar ? KAARS[postKaar] : "");
+    core = core + (KAAR_POST_CONVERSION[kaarString] || kaarString);
+    return core;
+}
+function bnBijoy2Unicode(string) {
+    var convText = string.replace(PRE_CONVERSION_PATTERN, function (m) { return PRE_CONVERSION_MAP[m] || string; });
+    convText = convText.replace(MAIN_CONVERSION_PATTERN, mainConverter);
+    convText = convText.replace(POST_CONVERSION_PATTERN, function (m) { return POST_CONVERSION_MAP[m] || convText; });
+    return convText;
+}
+exports.default = bnBijoy2Unicode;
+
+return exports.default;})();
+var fix=function(s){return s.replace(/\u09AF\u09BC/g,'\u09DF').replace(/\u09A1\u09BC/g,'\u09DC').replace(/\u09A2\u09BC/g,'\u09DD')};
+function enc1(u){
+  return __g.Unicode2ASCII.ConvertToASCII('bijoy',u.replace(/র[\u200C\u200D]্য/g,'র\u200C্য'))
+    .replace(/[\u200C\u200D]/g,'')
+    .replace(/&i/g,'ª').replace(/&e/g,'¡').replace(/&h/g,'¨').replace(/&g/g,'¥').replace(/&j/g,'¬');
+}
+function toBijoy(u){
+  var s=fix(u).replace(/[—–]/g,'\uE003').replace(/(র্[\u0995-\u09B9\u09DC\u09DD\u09DF](?:্[\u0995-\u09B9])*[\u09BE-\u09CC\u09D7]?)(?=র্)/g,'$1\uE001')
+    .split('\uE001').map(enc1).join('');
+  return s.replace(/(^|[\s(“‘"'Ò])‡/g,'$1†').replace(/\uE003/g,'Ñ');
+}
+function toUnicode(b){
+  var PH='\uE000';
+  var s=b.replace(/Ñ/g,'\uE002').replace(/i¨/g,PH).replace(/([A-Za-z`_¤¯®])ø/g,'$1¬');
+  return fix(__dec(s)).replace(new RegExp(PH,'g'),'র\u200D্য').replace(/\uE002/g,'—');
+}
+function looksBijoy(s){
+  if(!s||/[\u0980-\u09FF]/.test(s))return false;
+  var marks=(s.match(/[‡†ˆ‰©¨ª«¯š›¤®ÖË×ØÙÚÛÜÝÞßàáâãäåçéêëìíîïðñòóôõö÷øùûüýþÿ°±²³´µ¶·¸»¼½¾¿ÀÁÂÃÄÅÆÇÈÉÊÌÍÎÏ…„Š]/g)||[]).length;
+  var letters=(s.match(/[A-Za-z]/g)||[]).length;
+  var bijoyish=(s.match(/(^|\s)(Av|†|‡|w[A-Za-z]|[A-Za-z]v[A-Za-z])/g)||[]).length;
+  return marks>=2||(letters>8&&bijoyish>=3&&marks>=1);
+}
+window.BornonaBijoy={toBijoy:toBijoy,toUnicode:toUnicode,looksBijoy:looksBijoy};
+})();
+
+</script>
+<script>
+// Built-in word lists. Entries separated by "|". Multi-word entries are phrases.
+const LEX_BN_LEGAL=`আদালত|বিজ্ঞ|বিজ্ঞ আদালত|মাননীয়|মাননীয় আদালত|মহামান্য|বিচারক|বিচারপতি|হাইকোর্ট|হাইকোর্ট বিভাগ|সুপ্রিম কোর্ট|আপিল বিভাগ|জেলা জজ|অতিরিক্ত জেলা জজ|যুগ্ম জেলা জজ|সিনিয়র সহকারী জজ|সহকারী জজ|চীফ জুডিশিয়াল ম্যাজিস্ট্রেট|মেট্রোপলিটন ম্যাজিস্ট্রেট|ম্যাজিস্ট্রেট|ট্রাইব্যুনাল|ভূমি জরিপ ট্রাইব্যুনাল|অর্পিত সম্পত্তি প্রত্যর্পণ ট্রাইব্যুনাল|অর্থঋণ আদালত|পারিবারিক আদালত|
+বাদী|বাদীগণ|বাদীপক্ষ|বিবাদী|বিবাদীগণ|বিবাদীপক্ষ|প্রতিবাদী|প্রতিবাদীগণ|প্রতিপক্ষ|প্রতিপক্ষগণ|দরখাস্তকারী|আবেদনকারী|আপিলকারী|আপিলকারীগণ|রেসপনডেন্ট|পিটিশনার|ডিক্রিদার|দায়িক|পক্ষ|পক্ষগণ|উভয়পক্ষ|তৃতীয় পক্ষ|
+মোকদ্দমা|মোকদ্দমাটি|মামলা|মামলাটি|দেওয়ানী|দেওয়ানী মোকদ্দমা|ফৌজদারী|ফৌজদারী মামলা|অপর মোকদ্দমা|স্বত্ব মোকদ্দমা|বণ্টন মোকদ্দমা|ছানি মোকদ্দমা|মিস কেস|অপর আপিল|রিভিশন|রিভিশনটি|রিভিউ|রিট|রিট পিটিশন|রুল|রুল নিশি|পুনর্বিবেচনা|আপিল|আপিলটি|আপিল দায়ের|
+স্বত্ব|স্বত্ব ঘোষণা|স্বত্ববান|নিঃস্বত্ববান|স্বত্বাধিকারী|স্বত্ব দখল|দখল|খাস দখল|দখলচ্যুত|দখল পুনরুদ্ধার|পুনরুদ্ধার|ভোগদখল|ভোগদখলকার|ভোগদখলে আছেন|মালিক ও দখলকার|শান্তিপূর্ণভাবে|নির্বিবাদে|প্রকাশ্যে|বিরুদ্ধ দখল|জবরদখল|জবরদস্তিমূলকভাবে|উচ্ছেদ|
+নিষেধাজ্ঞা|চিরস্থায়ী নিষেধাজ্ঞা|অস্থায়ী নিষেধাজ্ঞা|অন্তর্বর্তীকালীন নিষেধাজ্ঞা|নির্দেশমূলক নিষেধাজ্ঞা|ঘোষণামূলক ডিক্রি|ডিক্রি|ডিক্রিজারি|রায়|রায় ও ডিক্রি|আদেশ|আদেশনামা|হুকুম|জারি|বণ্টন|বাটোয়ারা|ছাহাম|হিস্যা|অংশ|শরিক|সহ-শরিক|এজমালি|অগ্রক্রয়|প্রিয়েমশন|বায়না|বায়নানামা|চুক্তি|চুক্তিপত্র|সুনির্দিষ্ট প্রতিকার|প্রতিকার|ক্ষতিপূরণ|খরচা|খরচাসহ|খরচাসহ খারিজ|খরচাসহ ডিক্রি|
+আরজি|জবাব|লিখিত জবাব|লিখিত বর্ণনা|তফসিল|তফসিলভুক্ত|তফসিল বর্ণিত|নালিশী|নালিশী ভূমি|নালিশী সম্পত্তি|নালিশী তফসিল|নালিশের কারণ|মোকদ্দমার কারণ|ভূমি|জমি|জমিজমা|সম্পত্তি|স্থাবর সম্পত্তি|অস্থাবর সম্পত্তি|
+খতিয়ান|খতিয়ান নং|দাগ|দাগ নং|মৌজা|জেএল নং|তৌজি|পরগনা|সিএস খতিয়ান|এসএ খতিয়ান|আরএস খতিয়ান|বিএস খতিয়ান|সিটি জরিপ|মহানগর জরিপ|ঢাকা মহানগর জরিপ|ডিপি খতিয়ান|মাঠ পর্চা|পর্চা|শতাংশ|শতক|অযুতাংশ|একর|কাঠা|বিঘা|ছটাক|অযুতাংশ|পরিমাণ|পরিমাপ|সীমানা|চৌহদ্দি|উত্তরে|দক্ষিণে|পূর্বে|পশ্চিমে|
+নামজারি|জমাখারিজ|নামজারি ও জমাখারিজ|মিউটেশন|খাজনা|ভূমি উন্নয়ন কর|দাখিলা|রেকর্ড|রেকর্ডীয়|রেকর্ডীয় মালিক|রেকর্ডীয় প্রজা|মালিক|মালিকানা|মালিকানা স্বত্ব|মালিকানার ধারাবাহিকতা|চেইন অব টাইটেল|বায়া দলিল|
+ওয়ারিশ|ওয়ারিশগণ|ওয়ারিশান|ওয়ারিশ সূত্রে|ওয়ারিশ সূত্রে মালিক|উত্তরাধিকার|উত্তরাধিকারী|উত্তরাধিকারীগণ|ফারায়েজ|মৃত্যুকালে|রাখিয়া যান|রাখিয়া মৃত্যুবরণ করেন|মৃত্যুবরণ করেন|ত্যাজ্যবিত্ত|হেবা|হেবানামা|হেবা দলিল|হেবা বিল এওয়াজ|এওয়াজ|এওয়াজনামা|দানপত্র|ওয়াকফ|ওয়াকফনামা|মোতাওয়াল্লী|উইল|অছিয়তনামা|প্রবেট|বন্ধক|রেহেন|কবলা|সাফ কবলা|সাফ কবলা দলিল|
+দলিল|দলিল মূলে|দলিল দ্বারা|দলিল নং|দলিলের|রেজিস্ট্রি|রেজিস্ট্রেশন|রেজিস্ট্রিকৃত|রেজিস্ট্রিকৃত সাফ কবলা|সাব-রেজিস্ট্রি অফিস|সাব-রেজিস্ট্রার|নিবন্ধন|নিবন্ধিত|সম্পাদন|সম্পাদিত|সম্পাদনকারী|হস্তান্তর|হস্তান্তরিত|হস্তান্তরযোগ্য|বিক্রয়|বিক্রয় করেন|খরিদ|খরিদ করেন|ক্রেতা|বিক্রেতা|দাতা|গ্রহীতা|পণমূল্য|পণ|মূল্য পরিশোধ|পরিশোধিত|বুঝিয়া পাইয়া|বুঝাইয়া দিয়া|
+আমমোক্তারনামা|পাওয়ার অব অ্যাটর্নি|আমমোক্তার|প্রদত্ত|আইনজীবী|বিজ্ঞ আইনজীবী|অ্যাডভোকেট|কৌঁসুলি|ওকালতনামা|নোটিশ|লিগ্যাল নোটিশ|উকিল নোটিশ|সমন|সমন জারি|নোটিশ জারি|জারিকারক|নাজির|পেশকার|সেরেস্তাদার|বেঞ্চ সহকারী|কার্যতালিকা|কজলিস্ট|
+তারিখ|পরবর্তী তারিখ|ধার্য|ধার্য তারিখ|ধার্য তারিখে|মুলতবি|সময়ের দরখাস্ত|সময় প্রার্থনা|একতরফা|একতরফা ডিক্রি|একতরফা সূত্রে|দোতরফা|পুনঃস্থাপন|খারিজ|খারিজাদেশ|নামঞ্জুর|মঞ্জুর|মঞ্জুরি|প্রত্যাহার|আপোষ|আপোষনামা|সোলেনামা|মীমাংসা|সালিশ|মধ্যস্থতা|বিকল্প বিরোধ নিষ্পত্তি|নিষ্পত্তি|নিষ্পত্তিকৃত|বিচারাধীন|অনিষ্পন্ন|স্থিতাবস্থা|স্থিতাবস্থা বজায়|স্থগিত|স্থগিতাদেশ|
+এখতিয়ার|এখতিয়ারাধীন|এখতিয়ার সম্পন্ন|আঞ্চলিক এখতিয়ার|আর্থিক এখতিয়ার|রক্ষণীয়|রক্ষণীয়তা|অরক্ষণীয়|রক্ষণীয় নহে|তামাদি|তামাদি আইন|তামাদিতে বারিত|বারিত|পক্ষদোষ|পক্ষদোষে দুষ্ট|পক্ষভুক্ত|পক্ষভুক্তি|পক্ষান্তর|উদ্ভব|উদ্ভূত|মূল্যায়ন|কোর্ট ফি|অ্যাড ভ্যালোরেম|অ্যাড ভ্যালোরেম কোর্ট ফি|নির্ধারিত কোর্ট ফি|স্ট্যাম্প|স্ট্যাম্প শুল্ক|মূল্যমান|
+প্রার্থনা|প্রার্থনা এই যে|প্রার্থনাপূর্বক|প্রতিকার প্রার্থনা|সমীপে|বরাবর|বরাবরেষু|প্রেক্ষিতে|পরিপ্রেক্ষিতে|মোতাবেক|মর্মে|অনুযায়ী|অধীনে|ধারা|উপধারা|বিধি|আইন|আইনের|অধ্যাদেশ|দেওয়ানী কার্যবিধি|দেওয়ানী কার্যবিধির|ফৌজদারী কার্যবিধি|দণ্ডবিধি|সাক্ষ্য আইন|সুনির্দিষ্ট প্রতিকার আইন|সুনির্দিষ্ট প্রতিকার আইনের|সম্পত্তি হস্তান্তর আইন|সম্পত্তি হস্তান্তর আইনের|রাষ্ট্রীয় অধিগ্রহণ ও প্রজাস্বত্ব আইন|নিবন্ধন আইন|প্রজাস্বত্ব|সংবিধান|অনুচ্ছেদ|আদেশ ৩৯ বিধি ১ ও ২|ধারা ১৫১|
+দায়ের|দাখিল|দাখিলকৃত|উপস্থাপন|উপস্থাপিত|শুনানি|শুনানি অন্তে|শুনানির|সাক্ষী|সাক্ষীগণ|সাক্ষ্য|সাক্ষ্য প্রদান|সাক্ষ্যপ্রমাণ|জেরা|জেরা করেন|জবানবন্দি|প্রদর্শনী|প্রদর্শনী হিসেবে চিহ্নিত|প্রমাণ|প্রমাণিত|দালিলিক|মৌখিক|হলফনামা|এফিডেভিট|হলফকারী|শপথ|সত্যপাঠ|তদন্ত|তদন্তকারী কর্মকর্তা|প্রতিবেদন|কমিশন|অ্যাডভোকেট কমিশনার|স্থানীয় তদন্ত|সার্ভেয়ার|জরিপ|নকশা|
+অত্র|অত্র আদালত|অত্র মোকদ্দমা|অত্র মামলা|অত্র দরখাস্ত|উক্ত|উক্ত সম্পত্তি|উক্ত দলিল|উল্লেখিত|বর্ণিত|বর্ণিত সম্পত্তি|উপরোক্ত|নিম্নোক্ত|নিম্নবর্ণিত|উপরিউক্ত|বিধায়|যেহেতু|সেহেতু|অতএব|এমতাবস্থায়|সুতরাং|তৎপর|তৎকালীন|তদীয়|তাঁহার|তাঁহারা|তাহার|তাহাদের|যাহা|যাহার|যাহারা|করিয়া|হইয়া|হইতে|হইবে|হইয়াছে|করিয়াছেন|করিলেন|থাকেন|বটে|নহে|বিদ্যমান|অবস্থিত|সাকিন|সাং|
+পিতা|মাতা|স্বামী|স্ত্রী|পুত্র|কন্যা|ভ্রাতা|ভগ্নি|মৃত|মরহুম|মরহুমা|জীবিত|নাবালক|সাবালক|অভিভাবক|অভিভাবকত্ব|জাতীয় পরিচয়পত্র|জাতীয় পরিচয়পত্র নং|জন্ম নিবন্ধন|বর্তমান ঠিকানা|স্থায়ী ঠিকানা|ধর্ম|পেশা|জাতীয়তা|বাংলাদেশী|নাগরিক|প্রতিনিধি|প্রতিনিধিত্ব|
+জামিন|জামিনযোগ্য|জামিন অযোগ্য|জামিনের দরখাস্ত|আগাম জামিন|অন্তর্বর্তীকালীন|অভিযোগ|অভিযোগকারী|অভিযুক্ত|আসামি|আসামিগণ|এজাহার|এজাহারকারী|সিআর মামলা|জিআর মামলা|অভিযোগপত্র|চার্জশিট|চূড়ান্ত প্রতিবেদন|নারাজি|অব্যাহতি|খালাস|দোষী|নির্দোষ|সাজা|দণ্ড|কারাদণ্ড|অর্থদণ্ড|জরিমানা|ক্রোক|নিলাম|দেউলিয়া|অর্থঋণ|চেক ডিসঅনার|নেগোশিয়েবল ইনস্ট্রুমেন্টস অ্যাক্ট|
+ভাড়া|ভাড়াটিয়া|বাড়িওয়ালা|বাড়ি ভাড়া নিয়ন্ত্রণ আইন|ভাড়ানামা|ইজারা|ইজারাদার|লিজ|পত্তন|বর্গা|বর্গাদার|কৃষি|অকৃষি|খাস জমি|সরকার|গণপ্রজাতন্ত্রী বাংলাদেশ সরকার|জেলা প্রশাসক|সহকারী কমিশনার (ভূমি)|উপজেলা নির্বাহী অফিসার|ইউনিয়ন ভূমি অফিস|তহশিলদার|কালেক্টর|রাজস্ব|অধিগ্রহণ|হুকুমদখল|অর্পিত সম্পত্তি|পরিত্যক্ত সম্পত্তি|দেবোত্তর|পীরোত্তর|পয়স্তি|সিকস্তি|নাল|ভিটি|ভিটা|ডোবা|পুকুর|বাগান|রাস্তা|ইজমেন্ট|ব্যবহারস্বত্ব|প্রবেশাধিকার|
+অবৈধ|বৈধ|বাতিল|বাতিলযোগ্য|অকার্যকর|ভিত্তিহীন|মিথ্যা|বানোয়াট|যোগসাজশে|যোগসাজশ|প্রতারণা|প্রতারণামূলক|জাল|জালিয়াতি|তঞ্চকতা|তঞ্চকী|যথাযথ|যথাযথভাবে|আইনানুগ|আইনানুগভাবে|যথাযথ আইনানুগ ব্যবস্থা|আইনগত|আইনত|ন্যায়বিচার|ন্যায়বিচারের স্বার্থে|ন্যায়সংগত|সুবিচার|অপূরণীয়|অপূরণীয় ক্ষতি|সুবিধা-অসুবিধার ভারসাম্য|প্রথম দৃষ্টিতে|প্রাইমা ফেসি|প্রকৃতপক্ষে|দাবি|দাবিদার|দাবিকৃত|আপত্তি|আপত্তিকারী|ওজরআপত্তি|বিরোধ|বিরোধীয়|বিতর্কিত|স্বীকার|স্বীকারোক্তি|অস্বীকার|অবগত|অবহিত|জ্ঞাত|অজ্ঞাত|সজ্ঞানে|স্বেচ্ছায়|সুস্থ মস্তিষ্কে|স্বেচ্ছায় বিনা প্ররোচনায়|সত্ত্বেও|কর্তৃক|কর্তৃপক্ষ|
+বরাদ্দ|বরাদ্দপত্র|রাজউক|প্লট|ফ্ল্যাট|অ্যাপার্টমেন্ট|ডেভেলপার|ভূমি মালিক|ডেভেলপমেন্ট চুক্তি|ইমারত|ইমারত নির্মাণ|নকশা অনুমোদন|হোল্ডিং|হোল্ডিং নম্বর|পৌরসভা|সিটি কর্পোরেশন|ট্রেড লাইসেন্স|কোম্পানি|অংশীদারি কারবার|পরিচালক|পরিচালনা পর্ষদ|শেয়ারহোল্ডার|সংঘস্মারক|সংঘবিধি|সভা|রেজুলেশন|সিদ্ধান্ত|সমঝোতা স্মারক|শর্ত|শর্তাবলি|শর্তসাপেক্ষে|শর্তভঙ্গ|চুক্তিভঙ্গ|মেয়াদ|মেয়াদোত্তীর্ণ|নবায়ন|বিজ্ঞপ্তি|ঘোষণা|ঘোষণাপত্র|প্রত্যয়নপত্র|সার্টিফিকেট|সার্টিফাইড কপি|জাবেদা নকল|নকল|মূলকপি|ফটোকপি|সত্যায়িত|সত্যায়িত ফটোকপি|স্বাক্ষর|স্বাক্ষরিত|টিপসহি|শনাক্তকারী|মুসাবিদা|মুসাবিদাকারী|খসড়া|
+অদ্য|অদ্যাবধি|ইতিপূর্বে|ইতোমধ্যে|পুরুষানুক্রমে|মূলে|দ্বারা|প্রাপ্ত|প্রাপক|প্রেরক|প্রদান|প্রদানপূর্বক|গ্রহণপূর্বক|বিবেচনাপূর্বক|সদয় বিবেচনা|সবিনয় নিবেদন এই যে|নিবেদন|আবেদনপত্র|দরখাস্ত|দরখাস্তটি|বিনীত|বিনীতভাবে|মর্জি হয়|আদেশ দানে মর্জি হয়|ধর্মাবতার|বাধিত|চিরবাধিত|যথাবিহিত|ব্যবস্থা গ্রহণ|আইনি পদক্ষেপ|আইনি ব্যবস্থা|আইনি মতামত|যাচাই-বাছাই|তল্লাশি|কারণ দর্শানো নোটিশ|কারণ দর্শানোর`;
+
+const LEX_BN_COMMON=`আমি|আমার|আমরা|আমাদের|তুমি|তোমার|আপনি|আপনার|আপনাদের|সে|তার|তাঁর|তারা|তাদের|তাঁদের|এই|ওই|সেই|এটা|এটি|ওটা|সেটা|সেটি|যে|যা|যার|কী|কি|কেন|কেমন|কোথায়|কখন|কত|কোন|কাকে|হ্যাঁ|না|এবং|ও|আর|কিন্তু|অথবা|বা|তবে|যদি|তাহলে|তবুও|কারণ|যেমন|মতো|জন্য|থেকে|হতে|দিয়ে|নিয়ে|সাথে|সঙ্গে|কাছে|পর্যন্ত|মধ্যে|ভেতরে|বাইরে|উপর|নিচে|আগে|পরে|এখন|তখন|আজ|আগামীকাল|গতকাল|সকাল|দুপুর|বিকাল|সন্ধ্যা|রাত|সময়|দিন|সপ্তাহ|মাস|বছর|সাল|সন|হয়|হয়েছে|হবে|হচ্ছে|ছিল|ছিলেন|আছে|আছেন|নেই|করা|করে|করি|করেন|করবে|করবেন|করব|করছি|করেছি|করেছে|করেছেন|বলা|বলে|বলেন|বলছি|দেখা|দেখুন|যাওয়া|যাবে|আসা|আসবে|দেওয়া|দিন|নেওয়া|নিন|পারি|পারবেন|পারে|চাই|চান|জানি|জানাবেন|জানাচ্ছি|বুঝতে|মনে|ভালো|খারাপ|বড়|ছোট|নতুন|পুরোনো|সব|সকল|অনেক|কিছু|কম|বেশি|প্রতি|প্রত্যেক|একই|অন্য|অন্যান্য|নিজ|নিজের|মানুষ|কাজ|কথা|বিষয়|বিষয়ে|ব্যাপারে|প্রশ্ন|উত্তর|সমস্যা|সমাধান|তথ্য|কাগজপত্র|ফাইল|অফিস|বাসা|বাড়ি|পরিবার|ধন্যবাদ|অনুগ্রহপূর্বক|দয়া করে|শুভেচ্ছা|আসসালামু আলাইকুম|জনাব|বেগম|মোহাম্মদ|মোঃ|মোছাঃ|বাংলাদেশ|ঢাকা|চট্টগ্রাম|গাজীপুর|নারায়ণগঞ্জ|সাভার|কেরানীগঞ্জ|মোহাম্মদপুর|মিরপুর|টাকা|হাজার|লক্ষ|লাখ|কোটি|এক|দুই|তিন|চার|পাঁচ|ছয়|সাত|আট|নয়|দশ|প্রথম|দ্বিতীয়|তৃতীয়|চতুর্থ|পঞ্চম|শেষ|মোট|অর্ধেক|সমান|প্রায়|ঠিক|ভুল|অবশ্যই|হয়তো|সম্ভবত|নিশ্চিত|দরকার|প্রয়োজন|প্রয়োজনীয়|গুরুত্বপূর্ণ|জরুরি|সম্পর্কে|সংক্রান্ত|সংশ্লিষ্ট|অনুসারে|হিসেবে|মাধ্যমে|পক্ষে|বিপক্ষে|বিরুদ্ধে|যেখানে|সেখানে|এখানে|যখন|আবার|শুধু|কেবল|এমনকি|বরং|তাই|ফলে|অর্থাৎ|উল্লেখ্য|বিশেষ|বিশেষত|সাধারণত|স্পষ্ট|পরিষ্কার|সহজ|কঠিন|দ্রুত|শুরু|পাঠাবেন|পাঠিয়েছি|পেয়েছি|পাবেন|রাখুন|লিখুন|পড়ুন|খবর|যোগাযোগ|মোবাইল|ফোন|ইমেইল|ঠিকানা|নাম|পিতার নাম|মাতার নাম|স্বামীর নাম`;
+
+const LEX_EN=`plaintiff|plaintiffs|defendant|defendants|petitioner|petitioners|respondent|respondents|appellant|appellants|appellee|applicant|opposite party|complainant|accused|prosecution|defence|defense|counsel|learned counsel|advocate|attorney|solicitor|barrister|learned|court|Hon'ble|honourable|tribunal|judge|justice|magistrate|judgment|judgement|decree|order|injunction|temporary injunction|permanent injunction|interim|ex parte|ad interim|status quo|stay|writ|writ petition|mandamus|certiorari|prohibition|quo warranto|habeas corpus|rule nisi|suo motu|affidavit|verification|vakalatnama|power of attorney|plaint|written statement|petition|application|appeal|revision|review|restoration|rejection of plaint|return of plaint|cause of action|jurisdiction|pecuniary jurisdiction|territorial jurisdiction|maintainability|maintainable|limitation|barred by limitation|res judicata|res sub judice|sub judice|estoppel|waiver|acquiescence|laches|ad valorem|ad valorem court fee|court fee|valuation|suit|suit property|suit land|schedule|scheduled|mutation|khatian|record of rights|title|declaration of title|possession|recovery of possession|khas possession|partition|pre-emption|specific performance|contract|agreement|agreement for sale|deed|sale deed|deed of gift|heba|registered|unregistered|registration|sub-registrar|execution|executed|executant|vendor|vendee|purchaser|seller|transferee|transferor|lessor|lessee|tenant|landlord|tenancy|lease|mortgage|mortgagor|mortgagee|lien|encumbrance|easement|right of way|inheritance|heir|heirs|successor|legal representative|succession|will|probate|letters of administration|guardian|minor|trust|trustee|beneficiary|waqf|mutawalli|fraud|fraudulent|collusion|forgery|forged|misrepresentation|coercion|undue influence|void|voidable|null and void|illegal|unlawful|lawful|legal|valid|invalid|binding|enforceable|remedy|relief|damages|compensation|costs|with costs|interest|mesne profits|evidence|exhibit|witness|witnesses|cross-examination|examination-in-chief|deposition|testimony|burden of proof|onus|presumption|admission|confession|hearsay|documentary evidence|oral evidence|prima facie|balance of convenience|irreparable loss|bona fide|mala fide|inter alia|ipso facto|mutatis mutandis|pari passu|pro rata|per se|de facto|de jure|in lieu of|notwithstanding|hereinafter|hereinbefore|herein|thereof|therein|thereto|whereas|wherefore|hereby|aforesaid|aforementioned|subject to|pursuant to|in accordance with|section|sub-section|clause|article|rule|regulation|ordinance|act|statute|Code of Civil Procedure|Code of Criminal Procedure|Penal Code|Evidence Act|Specific Relief Act|Transfer of Property Act|Limitation Act|Registration Act|State Acquisition and Tenancy Act|Constitution|Supreme Court of Bangladesh|High Court Division|Appellate Division|District Judge|Joint District Judge|Senior Assistant Judge|Assistant Judge|Chief Judicial Magistrate|Metropolitan Magistrate|bail|anticipatory bail|charge sheet|first information report|investigation|inquiry|final report|discharge|acquittal|conviction|sentence|fine|imprisonment|cognizance|summons|warrant|notice|legal notice|service of notice|attachment|auction|execution case|decree-holder|judgment-debtor|arbitration|arbitrator|mediation|alternative dispute resolution|settlement|compromise|withdrawal|dismissed|allowed|rejected|granted|disposed of|pending|adjourned|adjournment|hearing|cause list|memorandum|company|director|shareholder|board of directors|resolution|articles of association|memorandum of association|partnership|proprietor|indemnity|warranty|representation|covenant|consideration|breach|breach of contract|termination|force majeure|confidentiality|governing law|dispute resolution|severability|assignment|stamp duty|notary|notarized|attested|certified copy|true copy|original|annexure|annexed|marked as|undersigned|deponent|solemnly affirm|
+the|and|of|to|in|that|is|was|for|on|with|as|by|at|from|this|be|are|have|has|had|not|it|he|she|they|we|you|his|her|their|our|your|which|who|whom|whose|what|when|where|why|how|all|any|each|other|such|no|nor|only|own|same|so|than|too|very|can|will|would|shall|should|may|might|must|could|do|does|did|done|make|made|take|taken|give|given|said|say|see|know|think|come|go|get|also|after|before|between|under|over|into|through|during|without|against|within|upon|about|above|below|again|further|then|once|here|there|both|few|more|most|some|many|much|new|old|first|last|good|high|low|different|possible|necessary|important|please|thank you|regards|sincerely|dear|sir|madam|date|day|month|year|time|today|tomorrow|yesterday|name|address|father|mother|son|daughter|wife|husband|brother|sister|Bangladesh|Dhaka|district|upazila|police station|village|holding|road|house|flat|plot|land|property|money|Taka|amount|payment|paid|received|send|sent|letter|request|requested|information|document|documents|copy|file|office|meeting|matter|issue|question|answer|reply|regarding|concerning|therefore|however|moreover|furthermore|accordingly|hence|thus|although|because|since|unless|until|while|whether|either|neither|if|or|but|yet`;
+
+// common collocations: seed word-to-next-word predictions
+const SEED_PHRASES=`বিজ্ঞ আদালত|মাননীয় আদালত|অত্র আদালত|দলিল মূলে খরিদ করেন|দলিল দ্বারা বিক্রয় করেন|দলিল মূলে মালিক|ভোগদখলে আছেন|মালিক ও দখলকার|স্বত্ব ঘোষণা|চিরস্থায়ী নিষেধাজ্ঞা|অস্থায়ী নিষেধাজ্ঞা|নালিশী সম্পত্তি|নালিশী ভূমি|নালিশী তফসিল|তফসিল বর্ণিত সম্পত্তি|উক্ত সম্পত্তি|উক্ত দলিল|অত্র মোকদ্দমা|মোকদ্দমার কারণ উদ্ভব হয়|নালিশের কারণ|এখতিয়ার সম্পন্ন|তামাদিতে বারিত|পক্ষদোষে দুষ্ট|রক্ষণীয় নহে|খরচাসহ খারিজ|খরচাসহ ডিক্রি|ন্যায়বিচারের স্বার্থে|সদয় বিবেচনা|সবিনয় নিবেদন এই যে|প্রার্থনা এই যে|আদেশ দানে মর্জি হয়|অপূরণীয় ক্ষতি|সুস্থ মস্তিষ্কে|স্বেচ্ছায় বিনা প্ররোচনায়|বুঝিয়া পাইয়া|ওয়ারিশ সূত্রে মালিক|মৃত্যুকালে রাখিয়া যান|রাখিয়া মৃত্যুবরণ করেন|সাফ কবলা দলিল|রেজিস্ট্রিকৃত সাফ কবলা দলিল|সাব-রেজিস্ট্রি অফিস|রেকর্ডীয় মালিক|খতিয়ান নং|দাগ নং|শান্তিপূর্ণভাবে ভোগদখল|নির্বিবাদে ভোগদখল|অ্যাড ভ্যালোরেম কোর্ট ফি|স্থিতাবস্থা বজায় রাখার|কারণ দর্শানো নোটিশ|লিখিত জবাব দাখিল|পরবর্তী তারিখ|ধার্য তারিখে|শুনানি অন্তে|সাক্ষ্য প্রদান|জাতীয় পরিচয়পত্র নং|যথাযথ আইনানুগ ব্যবস্থা|দেওয়ানী কার্যবিধির আদেশ|সুনির্দিষ্ট প্রতিকার আইনের ধারা|
+learned counsel|learned court|cause of action|barred by limitation|in accordance with|subject to|null and void|prima facie case|balance of convenience|irreparable loss|written statement|power of attorney|sale deed|suit land|suit property|with costs|Code of Civil Procedure|High Court Division|Appellate Division|ad valorem court fee|record of rights|recovery of possession|declaration of title`;
+
+</script>
+<script>
+(function(){
+// Bornona mapping, extracted from Bornona.avrolayout: [normal, shift]
+const BUILTIN_LAYOUTS=[{"id":"bornona","name":"Bornona","dev":"The Safeworks","map":{"Backquote":["্‌","~"],"Digit1":["১","!"],"Digit2":["২","ঁ"],"Digit3":["৩","#"],"Digit4":["৪","৳"],"Digit5":["৫","%"],"Digit6":["৬","ঃ"],"Digit7":["৭","ৎ"],"Digit8":["৮","*"],"Digit9":["৯","("],"Digit0":["০",")"],"Minus":["-","_"],"Equal":["=","+"],"KeyQ":["ং","ঙ"],"KeyW":["ঢ","ঠ"],"KeyE":["ে","ৈ"],"KeyR":["র","ৃ"],"KeyT":["ত","ট"],"KeyY":["ধ","থ"],"KeyU":["ু","ূ"],"KeyI":["ি","ী"],"KeyO":["ো","ৌ"],"KeyP":["প","্র"],"BracketLeft":["[","{"],"BracketRight":["]","}"],"Backslash":["র‍্য","/-"],"KeyA":["া","অ"],"KeyS":["স","শ"],"KeyD":["দ","ড"],"KeyF":["ফ","র্"],"KeyG":["গ","ঘ"],"KeyH":["্","হ"],"KeyJ":["জ","ঝ"],"KeyK":["ক","খ"],"KeyL":["ল","।"],"Semicolon":[";",":"],"Quote":["'","\""],"KeyZ":["য","ড়"],"KeyX":["ষ","ঢ়"],"KeyC":["চ","ছ"],"KeyV":["ভ","্য"],"KeyB":["ব","য়"],"KeyN":["ন","ণ"],"KeyM":["ম","ঞ"],"Comma":[",","<"],"Period":[".",">"],"Slash":["/","?"],"Numpad1":["১"],"Numpad2":["২"],"Numpad3":["৩"],"Numpad4":["৪"],"Numpad5":["৫"],"Numpad6":["৬"],"Numpad7":["৭"],"Numpad8":["৮"],"Numpad9":["৯"],"Numpad0":["০"],"NumpadAdd":["+"],"NumpadDecimal":["."],"NumpadDivide":["/"],"NumpadMultiply":["*"],"NumpadSubtract":["-"]}},{"id":"national","name":"National (Jatiya)","dev":"Bangladesh Computer Council (BCC)","map":{"Backquote":["‌","‍","‌","‍"],"Digit1":["১","!","৴"],"Digit2":["২","@","৵"],"Digit3":["৩","#","৶"],"Digit4":["৪","$","৳","৲"],"Digit5":["৫","%","৷"],"Digit6":["৬","^","৸","ৎ"],"Digit7":["৭","&"],"Digit8":["৮","*"],"Digit9":["৯","("],"Digit0":["০",")"],"Minus":["-","_"],"Equal":["=","+"],"KeyQ":["ঙ","ং","ৢ","ৣ"],"KeyW":["য","য়"],"KeyE":["ড","ঢ","ৄ"],"KeyR":["প","ফ"],"KeyT":["ট","ঠ"],"KeyY":["চ","ছ"],"KeyU":["জ","ঝ"],"KeyI":["হ","ঞ","ঽ"],"KeyO":["গ","ঘ"],"KeyP":["ড়","ঢ়"],"BracketLeft":["[","{"],"BracketRight":["]","}"],"Backslash":["\\","|"],"KeyA":["ৃ","ৗ","ঋ","ৠ"],"KeyS":["ু","ূ","উ","ঊ"],"KeyD":["ি","ী","ই","ঈ"],"KeyF":["ব","ভ","ৰ","ৱ"],"KeyG":["্","।","॥"],"KeyH":["া","অ","আ"],"KeyJ":["ক","খ"],"KeyK":["ত","থ"],"KeyL":["দ","ধ","ঌ","ৡ"],"Semicolon":[";",":"],"Quote":["'","\""],"KeyZ":["ঁ","ঃ","৺"],"KeyX":["ো","ৌ","ও","ঔ"],"KeyC":["ে","ৈ","এ","ঐ"],"KeyV":["র","ল"],"KeyB":["ন","ণ"],"KeyN":["স","ষ"],"KeyM":["ম","শ"],"Comma":[",","<"],"Period":[".",">"],"Slash":["/","?"],"Numpad1":["১"],"Numpad2":["২"],"Numpad3":["৩"],"Numpad4":["৪"],"Numpad5":["৫"],"Numpad6":["৬"],"Numpad7":["৭"],"Numpad8":["৮"],"Numpad9":["৯"],"Numpad0":["০"],"NumpadAdd":["+"],"NumpadDecimal":["."],"NumpadDivide":["/"],"NumpadMultiply":["*"],"NumpadSubtract":["-"]}},{"id":"probhat","name":"Probhat","dev":"Shabab Mustafa","map":{"Backquote":["‍","~"],"Digit1":["১","!","৴"],"Digit2":["২","@","৵"],"Digit3":["৩","#","৶"],"Digit4":["৪","৳","৷","৲"],"Digit5":["৫","%"],"Digit6":["৬","^"],"Digit7":["৭","ঞ","","৺"],"Digit8":["৮","ৎ"],"Digit9":["৯","("],"Digit0":["০",")","৸","৹"],"Minus":["-","_"],"Equal":["=","+"],"KeyQ":["দ","ধ"],"KeyW":["ূ","ঊ"],"KeyE":["ী","ঈ"],"KeyR":["র","ড়"],"KeyT":["ট","ঠ"],"KeyY":["এ","ঐ"],"KeyU":["ু","উ"],"KeyI":["ি","ই"],"KeyO":["ও","ঔ"],"KeyP":["প","ফ"],"BracketLeft":["ে","ৈ"],"BracketRight":["ো","ৌ","ৗ"],"Backslash":["‌","॥"],"KeyA":["া","অ","ঌ","ৠ"],"KeyS":["স","ষ","ৡ","ৣ"],"KeyD":["ড","ঢ","ৄ","ৢ"],"KeyF":["ত","থ"],"KeyG":["গ","ঘ"],"KeyH":["হ","ঃ","ঽ"],"KeyJ":["জ","ঝ"],"KeyK":["ক","খ"],"KeyL":["ল","ং"],"Semicolon":[";",":"],"Quote":["'","\""],"KeyZ":["য়","য"],"KeyX":["শ","ঢ়"],"KeyC":["চ","ছ"],"KeyV":["আ","ঋ"],"KeyB":["ব","ভ"],"KeyN":["ন","ণ"],"KeyM":["ম","ঙ"],"Comma":[",","ৃ"],"Period":["।","ঁ","়"],"Slash":["্","?"],"Numpad1":["১"],"Numpad2":["২"],"Numpad3":["৩"],"Numpad4":["৪"],"Numpad5":["৫"],"Numpad6":["৬"],"Numpad7":["৭"],"Numpad8":["৮"],"Numpad9":["৯"],"Numpad0":["০"],"NumpadAdd":["+"],"NumpadDecimal":["."],"NumpadDivide":["/"],"NumpadMultiply":["*"],"NumpadSubtract":["-"]}},{"id":"munir","name":"Munir Optima (uni)","dev":"Shabab Mustafa","map":{"Backquote":["৳","‍","ৰ"],"Digit1":["_","ঁ","ৱ"],"Digit2":["ই","ঐ"],"Digit3":["ও","১","৲"],"Digit4":["ড","২","৴"],"Digit5":["?","৩","৵"],"Digit6":["গ","৪","৶"],"Digit7":["চ","৫","৷"],"Digit8":["ং","০","৸"],"Digit9":["'","৯","৺"],"Digit0":["ষ","৮","৹"],"Minus":["(","৭"],"Equal":[")","৬"],"KeyQ":["ু","ূ"],"KeyW":["ৌ","র্","ৗ"],"KeyE":["ট",""],"KeyR":["দ","ক্ষ"],"KeyT":["ছ","ঝ"],"KeyY":["ঢ","ঘ"],"KeyU":["অ","ভ"],"KeyI":["য","ঠ"],"KeyO":["হ","খ"],"KeyP":["ম","ধ"],"BracketLeft":["/","+"],"BracketRight":["-","%"],"Backslash":["‌","@"],"KeyA":["্র","ৃ","ৄ"],"KeyS":[".","ড়","়"],"KeyD":["স","ঢ়","ৠ"],"KeyF":["ন","ঞ","ৡ"],"KeyG":["ে","ৎ","ৢ"],"KeyH":["া","্য","ৣ"],"KeyJ":["ত","ঈ"],"KeyK":["র","ণ"],"KeyL":["ি","ী"],"Semicolon":["ব","উ"],"Quote":["ক","ঋ","ঌ"],"KeyZ":["আ","ঊ"],"KeyX":["্","ঔ"],"KeyC":["ো","য়"],"KeyV":[",","ৈ"],"KeyB":["প","ফ"],"KeyN":["এ",";"],"KeyM":["জ","ঙ"],"Comma":["শ","-"],"Period":["ল","থ"],"Slash":["।","ঃ","॥"],"Numpad1":["১"],"Numpad2":["২"],"Numpad3":["৩"],"Numpad4":["৪"],"Numpad5":["৫"],"Numpad6":["৬"],"Numpad7":["৭"],"Numpad8":["৮"],"Numpad9":["৯"],"Numpad0":["০"],"NumpadAdd":["+"],"NumpadDecimal":["."],"NumpadDivide":["/"],"NumpadMultiply":["*"],"NumpadSubtract":["-"]}},{"id":"avroeasy","name":"Avro Easy","dev":"www.omicronlab.com","map":{"Backquote":["‌","‍"],"Digit1":["১","!"],"Digit2":["২","ঁ"],"Digit3":["৩","#"],"Digit4":["৪","৳"],"Digit5":["৫","%"],"Digit6":["৬","ঃ"],"Digit7":["৭","ৎ"],"Digit8":["৮","*"],"Digit9":["৯","("],"Digit0":["০",")"],"Minus":["-","_"],"Equal":["=","+"],"KeyQ":["ড়","ঢ়"],"KeyW":["ং","ঙ"],"KeyE":["য","য়"],"KeyR":["র","ল"],"KeyT":["ট","ঠ"],"KeyY":["ড","ঢ"],"KeyU":["ত","থ"],"KeyI":["দ","ধ"],"KeyO":["চ","ছ"],"KeyP":["প","ফ"],"BracketLeft":["[","{"],"BracketRight":["]","}"],"Backslash":["ৱ","ৰ"],"KeyA":["ো","ৌ","ও","ঔ"],"KeyS":["ে","ৈ","এ","ঐ"],"KeyD":["ু","ূ","উ","ঊ"],"KeyF":["ি","ী","ই","ঈ"],"KeyG":["া","অ","আ","অ"],"KeyH":["্","।"],"KeyJ":["জ","ঝ"],"KeyK":["ক","খ"],"KeyL":["গ","ঘ"],"Semicolon":[";",":"],"Quote":["'","\""],"KeyZ":["ৃ","র্"],"KeyX":["্র","্য"],"KeyC":["শ","হ"],"KeyV":["স","ষ"],"KeyB":["ব","ভ"],"KeyN":["ন","ণ"],"KeyM":["ম","ঞ"],"Comma":[",","<"],"Period":[".",">"],"Slash":["/","?"],"Numpad1":["১"],"Numpad2":["২"],"Numpad3":["৩"],"Numpad4":["৪"],"Numpad5":["৫"],"Numpad6":["৬"],"Numpad7":["৭"],"Numpad8":["৮"],"Numpad9":["৯"],"Numpad0":["০"],"NumpadAdd":["+"],"NumpadDecimal":["."],"NumpadDivide":["/"],"NumpadMultiply":["*"],"NumpadSubtract":["-"]}}];
+let MAP={
+ Backquote:['‌','~'],Digit1:['১','!'],Digit2:['২','ঁ'],Digit3:['৩','#'],Digit4:['৪','৳'],Digit5:['৫','%'],Digit6:['৬','ঃ'],Digit7:['৭','ৎ'],Digit8:['৮','*'],Digit9:['৯','('],Digit0:['০',')'],Minus:['-','_'],Equal:['=','+'],
+ KeyQ:['ং','ঙ'],KeyW:['ঢ','ঠ'],KeyE:['ে','ৈ'],KeyR:['র','ৃ'],KeyT:['ত','ট'],KeyY:['ধ','থ'],KeyU:['ু','ূ'],KeyI:['ি','ী'],KeyO:['ো','ৌ'],KeyP:['প','্র'],BracketLeft:['[','{'],BracketRight:[']','}'],Backslash:['র\u200D\u09CDয','/-'],
+ KeyA:['া','অ'],KeyS:['স','শ'],KeyD:['দ','ড'],KeyF:['ফ','র্'],KeyG:['গ','ঘ'],KeyH:['্','হ'],KeyJ:['জ','ঝ'],KeyK:['ক','খ'],KeyL:['ল','।'],Semicolon:[';',':'],Quote:["'",'"'],
+ KeyZ:['য','ড়'],KeyX:['ষ','ঢ়'],KeyC:['চ','ছ'],KeyV:['ভ','্য'],KeyB:['ব','য়'],KeyN:['ন','ণ'],KeyM:['ম','ঞ'],Comma:[',','<'],Period:['.','>'],Slash:['/','?'],
+ Numpad0:['০'],Numpad1:['১'],Numpad2:['২'],Numpad3:['৩'],Numpad4:['৪'],Numpad5:['৫'],Numpad6:['৬'],Numpad7:['৭'],Numpad8:['৮'],Numpad9:['৯'],
+ NumpadAdd:['+'],NumpadSubtract:['-'],NumpadMultiply:['*'],NumpadDivide:['/'],NumpadDecimal:['.']
+};
+// US QWERTY characters per key, for English mode and for devices that send no key code
+const US={Backquote:'`~',Digit1:'1!',Digit2:'2@',Digit3:'3#',Digit4:'4$',Digit5:'5%',Digit6:'6^',Digit7:'7&',Digit8:'8*',Digit9:'9(',Digit0:'0)',Minus:'-_',Equal:'=+',
+ KeyQ:'qQ',KeyW:'wW',KeyE:'eE',KeyR:'rR',KeyT:'tT',KeyY:'yY',KeyU:'uU',KeyI:'iI',KeyO:'oO',KeyP:'pP',BracketLeft:'[{',BracketRight:']}',Backslash:'\\|',
+ KeyA:'aA',KeyS:'sS',KeyD:'dD',KeyF:'fF',KeyG:'gG',KeyH:'hH',KeyJ:'jJ',KeyK:'kK',KeyL:'lL',Semicolon:';:',Quote:'\'"',
+ KeyZ:'zZ',KeyX:'xX',KeyC:'cC',KeyV:'vV',KeyB:'bB',KeyN:'nN',KeyM:'mM',Comma:',<',Period:'.>',Slash:'/?'};
+const REV={};for(const c in US){REV[US[c][0]]=[c,0];REV[US[c][1]]=[c,1]}
+
+const KAR={'া':'আ','ি':'ই','ী':'ঈ','ু':'উ','ূ':'ঊ','ৃ':'ঋ','ে':'এ','ৈ':'ঐ','ো':'ও','ৌ':'ঔ'};
+const isCons=ch=>!!ch&&((ch>='ক'&&ch<='হ')||ch==='ড়'||ch==='ঢ়'||ch==='য়'||ch==='়');
+const BN_DIG='০১২৩৪৫৬৭৮৯';const bn=n=>String(n).replace(/\d/g,d=>BN_DIG[d]);
+
+const $=id=>document.getElementById(id);
+const ta=$('ta'),kb=$('kb');
+const store={get(k,d){try{const v=localStorage.getItem('bornona.'+k);return v===null?d:JSON.parse(v)}catch(e){return d}},
+             set(k,v){try{localStorage.setItem('bornona.'+k,JSON.stringify(v))}catch(e){}}};
+const coarse=matchMedia('(pointer:coarse)').matches;
+let st={bangla:store.get('bangla',true),vf:store.get('vf',true),serif:false,layout:store.get('layout','bornona'),
+        size:store.get('size',20),kb:store.get('kb',true),
+        vlang:store.get('vlang','auto'),vcmd:store.get('vcmd',true),vdig:store.get('vdig',true),corr:store.get('corr',''),autoBj:store.get('autoBj',true),
+        font:store.get('font','Noto Sans Bengali'),ansi:store.get('ansi',''),oldReph:store.get('oldReph',false),enFont:store.get('enFont','Times New Roman')};
+const LIVE_VOICE=true;
+let shift=0; // 0 off, 1 one-shot, 2 locked
+let physShift=false, inserting=false, micMode=false, listening=false;
+const fixNukta=s=>s.replace(/\u09AF\u09BC/g,'\u09DF').replace(/\u09A1\u09BC/g,'\u09DC').replace(/\u09A2\u09BC/g,'\u09DD');
+
+// ---------- text insertion ----------
+function insert(text){
+  if(document.activeElement!==ta) ta.focus();
+  let s=ta.selectionStart,e=ta.selectionEnd;
+  if(st.bangla&&st.vf&&KAR[text]&&s===e){
+    const prev=ta.value[s-1];
+    if(prev==='অ'&&text==='া'){ta.setSelectionRange(s-1,s);text='আ'}
+    else if(!isCons(prev)&&prev!=='্') text=KAR[text];
+  }
+  text=fixNukta(text);
+  inserting=true;
+  let ok=false;try{ok=document.execCommand('insertText',false,text)}catch(err){}
+  if(!ok){ta.setRangeText(text,ta.selectionStart,ta.selectionEnd,'end');ta.dispatchEvent(new Event('input'))}
+  inserting=false;
+  if(/\S\s+\S/.test(text)&&typeof learnText==='function')learnText(text);
+}
+const RE_CLUS=/[\u0995-\u09B9\u09DC\u09DD\u09DF](?:\u09CD[\u0995-\u09B9\u09DC\u09DD\u09DF])*[\u09BE-\u09CC\u09D7]?$/;
+function typeChar(out){
+  if(st.bangla&&st.oldReph&&out==='র্'&&ta.selectionStart===ta.selectionEnd){
+    const s=ta.selectionStart,m=ta.value.slice(0,s).match(RE_CLUS);
+    if(m&&!ta.value.slice(0,s-m[0].length).endsWith('র্')){ta.focus();ta.setSelectionRange(s-m[0].length,s);insert('র্'+m[0]);return}
+  }
+  insert(out);
+}
+function backspace(){
+  if(document.activeElement!==ta) ta.focus();
+  let ok=false;try{ok=document.execCommand('delete')}catch(err){}
+  if(!ok){let s=ta.selectionStart,e=ta.selectionEnd;
+    if(s===e&&s>0){s=s-1;if(s>0&&/[\uDC00-\uDFFF]/.test(ta.value[s]))s--}
+    ta.setRangeText('',s,e,'end');ta.dispatchEvent(new Event('input'))}
+}
+let altgr=0,physAlt=false,hasAlt=false;
+function charFor(code,sh,alt){
+  if(st.bangla){const m=MAP[code];if(!m)return '';if(code.startsWith('Numpad'))return m[0]||'';return m[(alt?2:0)+(sh?1:0)]||''}
+  const u=US[code];return u?u[sh?1:0]:'';
+}
+
+// ---------- physical keyboard ----------
+ta.addEventListener('keydown',e=>{
+  if(e.ctrlKey&&!e.altKey&&!e.metaKey&&(e.code==='Space'||e.key===' ')){e.preventDefault();setMode(!st.bangla);return}
+  if(e.key==='Shift'){physShift=true;paintShift();return}
+  if((e.key==='Alt'||e.key==='AltGraph')&&hasAlt){physAlt=true;paint();return}
+  const alt=!e.metaKey&&(e.altKey||(e.getModifierState&&e.getModifierState('AltGraph')));
+  if(micMode||!st.bangla||e.isComposing||e.metaKey||(e.ctrlKey&&!alt)||(alt&&!hasAlt))return;
+  let code=e.code,sh=e.shiftKey;
+  if(code&&code.startsWith('Numpad')&&MAP[code]){if(e.key.length!==1)return}
+  else if(!MAP[code]){const r=REV[e.key];if(!r)return;code=r[0];sh=!!r[1]}
+  else{const r=REV[e.key];if(r&&r[0]===code&&!code.startsWith('Key'))sh=!!r[1]}
+  if(alt&&!code)return;
+  const out=charFor(code,sh,alt);if(!out){if(alt)e.preventDefault();return}
+  e.preventDefault();flash(code);typeChar(out);
+});
+ta.addEventListener('keyup',e=>{if(e.key==='Shift'){physShift=false;paintShift()}if(e.key==='Alt'||e.key==='AltGraph'){physAlt=false;paint()}});
+window.addEventListener('blur',()=>{physShift=false;paintShift()});
+// fallback for touch keyboards that skip keydown
+ta.addEventListener('beforeinput',e=>{
+  if(inserting||micMode||!st.bangla||e.inputType!=='insertText'||!e.data||e.data.length!==1||!e.cancelable)return;
+  const r=REV[e.data];if(!r)return;const out=charFor(r[0],!!r[1]);if(!out)return;
+  e.preventDefault();insert(out);
+});
+
+// ---------- on-screen keyboard ----------
+const ROWS=[
+ ['Backquote','Digit1','Digit2','Digit3','Digit4','Digit5','Digit6','Digit7','Digit8','Digit9','Digit0','Minus','Equal'],
+ ['KeyQ','KeyW','KeyE','KeyR','KeyT','KeyY','KeyU','KeyI','KeyO','KeyP','BracketLeft','BracketRight','Backslash'],
+ ['KeyA','KeyS','KeyD','KeyF','KeyG','KeyH','KeyJ','KeyK','KeyL','Semicolon','Quote','#Enter'],
+ ['#Shift','KeyZ','KeyX','KeyC','KeyV','KeyB','KeyN','KeyM','Comma','Period','Slash','#Back'],
+ ['#Mode','#Alt','#Space','#Dari']
+];
+const keyEls={};
+const MIC='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0"/><path d="M12 18v3"/></svg>';
+const show=c=>c==='\u200C'?'ZWNJ':c==='\u200D'?'ZWJ':(c&&'ািীুূৃেৈোৌ্ঁংঃৗৄৢৣ'.includes(c[0])?'◌'+c:c);
+function build(){
+  kb.innerHTML='';
+  ROWS.forEach(r=>{const row=document.createElement('div');row.className='row';
+    r.forEach(code=>{if(code==='#Alt'&&!hasAlt)return;const b=document.createElement('button');b.type='button';b.className='k';b.dataset.code=code;b.tabIndex=-1;
+      if(code[0]==='#'){b.classList.add('fn');
+        const lab={'#Enter':'↵','#Shift':'⇧','#Back':'⌫','#Space':'স্পেস','#Dari':'।','#Mode':'','#Alt':'AltGr'}[code];
+        b.textContent=lab;
+        if(code==='#Enter'||code==='#Shift'||code==='#Back')b.classList.add('w15');
+        if(code==='#Mode')b.classList.add('w15');
+        if(code==='#Space')b.classList.add('w6');
+        if(code==='#Dari'){b.classList.remove('fn');b.innerHTML='<span class="m">।</span>'}
+      }else{b.innerHTML='<span class="m"></span><span class="s"></span><span class="l">'+US[code][1].replace('<','&lt;').replace('>','&gt;')+'</span>'}
+      keyEls[code]=b;row.appendChild(b)});
+    kb.appendChild(row)});
+  paint();
+}
+function paint(){
+  const sh=shift>0||physShift,al=altgr>0||physAlt;
+  kb.classList.toggle('shift',sh);
+  for(const code in keyEls){if(code[0]==='#')continue;const b=keyEls[code];
+    const mm=b.querySelector('.m'),ss=b.querySelector('.s');
+    mm.textContent=show(charFor(code,sh,al));mm.classList.toggle('tiny',/^ZW/.test(mm.textContent));
+    ss.textContent=show(charFor(code,!sh,al));}
+  if(keyEls['#Alt'])keyEls['#Alt'].classList.toggle('on',altgr>0);
+  keyEls['#Shift'].classList.toggle('on',shift>0);
+  keyEls['#Shift'].textContent=shift===2?'⇪':'⇧';
+  keyEls['#Mode'].textContent=st.bangla?'EN':'বাং';
+  const d=keyEls['#Dari'];d.querySelector('.m').textContent=st.bangla?'।':'.';
+}
+const paintShift=paint;
+function flash(code){const b=keyEls[code];if(!b)return;b.classList.add('hit');setTimeout(()=>b.classList.remove('hit'),110)}
+
+let lastShiftTap=0,repeatT=null,repeatI=null;
+kb.addEventListener('pointerdown',e=>{
+  const b=e.target.closest('.k');if(!b)return;
+  e.preventDefault(); // keep focus in the text box, keep the phone keyboard closed
+  const code=b.dataset.code;
+  if(code==='#Alt'){altgr=altgr?0:1;paint();return}
+  if(code==='#Shift'){const now=Date.now();shift=shift===0?((now-lastShiftTap<350)?2:1):(shift===1&&now-lastShiftTap<350?2:0);lastShiftTap=now;paint();return}
+  if(code==='#Mode'){setMode(!st.bangla);return}
+  if(code==='#Back'){backspace();repeatT=setTimeout(()=>{repeatI=setInterval(backspace,70)},450);return}
+  if(code==='#Enter'){insert('\n');return}
+  if(code==='#Space'){insert(' ');return}
+  if(code==='#Dari'){insert(st.bangla?'।':'.');return}
+  const out=charFor(code,shift>0||physShift,altgr>0);if(out)typeChar(out);
+  if(shift===1||altgr){shift=shift===1?0:shift;altgr=0;paint()}
+});
+const stopRepeat=()=>{clearTimeout(repeatT);clearInterval(repeatI)};
+['pointerup','pointercancel','pointerleave'].forEach(t=>kb.addEventListener(t,stopRepeat));
+
+// ---------- controls ----------
+function setMode(b){st.bangla=b;store.set('bangla',b);$('mBn').setAttribute('aria-pressed',b);$('mEn').setAttribute('aria-pressed',!b);paint();ta.focus()}
+$('mBn').onclick=()=>setMode(true);$('mEn').onclick=()=>setMode(false);
+function applyPrefs(){
+  ta.style.setProperty('--write-size',st.size+'px');ta.style.fontSize=st.size+'px';
+  ta.classList.remove('serif');
+  if(typeof applyFonts==='function')applyFonts();
+  $('vf').checked=st.vf;
+  kb.hidden=!st.kb||micMode;$('kbBtn').setAttribute('aria-pressed',st.kb);
+  ta.setAttribute('inputmode',(coarse&&st.kb&&!micMode)?'none':'text');
+}
+$('fsMinus').onclick=()=>{st.size=Math.max(14,st.size-2);store.set('size',st.size);applyPrefs()};
+$('fsPlus').onclick=()=>{st.size=Math.min(40,st.size+2);store.set('size',st.size);applyPrefs()};
+$('vf').onchange=()=>{st.vf=$('vf').checked;store.set('vf',st.vf)};
+$('kbBtn').onclick=()=>{st.kb=!st.kb;store.set('kb',st.kb);applyPrefs();ta.blur();ta.focus()};
+
+let tt;function toast(m){const t=$('toast');t.textContent=m;t.classList.add('show');clearTimeout(tt);tt=setTimeout(()=>t.classList.remove('show'),m.length>40?4500:1800)}
+$('copy').onclick=()=>{
+  const txt=ta.value;if(!txt){toast('কপি করার মতো লেখা নেই');return}
+  const fallback=()=>{ta.focus();ta.select();toast('লেখা সিলেক্ট করা আছে, এখন Copy করুন')};
+  try{navigator.clipboard.writeText(txt).then(()=>toast('কপি হয়েছে'),fallback)}catch(e){fallback()}
+};
+let clearArm=null;
+$('clear').onclick=()=>{
+  const b=$('clear');
+  if(!clearArm){b.textContent='নিশ্চিত? আবার চাপুন';b.classList.add('warn');clearArm=setTimeout(()=>{clearArm=null;b.textContent='মুছুন';b.classList.remove('warn')},3000);return}
+  clearTimeout(clearArm);clearArm=null;b.textContent='মুছুন';b.classList.remove('warn');
+  ta.focus();ta.select();let ok=false;try{ok=document.execCommand('delete')}catch(e){}
+  if(!ok){ta.value='';ta.dispatchEvent(new Event('input'))}
+  toast('মুছে ফেলা হয়েছে (Ctrl/⌘+Z দিয়ে ফেরত আনা যায়)');
+};
+
+let saveT;
+function count(){const v=ta.value;const chars=[...v.replace(/\s/g,'')].length;const words=(v.trim().match(/\S+/g)||[]).length;
+  $('count').textContent=bn(chars)+' অক্ষর · '+bn(words)+' শব্দ'}
+ta.addEventListener('input',()=>{count();clearTimeout(saveT);saveT=setTimeout(()=>store.set('text',ta.value),300)});
+
+// ---------- word suggestions ----------
+const sug=$('sug');
+const splitL=s=>[...new Set(s.split('|').map(x=>x.replace(/\s+/g,' ').trim()).filter(Boolean))];
+const BASE_BN=splitL(LEX_BN_LEGAL+'|'+LEX_BN_COMMON), BASE_EN=splitL(LEX_EN);
+const SEED=new Map();
+splitL(SEED_PHRASES+'|'+LEX_BN_LEGAL+'|'+LEX_EN).forEach(ph=>{const ws=ph.split(' ');
+  for(let i=0;i+1<ws.length;i++){const m=SEED.get(ws[i])||new Map();m.set(ws[i+1],(m.get(ws[i+1])||0)+1);SEED.set(ws[i],m)}});
+const W='[ঀ-৥ৰ-৿‌‍]+|[A-Za-z][A-Za-z\'-]*';
+const RE_TAIL=new RegExp('('+W+')$'), RE_PREV=new RegExp('('+W+')[ \t]+$'), RE_WORD=new RegExp('^(?:'+W+')$');
+let lex=store.get('lex',null); if(!lex||typeof lex!=='object'||!lex.w||!lex.b) lex={w:{},b:{}};
+let lexT;
+function saveLex(){clearTimeout(lexT);lexT=setTimeout(()=>{
+  const ks=Object.keys(lex.w);
+  if(ks.length>60000){ks.sort((a,b)=>lex.w[a]-lex.w[b]).slice(0,ks.length-55000).forEach(k=>{delete lex.w[k];delete lex.b[k]})}
+  for(const k in lex.b){const m=lex.b[k],e=Object.keys(m);if(e.length>40){e.sort((a,b)=>m[a]-m[b]).slice(0,e.length-30).forEach(x=>delete m[x])}}
+  try{localStorage.setItem('bornona.lex',JSON.stringify(lex))}catch(err){toast('ব্রাউজারের জায়গা ভরে গেছে। শব্দভান্ডার এক্সপোর্ট করে রাখুন।')}
+  lexStat();
+  if(!persistAsked&&navigator.storage&&navigator.storage.persist){persistAsked=true;navigator.storage.persist().catch(()=>{})}
+  },500)}
+let persistAsked=false;
+function lexStat(){const el=$('lexStat');if(el)el.textContent='শেখা শব্দ: '+bn(Object.keys(lex.w).length)+'টা'}
+function learn(w,prev){
+  if(!w||!RE_WORD.test(w)||[...w].length<2)return;
+  lex.w[w]=(lex.w[w]||0)+1;
+  if(prev&&RE_WORD.test(prev)){const m=lex.b[prev]||(lex.b[prev]={});m[w]=(m[w]||0)+1}
+  saveLex();
+}
+function learnTail(before){
+  const m=before.match(RE_TAIL);if(!m)return;
+  const pm=before.slice(0,before.length-m[1].length).match(RE_PREV);
+  learn(m[1],pm?pm[1]:'');
+}
+function learnText(text){
+  let n=0;
+  text.split(/[\n।?!;:,.()\[\]{}"“”]+/).forEach(part=>{
+    const ws=part.split(/\s+/).filter(x=>RE_WORD.test(x));
+    ws.forEach((w,i)=>{if([...w].length>=2){learn(w,ws[i-1]||'');n++}})});
+  return n;
+}
+function nextFor(prev){
+  const out=new Map(SEED.get(prev)||[]);
+  const m=lex.b[prev];if(m)for(const k in m)out.set(k,(out.get(k)||0)+m[k]*3);
+  return out;
+}
+function ctx(){
+  const pos=ta.selectionStart;if(pos!==ta.selectionEnd)return null;
+  const before=ta.value.slice(0,pos);
+  const m=before.match(RE_TAIL);const prefix=m?m[1]:'';
+  const pm=before.slice(0,before.length-prefix.length).match(RE_PREV);
+  return {pos,prefix,prev:pm?pm[1]:''};
+}
+function suggest(){
+  if(listening){renderListening();return}
+  if(micMode){renderVoice();return}
+  const c=ctx();let out=[];
+  if(c&&c.prefix){
+    const isEn=/^[A-Za-z]/.test(c.prefix),key=isEn?c.prefix.toLowerCase():c.prefix;
+    const cand=new Map();
+    const add=(w,s)=>{if(w===c.prefix)return;const wl=isEn?w.toLowerCase():w;if(!wl.startsWith(key)||wl===key)return;cand.set(w,(cand.get(w)||0)+s)};
+    (isEn?BASE_EN:BASE_BN).forEach(w=>add(w,1));
+    for(const w in lex.w)add(w,2+Math.min(lex.w[w],40)*2);
+    if(c.prev)nextFor(c.prev).forEach((s,w)=>add(w,s*25));
+    out=[...cand].sort((a,b)=>b[1]-a[1]||a[0].length-b[0].length).slice(0,12).map(x=>x[0]);
+    if(isEn&&/^[A-Z]/.test(c.prefix))out=out.map(w=>w[0].toUpperCase()+w.slice(1));
+  }else if(c&&c.prev){
+    out=[...nextFor(c.prev)].sort((a,b)=>b[1]-a[1]).slice(0,10).map(x=>x[0]);
+  }
+  sug.innerHTML='';
+  if(!out.length){const h=document.createElement('span');h.className='hint';h.textContent='লিখতে শুরু করুন, শব্দের পরামর্শ এখানে আসবে';sug.appendChild(h);return}
+  out.forEach(w=>{const b=document.createElement('button');b.type='button';b.className='chip';b.textContent=w;b.dataset.w=w;sug.appendChild(b)});
+  sug.scrollLeft=0;
+}
+function pick(w){
+  const c=ctx();if(!c)return;
+  ta.focus();ta.setSelectionRange(c.pos-c.prefix.length,c.pos);insert(w+' ');
+}
+sug.addEventListener('pointerdown',e=>{if(e.target.closest('.chip,.voice button'))e.preventDefault()});
+sug.addEventListener('click',e=>{
+  if(e.target.closest('#voiceBack')){exitVoice();return}
+  if(e.target.closest('#voiceStop')){stopVoice();return}
+  const b=e.target.closest('.chip');if(b)pick(b.dataset.w);
+});
+ta.addEventListener('input',e=>{
+  if(((e.inputType==='insertText'||e.inputType==='insertReplacementText')&&e.data&&/[\s।,.;:?!)]$/.test(e.data))||e.inputType==='insertLineBreak'){
+    learnTail(ta.value.slice(0,ta.selectionStart-1));
+  }
+  suggest();
+});
+['keyup','click','focus'].forEach(t=>ta.addEventListener(t,()=>{if(!micMode&&!listening)suggest()}));
+ta.addEventListener('paste',e=>{const d=e.clipboardData&&e.clipboardData.getData('text');if(!d)return;
+  if(st.autoBj&&typeof bijoyFromHtml==='function'){const u=bijoyFromHtml(e.clipboardData.getData('text/html'));if(u!==null){e.preventDefault();insert(lead()+u);toast('বাংলা অংশ ইউনিকোডে বদলে বসানো হলো, ইংরেজি অংশ যেমন ছিল');return}}
+  if(st.autoBj&&window.BornonaBijoy&&BornonaBijoy.looksBijoy(d)){e.preventDefault();insert(lead()+BornonaBijoy.toUnicode(d));toast('বিজয় লেখা চেনা গেছে, ইউনিকোডে বসানো হলো');return}
+  setTimeout(()=>learnText(fixNukta(d)),0)});
+ta.addEventListener('blur',()=>{const b=ta.value.slice(0,ta.selectionStart);if(/\S$/.test(b))learnTail(b)});
+$('learnAll').onclick=()=>{const n=learnText(ta.value);toast(n?bn(n)+'টা শব্দ শেখা হলো':'শেখার মতো লেখা নেই');suggest()};
+let lexArm=null;
+$('resetLex').onclick=()=>{const b=$('resetLex');
+  if(!lexArm){b.textContent='নিশ্চিত? আবার চাপুন';b.classList.add('warn');lexArm=setTimeout(()=>{lexArm=null;b.textContent='শেখা শব্দ মুছুন';b.classList.remove('warn')},3000);return}
+  clearTimeout(lexArm);lexArm=null;b.textContent='শেখা শব্দ মুছুন';b.classList.remove('warn');
+  lex={w:{},b:{}};store.set('lex',lex);toast('শেখা শব্দ মুছে ফেলা হয়েছে');suggest()};
+
+// ---------- voice typing (through the phone's own keyboard) ----------
+function renderVoice(){
+  sug.innerHTML='<div class="voice">'+MIC+'<span>ফোনের কিবোর্ডের মাইক চেপে বলুন</span><button class="btn primary" id="voiceBack" type="button">বর্ণনা কিবোর্ডে ফিরুন</button></div>';
+}
+function enterVoice(){
+  if(!coarse){toast('এই পেজ সরাসরি মাইক্রোফোন চালাতে পারে না। মোবাইলে ফোনের কিবোর্ডের মাইক ব্যবহার করুন।');return}
+  micMode=true;applyPrefs();ta.blur();ta.focus();renderVoice();
+}
+function exitVoice(){micMode=false;applyPrefs();ta.blur();ta.focus();suggest()}
+
+// ---------- live voice typing (Web Speech API) ----------
+const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
+const UA=navigator.userAgent;
+const isIOS=/iPad|iPhone|iPod/.test(UA)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
+const isAndroid=/Android/i.test(UA);
+const appleEngine=isIOS||(/Safari/.test(UA)&&!/Chrome|Chromium|CriOS|Edg|OPR|Android|SamsungBrowser/.test(UA));
+let rec=null,interim='',lastFinal='',lastFinalAt=0,restartT=null,errCount=0;
+const voiceLang=()=>st.vlang&&st.vlang!=='auto'?st.vlang:(st.bangla?'bn-BD':'en-US');
+const CMDS_BN=[['নতুন অনুচ্ছেদ','\n\n'],['নতুন প্যারা','\n\n'],['নতুন লাইন','\n'],['প্রশ্নবোধক চিহ্ন','?'],['প্রশ্নচিহ্ন','?'],['জিজ্ঞাসা চিহ্ন','?'],['বিস্ময়সূচক চিহ্ন','!'],['বিস্ময় চিহ্ন','!'],['দাঁড়ি','।'],['দাড়ি','।'],['পূর্ণচ্ছেদ','।'],['সেমিকোলন',';'],['কোলন',':'],['কমা',','],['হাইফেন','-'],['বন্ধনী শুরু','('],['বন্ধনী শেষ',')']];
+const CMDS_EN=[['new paragraph','\n\n'],['new line','\n'],['full stop','.'],['period','.'],['question mark','?'],['exclamation mark','!'],['semicolon',';'],['colon',':'],['comma',','],['hyphen','-'],['open bracket','('],['close bracket',')']];
+const esc=s=>s.replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
+function corrections(){return (st.corr||'').split('\n').map(l=>l.split('=')).filter(p=>p.length===2&&p[0].trim()&&p[1].trim()).map(p=>[fixNukta(p[0].trim()),fixNukta(p[1].trim())])}
+function cleanVoice(raw,lang){
+  let s=' '+fixNukta(raw).replace(/\s+/g,' ').trim()+' ';
+  corrections().forEach(([a,b])=>{s=s.replace(new RegExp('(\\s)'+esc(a)+'(?=[\\s।,.?!;:])','g'),'$1'+b)});
+  if(st.vcmd){(lang.startsWith('bn')?CMDS_BN.concat(CMDS_EN):CMDS_EN).forEach(([w,p])=>{
+    s=s.replace(new RegExp('(\\s)'+esc(w)+'(?=\\s)','gi'),'$1\u0000'+p+'\u0000')});
+    s=s.replace(/\s*\u0000([।,.?!;:)])\u0000/g,'$1').replace(/\u0000\(\u0000\s*/g,' (').replace(/\s*\u0000(\n+)\u0000\s*/g,'$1').replace(/\s*\u0000-\u0000\s*/g,'-').replace(/\u0000/g,'');
+  }
+  if(lang.startsWith('bn')){
+    if(st.vdig)s=s.replace(/[0-9]/g,d=>BN_DIG[d]);
+    s=s.replace(/([\u0980-\u09FF])\.(?=\s|$)/g,'$1।');
+  }
+  return s.replace(/^ +| +$/g,'');
+}
+function putVoice(raw){
+  const lang=voiceLang();let t=cleanVoice(raw,lang);if(!t)return;
+  const now=Date.now();if(t===lastFinal&&now-lastFinalAt<2500)return;lastFinal=t;lastFinalAt=now;
+  const before=ta.value.slice(0,ta.selectionStart);
+  if(lang.startsWith('en')&&(!before.trim()||/[.?!]\s*$|\n\s*$/.test(before)))t=t.charAt(0).toUpperCase()+t.slice(1);
+  if(lang.startsWith('en'))t=t.replace(/([.?!]\s+|\n)([a-z])/g,(m,p1,c)=>p1+c.toUpperCase());
+  const lead=before&&!/\s$/.test(before)&&!/^[।,.?!;:)\n]/.test(t)?' ':'';
+  insert(lead+t+(/\n$/.test(t)?'':' '));
+}
+function renderListening(){
+  const names={'bn-BD':'বাংলা','bn-IN':'বাংলা','en-US':'English','en-GB':'English','en-IN':'English'};
+  sug.innerHTML='<div class="voice"><span class="dotrec"></span><span class="interim"></span><button class="btn live" id="voiceStop" type="button">থামুন</button></div>';
+  sug.querySelector('.interim').textContent=interim?fixNukta(interim):'শুনছি… ('+(names[voiceLang()]||voiceLang())+') বলুন';
+}
+function setVoiceUI(on){
+  listening=on;
+  const vb=$('voiceBtn');vb.classList.toggle('live',on);vb.setAttribute('aria-pressed',on);vb.setAttribute('aria-label',on?'ভয়েস থামান':'ভয়েস টাইপিং');
+  if(on)renderListening();else{interim='';suggest()}
+}
+function startRec(){
+  rec=new SR();rec.lang=voiceLang();rec.interimResults=true;rec.maxAlternatives=1;rec.continuous=!isAndroid;
+  rec.onresult=e=>{let fin='';interim='';
+    for(let i=e.resultIndex;i<e.results.length;i++){const r=e.results[i];if(r.isFinal)fin+=r[0].transcript;else interim+=r[0].transcript}
+    if(fin.trim()){interim='';putVoice(fin)}
+    errCount=0;if(listening)renderListening()};
+  rec.onerror=e=>{
+    if(e.error==='no-speech'||e.error==='aborted')return;
+    const msg={'not-allowed':'মাইক্রোফোনের অনুমতি দেওয়া হয়নি। ব্রাউজারের ঠিকানার পাশের লক আইকন থেকে Microphone চালু করুন।',
+      'service-not-allowed':'এই ব্রাউজারে ভয়েস টাইপিং চালু নেই। Chrome বা Edge ব্যবহার করুন।',
+      'network':'ভয়েস টাইপিং-এর জন্য ইন্টারনেট লাগে। সংযোগ দেখে আবার চেষ্টা করুন।',
+      'audio-capture':'মাইক্রোফোন পাওয়া যায়নি।',
+      'language-not-supported':'এই ব্রাউজার এই ভাষার ভয়েস সাপোর্ট করে না।'}[e.error]||('ভয়েসে সমস্যা: '+e.error);
+    if(e.error==='language-not-supported'&&coarse){stopVoice(true);enterVoice();toast(msg);return}
+    stopVoice(true);toast(msg)};
+  rec.onend=()=>{rec=null;if(interim.trim()){putVoice(interim);interim=''}
+    if(listening){if(++errCount>8){stopVoice(true);toast('অনেকক্ষণ কিছু শোনা যায়নি, ভয়েস বন্ধ হলো');return}
+      restartT=setTimeout(()=>{if(listening)try{startRec()}catch(err){stopVoice(true)}},isAndroid?250:100)}};
+  try{rec.start()}catch(err){rec=null;stopVoice(true);toast('ভয়েস চালু করা গেল না, আবার চাপুন')}
+}
+function startVoice(){
+  if(micMode)exitVoice();
+  const bnLang=voiceLang().startsWith('bn');
+  if(!LIVE_VOICE){if(coarse){enterVoice();toast('এখানে সরাসরি মাইক চলে না। ফোনের কিবোর্ডের মাইক ব্যবহার করুন, অথবা mahbuburrahman.bd-এর ভার্সন খুলুন।')}else toast('এখানে সরাসরি মাইক চলে না। mahbuburrahman.bd-এর ভার্সন Chrome বা Edge-এ খুলুন।');return}
+  if(!SR||(appleEngine&&bnLang)){
+    if(coarse){enterVoice();toast(isIOS?'iPhone/iPad-এ বাংলা ভয়েস Apple সাপোর্ট করে না। ফোনের কিবোর্ডের মাইক (Gboard) ব্যবহার করুন।':'ফোনের কিবোর্ডের মাইক ব্যবহার করুন।')}
+    else toast(appleEngine?'Safari বাংলা ভয়েস সাপোর্ট করে না। Chrome বা Edge-এ খুলুন।':'এই ব্রাউজারে ভয়েস টাইপিং নেই। Chrome বা Edge-এ খুলুন।');
+    return;
+  }
+  if(location.protocol!=='https:'&&!/^(localhost|127\.)/.test(location.hostname)){toast('ভয়েস টাইপিং শুধু https সাইটে চলে');return}
+  errCount=0;ta.focus();setVoiceUI(true);startRec();
+}
+function stopVoice(silent){
+  clearTimeout(restartT);const r=rec;rec=null;setVoiceUI(false);
+  if(r){r.onend=null;try{r.stop()}catch(e){}}
+  if(interim.trim()){putVoice(interim);interim=''}
+}
+const toggleVoice=()=>listening?stopVoice():startVoice();
+$('voiceBtn').innerHTML=MIC;
+$('voiceBtn').addEventListener('pointerdown',e=>e.preventDefault());
+$('voiceBtn').onclick=toggleVoice;
+document.addEventListener('visibilitychange',()=>{if(document.hidden&&listening)stopVoice()});
+
+// ---------- settings & word bank backup ----------
+const vl=$('vlang'),vc=$('vcmd'),vd=$('vdig'),co=$('corr');
+vl.value=st.vlang;vc.checked=st.vcmd;vd.checked=st.vdig;co.value=st.corr;
+vl.onchange=()=>{st.vlang=vl.value;store.set('vlang',st.vlang);if(listening){stopVoice();startVoice()}};
+vc.onchange=()=>{st.vcmd=vc.checked;store.set('vcmd',st.vcmd)};
+vd.onchange=()=>{st.vdig=vd.checked;store.set('vdig',st.vdig)};
+const ab=$('autoBj');ab.checked=st.autoBj;ab.onchange=()=>{st.autoBj=ab.checked;store.set('autoBj',st.autoBj)};
+
+// ---------- keyboard layouts ----------
+let customLayouts=(()=>{const v=store.get('layouts',[]);return Array.isArray(v)?v:[]})();
+const AVRO2CODE={OEM3:'Backquote',MINUS:'Minus',PLUS:'Equal',OEM4:'BracketLeft',OEM6:'BracketRight',OEM5:'Backslash',OEM1:'Semicolon',OEM7:'Quote',COMMA:'Comma',PERIOD:'Period',OEM2:'Slash'};
+function parseAvro(txt){
+  const ent=s=>s.replace(/&apos;/g,"'").replace(/&quot;/g,'"').replace(/&lt;/g,'<').replace(/&gt;/g,'>').replace(/&amp;/g,'&');
+  const get=tag=>{const m=txt.match(new RegExp('<'+tag+'>\\s*<!\\[CDATA\\[([\\s\\S]*?)\\]\\]>'));return m?ent(m[1]).trim():''};
+  const i=txt.indexOf('<KeyData>');if(i<0)throw new Error('no keydata');
+  const kd=txt.slice(i),map={},LAY={Normal:0,Shift:1,AltGr:2,ShiftAltGr:3};let m,n=0;
+  const re=/<Key_([A-Z0-9]+)_(Normal|Shift|AltGr|ShiftAltGr)>\s*<!\[CDATA\[([\s\S]*?)\]\]>/g;
+  while((m=re.exec(kd))){const k=m[1];const code=AVRO2CODE[k]||(/^\d$/.test(k)?'Digit'+k:(/^[A-Z]$/.test(k)?'Key'+k:''));if(!code)continue;
+    (map[code]=map[code]||['','','',''])[LAY[m[2]]]=fixNukta(ent(m[3]));n++}
+  const re2=/<Num(\w+)>\s*<!\[CDATA\[([\s\S]*?)\]\]>/g;while((m=re2.exec(kd)))map['Numpad'+m[1]]=[fixNukta(ent(m[2]))];
+  if(n<40)throw new Error('too few keys');
+  return {name:get('LayoutName')||'নিজের লেআউট',dev:get('DeveloperName'),map};
+}
+const allLayouts=()=>BUILTIN_LAYOUTS.concat(customLayouts);
+function setLayout(id){
+  const L=allLayouts().find(l=>l.id===id)||BUILTIN_LAYOUTS[0];
+  st.layout=L.id;store.set('layout',st.layout);MAP=L.map;
+  hasAlt=Object.values(MAP).some(v=>v.length>2&&(v[2]||v[3]));altgr=0;
+  $('layoutName').textContent=L.name+' layout';
+  if($('layoutSel'))$('layoutSel').value=L.id;
+  build();
+}
+function fillLayouts(){
+  const o=(l)=>'<option value="'+l.id+'">'+l.name.replace(/</g,'&lt;')+'</option>';
+  let h='<optgroup label="সাথে দেওয়া">'+BUILTIN_LAYOUTS.map(o).join('')+'</optgroup>';
+  if(customLayouts.length)h+='<optgroup label="আপনার যোগ করা">'+customLayouts.map(o).join('')+'</optgroup>';
+  $('layoutSel').innerHTML=h;$('layoutSel').value=st.layout;
+  $('layoutList').innerHTML=customLayouts.map(l=>'<div class="fontrow"><span>'+l.name.replace(/</g,'&lt;')+'</span><small>'+(l.dev||'').replace(/</g,'&lt;').slice(0,30)+'</small><button class="btn" type="button" data-dellayout="'+l.id+'">মুছুন</button></div>').join('');
+}
+$('layoutSel').onchange=e=>{setLayout(e.target.value);toast($('layoutName').textContent+' চালু হলো')};
+$('addLayout').onclick=()=>$('layoutFile').click();
+$('layoutFile').onchange=async e=>{
+  const f=e.target.files[0];e.target.value='';if(!f)return;
+  try{const L=parseAvro(await f.text());L.id='custom-'+Date.now();customLayouts.push(L);store.set('layouts',customLayouts);fillLayouts();setLayout(L.id);toast(L.name+' লেআউট যোগ হলো')}
+  catch(err){toast('ফাইলটা Avro লেআউট (.avrolayout) হিসেবে পড়া গেল না')}
+};
+$('layoutList').onclick=e=>{const b=e.target.closest('[data-dellayout]');if(!b)return;const id=b.dataset.dellayout;
+  customLayouts=customLayouts.filter(l=>l.id!==id);store.set('layouts',customLayouts);
+  if(st.layout===id)setLayout('bornona');fillLayouts();toast('লেআউট মুছে ফেলা হয়েছে')};
+fillLayouts();setLayout(st.layout);
+
+// ---------- fonts ----------
+const GF={'Noto Sans Bengali':'Noto+Sans+Bengali:wght@400;500','Noto Serif Bengali':'Noto+Serif+Bengali:wght@400;500','Hind Siliguri':'Hind+Siliguri:wght@400;500',
+  'Tiro Bangla':'Tiro+Bangla','Baloo Da 2':'Baloo+Da+2','Anek Bangla':'Anek+Bangla','Galada':'Galada','Atma':'Atma','Mina':'Mina'};
+const LOCAL_UNI=['SolaimanLipi','Kalpurush','Nikosh','SutonnyOMJ','Siyam Rupali','Mukti','AdorshoLipi','Kohinoor Bangla','Bangla Sangam MN','Vrinda','Nirmala UI'];
+const LOCAL_ANSI=['SutonnyMJ','SutonnyEMJ','SulekhaT'];
+let customFonts=[];
+const loadedGF=new Set(['Noto Sans Bengali','Noto Serif Bengali','Hind Siliguri']);
+function loadGF(name){if(!GF[name]||loadedGF.has(name))return;loadedGF.add(name);
+  const l=document.createElement('link');l.rel='stylesheet';l.href='https://fonts.googleapis.com/css2?family='+GF[name]+'&display=swap';document.head.appendChild(l)}
+function installed(name,ansi){
+  try{const c=document.createElement('canvas').getContext('2d');const s=ansi?'Avgvi †mvbvi evsjv mmmmwwwlli':'আমার সোনার বাংলা কর্ম ক্ষ mmmwwwlli';
+    return ['monospace','serif','sans-serif'].some(f=>{c.font='40px '+f;const a=c.measureText(s).width;c.font='40px "'+name+'",'+f;return c.measureText(s).width!==a})}catch(e){return false}
+}
+const idb=(()=>{let dbp;
+  const open=()=>dbp||(dbp=new Promise((res,rej)=>{const r=indexedDB.open('bornona-pad',1);r.onupgradeneeded=()=>r.result.createObjectStore('fonts',{keyPath:'id'});r.onsuccess=()=>res(r.result);r.onerror=()=>rej(r.error)}));
+  const run=async(mode,fn)=>{const d=await open();return new Promise((res,rej)=>{const tx=d.transaction('fonts',mode);const q=fn(tx.objectStore('fonts'));tx.oncomplete=()=>res(q&&q.result);tx.onerror=()=>rej(tx.error)})};
+  return{all:()=>run('readonly',s=>s.getAll()),put:f=>run('readwrite',s=>s.put(f)),del:id=>run('readwrite',s=>s.delete(id))};})();
+async function registerFont(f){const ff=new FontFace(f.id,f.data);await ff.load();document.fonts.add(ff)}
+const fam=n=>'"'+n.replace(/"/g,'')+'"';
+function fillFontSelects(validate){
+  const fs=$('fontSel'),as=$('ansiSel');
+  const opt=(v,label,dis)=>'<option value="'+v.replace(/"/g,'&quot;')+'"'+(dis?' disabled':'')+'>'+label+'</option>';
+  let h='<optgroup label="অনলাইন ফন্ট">'+Object.keys(GF).map(n=>opt(n,n)).join('')+'</optgroup>';
+  h+='<optgroup label="কম্পিউটারে ইনস্টল করা">'+LOCAL_UNI.map(n=>{const ok=installed(n,false);return opt(n,n+(ok?'':' (ইনস্টল নেই)'),!ok)}).join('')+'</optgroup>';
+  const cu=customFonts.filter(f=>f.role==='uni');if(cu.length)h+='<optgroup label="আপনার যোগ করা">'+cu.map(f=>opt(f.id,f.name)).join('')+'</optgroup>';
+  fs.innerHTML=h;
+  let a=opt('','ফন্ট ছাড়া (ইংরেজি অক্ষরে দেখাবে)');
+  a+='<optgroup label="কম্পিউটারে ইনস্টল করা">'+LOCAL_ANSI.map(n=>{const ok=installed(n,true);return opt(n,n+(ok?'':' (ইনস্টল নেই)'),!ok)}).join('')+'</optgroup>';
+  const ca=customFonts.filter(f=>f.role==='ansi');if(ca.length)a+='<optgroup label="আপনার যোগ করা">'+ca.map(f=>opt(f.id,f.name)).join('')+'</optgroup>';
+  as.innerHTML=a;
+  const okF=[...fs.options].some(o=>o.value===st.font&&!o.disabled),okA=[...as.options].some(o=>o.value===st.ansi&&!o.disabled);
+  if(validate){if(!okF)st.font='Noto Sans Bengali';if(!okA)st.ansi=''}
+  fs.value=okF||validate?st.font:'Noto Sans Bengali';as.value=okA||validate?st.ansi:'';
+  $('fontList').innerHTML=customFonts.map(f=>'<div class="fontrow"><span style="font-family:'+fam(f.id)+',var(--f-sans)">'+f.name.replace(/</g,'&lt;')+'</span><small>'+(f.role==='ansi'?'ANSI':'ইউনিকোড')+'</small><button class="btn" type="button" data-del="'+f.id+'">মুছুন</button></div>').join('');
+}
+function applyFonts(){
+  if(!$('fontSel'))return;
+  loadGF(st.font);
+  ta.style.fontFamily=st.serif?'':fam(st.font)+',var(--f-sans)';
+  document.documentElement.style.setProperty('--f-ansi',st.ansi?fam(st.ansi)+',var(--f-mono)':'var(--f-mono)');
+  ['bjOut','bjIn'].forEach(id=>$(id).classList.toggle('ansi',!!st.ansi));
+  document.documentElement.style.setProperty('--f-en','"'+st.enFont+'"');
+}
+$('fontSel').onchange=e=>{st.font=e.target.value;store.set('font',st.font);if(st.serif){st.serif=false;store.set('serif',false)}applyPrefs()};
+$('ansiSel').onchange=e=>{st.ansi=e.target.value;store.set('ansi',st.ansi);applyFonts();if(st.ansi)$('conv').hidden=false};
+let fontRole='uni';
+$('addUni').onclick=()=>{fontRole='uni';$('fontFile').click()};
+$('addAnsi').onclick=()=>{fontRole='ansi';$('fontFile').click()};
+$('fontFile').onchange=async e=>{
+  const f=e.target.files[0];e.target.value='';if(!f)return;
+  if(f.size>15*1024*1024){toast('ফন্ট ফাইলটা অনেক বড় (১৫ MB-এর বেশি)');return}
+  const rec={id:'bp-font-'+Date.now(),name:f.name.replace(/\.(ttf|otf|woff2?)$/i,''),role:fontRole,data:await f.arrayBuffer()};
+  try{await registerFont(rec)}catch(err){toast('এই ফাইলটা ফন্ট হিসেবে খোলা গেল না');return}
+  try{await idb.put(rec)}catch(err){toast('ফন্ট এবার কাজ করবে, কিন্তু ব্রাউজারে সেভ করা গেল না')}
+  customFonts.push({id:rec.id,name:rec.name,role:rec.role});
+  if(fontRole==='ansi'){st.ansi=rec.id;store.set('ansi',st.ansi)}else{st.font=rec.id;store.set('font',st.font);st.serif=false;store.set('serif',false)}
+  fillFontSelects(true);applyPrefs();toast(rec.name+' যোগ হয়েছে');
+};
+$('fontList').onclick=async e=>{const b=e.target.closest('[data-del]');if(!b)return;const id=b.dataset.del;
+  try{await idb.del(id)}catch(err){}
+  customFonts=customFonts.filter(f=>f.id!==id);if(st.font===id){st.font='Noto Sans Bengali';store.set('font',st.font)}if(st.ansi===id){st.ansi='';store.set('ansi','')}
+  fillFontSelects(true);applyPrefs();toast('ফন্ট মুছে ফেলা হয়েছে')};
+const orp=$('oldReph');orp.checked=st.oldReph;orp.onchange=()=>{st.oldReph=orp.checked;store.set('oldReph',st.oldReph)};
+(async()=>{try{const all=await idb.all();for(const f of all||[]){try{await registerFont(f);customFonts.push({id:f.id,name:f.name,role:f.role})}catch(e){}}}catch(e){}
+  fillFontSelects(true);applyPrefs()})();
+fillFontSelects(false);
+
+// ---------- Unicode <-> Bijoy ----------
+const lead=()=>{const c=ta.value[ta.selectionStart-1];return c&&!/\s/.test(c)?' ':''};
+$('convBtn').onclick=()=>{const p=$('conv');p.hidden=!p.hidden;$('convBtn').setAttribute('aria-expanded',String(!p.hidden));$('convBtn').setAttribute('aria-pressed',String(!p.hidden))};
+$('toBj').onclick=()=>{
+  const s=ta.selectionStart,e=ta.selectionEnd,part=s!==e;const src=part?ta.value.slice(s,e):ta.value;
+  if(!src.trim()){toast('বদলানোর মতো লেখা নেই');return}
+  const runs=bijoyRuns(src),o=$('bjOut');
+  o.innerHTML=runs.map(r=>'<span class="'+(r.en?'en':'bn')+'">'+escH(r.text)+'</span>').join('');
+  const plain=runs.map(r=>r.text).join('');
+  const html='<meta charset="utf-8"><div>'+runs.map(r=>'<span style="font-family:'+(r.en?"'"+st.enFont+"'":"'"+ansiName()+"'")+'">'+escH(r.text).replace(/\n/g,'<br>')+'</span>').join('')+'</div>';
+  const ok=()=>toast((part?'সিলেক্ট করা অংশ':'পুরো লেখা')+' বিজয়ে কপি হয়েছে। Word-এ পেস্ট করলে বাংলা '+ansiName()+', ইংরেজি '+st.enFont+' ফন্টে বসবে।');
+  const fb=()=>{const r=document.createRange();r.selectNodeContents(o);const s=getSelection();s.removeAllRanges();s.addRange(r);toast('লেখা সিলেক্ট করা আছে, এখন Copy করুন')};
+  const plainOnly=()=>navigator.clipboard.writeText(plain).then(()=>toast('বিজয়ে কপি হয়েছে (ফন্ট ছাড়া)। Word-এ বাংলা অংশে SutonnyMJ দিন।'),fb);
+  try{
+    if(window.ClipboardItem&&navigator.clipboard.write){
+      navigator.clipboard.write([new ClipboardItem({'text/html':new Blob([html],{type:'text/html'}),'text/plain':new Blob([plain],{type:'text/plain'})})]).then(ok,()=>plainOnly().catch(fb));
+    }else plainOnly().catch(fb);
+  }catch(err){fb()}
+};
+const escH=s=>s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+function ansiName(){return LOCAL_ANSI.includes(st.ansi)?st.ansi:'SutonnyMJ'}
+// split Unicode text into Bangla runs (converted to Bijoy) and English runs (kept as they are)
+const EN_RUN=/[A-Za-z][A-Za-z0-9@#$%&*_+=\/\\.:'"()\[\]{}<>?!,;-]*(?:[ \t]+[A-Za-z0-9(][A-Za-z0-9@#$%&*_+=\/\\.:'"()\[\]{}<>?!,;-]*)*/g;
+function bijoyRuns(src){
+  const out=[];let last=0,m;EN_RUN.lastIndex=0;
+  while((m=EN_RUN.exec(src))){
+    let s=m.index,txt=m[0];
+    if(s>last)out.push({en:false,text:BornonaBijoy.toBijoy(src.slice(last,s))});
+    out.push({en:true,text:txt});last=s+txt.length;
+  }
+  if(last<src.length)out.push({en:false,text:BornonaBijoy.toBijoy(src.slice(last))});
+  return out.filter(r=>r.text);
+}
+// read Word/HTML clipboard: convert only the runs that use a Bijoy (ANSI) font
+function bijoyFromHtml(html){
+  if(!html||!/mj|bijoy|sulekha/i.test(html))return null;
+  const doc=new DOMParser().parseFromString(html,'text/html');
+  const rules=[];doc.querySelectorAll('style').forEach(s=>{const re=/([^{}]+)\{([^}]*)\}/g;let m;while((m=re.exec(s.textContent))){const f=/(?:^|[;\s{])font-family:\s*([^;]+)/i.exec(m[2]);if(f)rules.push([m[1].trim(),f[1]])}});
+  const isBj=f=>/(sutonny|sulekha|bijoy|\w+)\s*mj\b|sutonnymj|bijoy/i.test(f)&&!/omj/i.test(f);
+  const fontOf=el=>{for(let e=el;e&&e.nodeType===1;e=e.parentElement){
+      const sa=e.getAttribute('style')||'';const m=/(?:^|;)\s*font-family:\s*([^;]+)/i.exec(sa);if(m)return m[1];
+      if(e.tagName==='FONT'&&e.getAttribute('face'))return e.getAttribute('face');
+      for(const [sel,f] of rules){try{if(e.matches(sel))return f}catch(x){}}}
+    return ''};
+  const BLOCK=/^(P|DIV|LI|H[1-6]|TR|TABLE|UL|OL|BLOCKQUOTE)$/;
+  let out='',found=false;
+  const walk=n=>{
+    if(n.nodeType===3){let s=n.nodeValue.replace(/[\r\n]+/g,' ').replace(/\u00a0/g,' ');if(!s)return;
+      if(isBj(fontOf(n.parentElement))){found=true;out+=BornonaBijoy.toUnicode(s)}else out+=s;return}
+    if(n.nodeType!==1)return;
+    if(n.tagName==='BR'){out+='\n';return}
+    if(n.tagName==='STYLE'||n.tagName==='SCRIPT'||n.tagName==='HEAD')return;
+    n.childNodes.forEach(walk);
+    if(BLOCK.test(n.tagName)&&!/\n$/.test(out))out+='\n';
+  };
+  walk(doc.body);
+  return found?out.replace(/[ \t]+\n/g,'\n').replace(/\n{3,}/g,'\n\n').replace(/^\s+|\s+$/g,''):null;
+}
+$('bjIn').addEventListener('paste',e=>{
+  const h=e.clipboardData&&e.clipboardData.getData('text/html');const u=bijoyFromHtml(h);if(u===null)return;
+  e.preventDefault();ta.focus();insert(lead()+u);toast('বাংলা অংশ ইউনিকোডে বদলে বসানো হলো, ইংরেজি অংশ যেমন ছিল');
+});
+$('enFont').value=st.enFont;$('enFont').onchange=e=>{st.enFont=e.target.value;store.set('enFont',st.enFont);applyFonts()};
+$('toUni').onclick=()=>{
+  const v=$('bjIn').value;if(!v.trim()){toast('আগে বিজয় লেখা পেস্ট করুন');return}
+  const u=BornonaBijoy.toUnicode(v);ta.focus();insert(lead()+u);$('bjIn').value='';toast('ইউনিকোডে বদলে বসানো হয়েছে');
+};
+co.oninput=()=>{st.corr=co.value;store.set('corr',st.corr)};
+$('learnAll2').onclick=()=>$('learnAll').click();
+$('exportLex').onclick=()=>{
+  const data={app:'bornona-pad',version:1,exported:new Date().toISOString(),words:lex.w,next:lex.b,corrections:st.corr};
+  const blob=new Blob([JSON.stringify(data)],{type:'application/json'});
+  saveFile('bornona-words-'+new Date().toISOString().slice(0,10)+'.json',blob).then(ok=>{if(ok)toast(bn(Object.keys(lex.w).length)+'টা শব্দ এক্সপোর্ট হলো')});
+};
+async function saveFile(name,blob){
+  if(window.claude&&typeof window.claude.use==='function'){
+    try{const dl=await window.claude.use('downloads');if(dl){await dl.save({filename:name,data:blob});return true}}
+    catch(err){if(err&&err.code==='declined')return false;toast('ফাইল সেভ করা গেল না');return false}
+  }
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=name;
+  document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},1000);return true;
+}
+$('importLex').onclick=()=>$('importFile').click();
+$('importFile').onchange=async e=>{
+  const f=e.target.files[0];e.target.value='';if(!f)return;
+  try{const d=JSON.parse(await f.text());if(d.app!=='bornona-pad'||!d.words)throw 0;
+    let n=0;for(const w in d.words){const v=+d.words[w]||1;const k=fixNukta(w);if(!lex.w[k])n++;lex.w[k]=(lex.w[k]||0)+v}
+    for(const p in d.next||{}){const m=lex.b[fixNukta(p)]||(lex.b[fixNukta(p)]={});for(const w in d.next[p]){const k=fixNukta(w);m[k]=(m[k]||0)+(+d.next[p][w]||1)}}
+    if(d.corrections&&!st.corr.includes(d.corrections)){st.corr=(st.corr?st.corr+'\n':'')+d.corrections;co.value=st.corr;store.set('corr',st.corr)}
+    saveLex();toast(bn(n)+'টা নতুন শব্দ যোগ হলো');suggest();
+  }catch(err){toast('ফাইলটা বর্ণনা প্যাডের শব্দভান্ডার না')}
+};
+
+
+// ---------- start ----------
+ta.value=store.get('text','');
+build();applyPrefs();setMode(st.bangla);count();
+if(!ta.value){$('helpBox').open=true}
+suggest();lexStat();
+ta.setSelectionRange(ta.value.length,ta.value.length);
+})();
+</script>
+
+</body>
+</html>
