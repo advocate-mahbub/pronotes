@@ -20,7 +20,8 @@ let style = read(css[1])
     return 'url(data:font/woff2;base64,' + fs.readFileSync(file).toString('base64') + ')';
   });
 if (/url\((?!data:)[^)]*\.woff/.test(style)) throw new Error('a font file was not inlined');
-const out = `<title>ProNotes Preview</title>
+const out = `<meta charset="utf-8">
+<title>ProNotes Preview</title>
 <style>${style}</style>
 <div id="root"></div>
 <script type="module">${read(js[1]).replace(/<\/script/gi, '<\\/script').replace(/\uFFFD/g, '\\uFFFD')}</script>
