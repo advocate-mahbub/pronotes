@@ -6,6 +6,7 @@ import { convertBijoyPaste } from '../bijoy';
 import { VoiceController, VoiceDeduper, cleanVoice, decideVoice, detectVoiceEnv, voiceInsertText } from '../voice';
 import { voiceLang, type VoicePrefs } from './prefs-types';
 import { BijoyPanel } from './BijoyPanel';
+import { load, save } from './prefs';
 import { docxBlob, docxFileName, type DocFormat } from '../docx-export';
 import { saveFile } from '../storage/download';
 import { learnTail, learnText, type WordBank } from '../suggest';
@@ -57,6 +58,8 @@ export function Workspace(p: Props) {
   const [listening, setListening] = useState(false);
   const [interim, setInterim] = useState('');
   const [convOpen, setConvOpen] = useState(false);
+  /** One-time notice before the first live voice session (audio goes to the browser's speech service). */
+  const [consentOpen, setConsentOpen] = useState(false);
   const cfg = useRef<BornonaConfig>({ bangla: p.bangla, map: p.map, vowelForming: p.vowelForming, oldReph: p.oldReph, suspended: false });
   cfg.current = { bangla: p.bangla, map: p.map, vowelForming: p.vowelForming, oldReph: p.oldReph, suspended: deviceKb };
   const inputMode = p.coarse && p.kbVisible && !deviceKb ? 'none' : 'text';
@@ -203,9 +206,13 @@ export function Workspace(p: Props) {
       return p.say(d.message);
     }
     if (d.kind === 'unavailable') return p.say(d.message);
+    if (!load('voiceConsent', false)) return setConsentOpen(true);
+    startLive();
+  };
+  const startLive = () => {
     dedupe.current.reset();
-    editor?.commands.focus();
-    c.start();
+    edRef.current?.commands.focus();
+    ctrl.current!.start();
   };
   useEffect(() => {
     const c = ctrl.current!;
@@ -316,6 +323,19 @@ export function Workspace(p: Props) {
           aria-pressed={listening || deviceKb} aria-label={listening ? 'ভয়েস থামান' : 'ভয়েস টাইপিং'} title={listening ? 'ভয়েস থামান' : 'ভয়েস টাইপিং'}
           onPointerDown={(e) => e.preventDefault()} onClick={toggleVoice}>{MIC}</button>
       </div>
+      {consentOpen && (
+        <div className="modal" role="dialog" aria-modal="true" aria-labelledby="vc-title" data-testid="voice-consent">
+          <div className="box">
+            <h2 id="vc-title">সরাসরি ভয়েস চালুর আগে</h2>
+            <p>সরাসরি ভয়েস টাইপিং-এ আপনার কথা (অডিও) ব্রাউজারের ভয়েস সার্ভিসে যায়; Chrome বা Edge-এ সেটা Google বা Microsoft-এর সার্ভারে। লেখা ও ড্রাফট এই ডিভাইসেই থাকে, কিন্তু যা বলবেন তা বাইরে যাবে।</p>
+            <p>মক্কেলের নাম, ঠিকানা, দলিল নম্বর বা গোপন তথ্য বলার দরকার হলে কিবোর্ডে লিখুন। মাইক না চাপলে কিছুই বাইরে যায় না।</p>
+            <div className="row">
+              <button type="button" className="btn primary" data-testid="voice-consent-ok" onClick={() => { save('voiceConsent', true); setConsentOpen(false); startLive(); }}>বুঝেছি, চালু করুন</button>
+              <button type="button" className="btn" data-testid="voice-consent-cancel" onClick={() => { setConsentOpen(false); edRef.current?.commands.focus(); }}>বাতিল</button>
+            </div>
+          </div>
+        </div>
+      )}
       {convOpen && <BijoyPanel editor={editor} ansiFont={p.ansiFont} enFont={p.enFont} say={p.say} />}
       <footer className="dock">
         {listening ? (

@@ -131,6 +131,7 @@ export function Settings(p: Props) {
         <p className="note">প্রতি লাইনে একটা: ভুল = ঠিক। যেমন: এক্তিয়ার = এখতিয়ার</p>
         <textarea id="corr" data-testid="corr" spellCheck={false} placeholder="এক্তিয়ার = এখতিয়ার" value={p.corrections} onChange={(e) => p.setCorrections(e.target.value)} />
         <p className="note">{p.voiceNote}</p>
+        <p className="note">সরাসরি ভয়েসে কথা ব্রাউজারের ভয়েস সার্ভিসে (Chrome-এ Google) যায়; মক্কেলের গোপন তথ্য কিবোর্ডে লিখুন। প্রথমবার মাইক চাপলে এই সতর্কবার্তা একবার দেখানো হয়।</p>
       </details>
 
       <details>

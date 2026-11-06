@@ -43,6 +43,11 @@ test('live voice (mocked engine): interim text, spoken punctuation, new paragrap
   await page.addInitScript(MOCK_SR);
   await start(page);
   await page.getByTestId('mic').click();
+  // one-time privacy notice: cancel does not start, OK starts
+  await page.getByTestId('voice-consent-cancel').click();
+  await expect(page.getByTestId('voice-bar')).toHaveCount(0);
+  await page.getByTestId('mic').click();
+  await page.getByTestId('voice-consent-ok').click();
   await expect(page.getByTestId('voice-bar')).toContainText('শুনছি');
   expect(await page.evaluate(() => (window as never as { __sr: { lang: () => string } }).__sr.lang())).toBe('bn-BD');
   await page.evaluate(() => (window as never as { __sr: { say: (t: string, f: boolean) => void } }).__sr.say('আমি বাদী', false));
@@ -51,6 +56,10 @@ test('live voice (mocked engine): interim text, spoken punctuation, new paragrap
   expect(await paras(page)).toEqual(['আমি বাদী।', 'জমির পরিমাণ ২৫ শতাংশ ']);
   await page.getByTestId('voice-stop').click();
   await expect(page.getByTestId('suggestions')).toBeVisible();
+  // shown only once
+  await page.getByTestId('mic').click();
+  await expect(page.getByTestId('voice-consent')).toHaveCount(0);
+  await expect(page.getByTestId('voice-bar')).toContainText('শুনছি');
 });
 
 test('iPad-like device: mic opens the device keyboard instead (engine suspended)', async ({ browser }) => {
@@ -207,6 +216,7 @@ test('word bank: learn this draft, export (v8 format), reset needs two taps, imp
 
 test('voice settings and corrections are applied to the next result', async ({ page }) => {
   await page.addInitScript(MOCK_SR);
+  await page.addInitScript(() => localStorage.setItem('pronotes.voiceConsent', 'true'));
   await start(page);
   await section(page, 'ভয়েস টাইপিং');
   await page.getByTestId('corr').fill('এক্তিয়ার = এখতিয়ার');
