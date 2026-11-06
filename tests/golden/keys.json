@@ -1,0 +1,1557 @@
+{
+ "bornona": {
+  "Backquote": {
+   "normal": "্‌",
+   "shift": "~",
+   "alt": "",
+   "shiftAlt": ""
+  },
+  "Digit1": {
+   "normal": "১",
+   "shift": "!",
+   "alt": "",
+   "shiftAlt": ""
+  },
+  "Digit2": {
+   "normal": "২",
+   "shift": "ঁ",
+   "alt": "",
+   "shiftAlt": ""
+  },
+  "Digit3": {
+   "normal": "৩",
+   "shift": "#",
+   "alt": "",
+   "shiftAlt": ""
+  },
+  "Digit4": {
+   "normal": "৪",
+   "shift": "৳",
+   "alt": "",
+   "shiftAlt": ""
+  },
+  "Digit5": {
+   "normal": "৫",
+   "shift": "%",
+   "alt": "",
+   "shiftAlt": ""
+  },
+  "Digit6": {
+   "normal": "৬",
+   "shift": "ঃ",
+   "alt": "",
+   "shiftAlt": ""
+  },
+  "Digit7": {
+   "normal": "৭",
+   "shift": "ৎ",
+   "alt": "",
+   "shiftAlt": ""
+  },
+  "Digit8": {
+   "normal": "৮",
+   "shift": "*",
+   "alt": "",
+   "shiftAlt": ""
+  },
+  "Digit9": {
+   "normal": "৯",
+   "shift": "(",
+   "alt": "",
+   "shiftAlt": ""
+  },
+  "Digit0": {
+   "normal": "০",
+   "shift": ")",
+   "alt": "",
+   "shiftAlt": ""
+  },
+  "Minus": {
+   "normal": "-",
+   "shift": "_",
+   "alt": "",
+   "shiftAlt": ""
+  },
+  "Equal": {
+   "normal": "=",
+   "shift": "+",
+   "alt": "",
+   "shiftAlt": ""
+  },
+  "KeyQ": {
+   "normal": "ং",
+   "shift": "ঙ",
+   "alt": "",
+   "shiftAlt": ""
+  },
+  "KeyW": {
+   "normal": "ঢ",
+   "shift": "ঠ",
+   "alt": "",
+   "shiftAlt": ""
+  },
+  "KeyE": {
+   "normal": "ে",
+   "shift": "ৈ",
+   "alt": "",
+   "shiftAlt": ""
+  },
+  "KeyR": {
+   "normal": "র",
+   "shift": "ৃ",
+   "alt": "",
+   "shiftAlt": ""
+  },
+  "KeyT": {
+   "normal": "ত",
+   "shift": "ট",
+   "alt": "",
+   "shiftAlt": ""
+  },
+  "KeyY": {
+   "normal": "ধ",
+   "shift": "থ",
+   "alt": "",
+   "shiftAlt": ""
+  },
+  "KeyU": {
+   "normal": "ু",
+   "shift": "ূ",
+   "alt": "",
+   "shiftAlt": ""
+  },
+  "KeyI": {
+   "normal": "ি",
+   "shift": "ী",
+   "alt": "",
+   "shiftAlt": ""
+  },
+  "KeyO": {
+   "normal": "ো",
+   "shift": "ৌ",
+   "alt": "",
+   "shiftAlt": ""
+  },
+  "KeyP": {
+   "normal": "প",
+   "shift": "্র",
+   "alt": "",
+   "shiftAlt": ""
+  },
+  "BracketLeft": {
+   "normal": "[",
+   "shift": "{",
+   "alt": "",
+   "shiftAlt": ""
+  },
+  "BracketRight": {
+   "normal": "]",
+   "shift": "}",
+   "alt": "",
+   "shiftAlt": ""
+  },
+  "Backslash": {
+   "normal": "র‍্য",
+   "shift": "/-",
+   "alt": "",
+   "shiftAlt": ""
+  },
+  "KeyA": {
+   "normal": "া",
+   "shift": "অ",
+   "alt": "",
+   "shiftAlt": ""
+  },
+  "KeyS": {
+   "normal": "স",
+   "shift": "শ",
+   "alt": "",
+   "shiftAlt": ""
+  },
+  "KeyD": {
+   "normal": "দ",
+   "shift": "ড",
+   "alt": "",
+   "shiftAlt": ""
+  },
+  "KeyF": {
+   "normal": "ফ",
+   "shift": "র্",
+   "alt": "",
+   "shiftAlt": ""
+  },
+  "KeyG": {
+   "normal": "গ",
+   "shift": "ঘ",
+   "alt": "",
+   "shiftAlt": ""
+  },
+  "KeyH": {
+   "normal": "্",
+   "shift": "হ",
+   "alt": "",
+   "shiftAlt": ""
+  },
+  "KeyJ": {
+   "normal": "জ",
+   "shift": "ঝ",
+   "alt": "",
+   "shiftAlt": ""
+  },
+  "KeyK": {
+   "normal": "ক",
+   "shift": "খ",
+   "alt": "",
+   "shiftAlt": ""
+  },
+  "KeyL": {
+   "normal": "ল",
+   "shift": "।",
+   "alt": "",
+   "shiftAlt": ""
+  },
+  "Semicolon": {
+   "normal": ";",
+   "shift": ":",
+   "alt": "",
+   "shiftAlt": ""
+  },
+  "Quote": {
+   "normal": "'",
+   "shift": "\"",
+   "alt": "",
+   "shiftAlt": ""
+  },
+  "KeyZ": {
+   "normal": "য",
+   "shift": "ড়",
+   "alt": "",
+   "shiftAlt": ""
+  },
+  "KeyX": {
+   "normal": "ষ",
+   "shift": "ঢ়",
+   "alt": "",
+   "shiftAlt": ""
+  },
+  "KeyC": {
+   "normal": "চ",
+   "shift": "ছ",
+   "alt": "",
+   "shiftAlt": ""
+  },
+  "KeyV": {
+   "normal": "ভ",
+   "shift": "্য",
+   "alt": "",
+   "shiftAlt": ""
+  },
+  "KeyB": {
+   "normal": "ব",
+   "shift": "য়",
+   "alt": "",
+   "shiftAlt": ""
+  },
+  "KeyN": {
+   "normal": "ন",
+   "shift": "ণ",
+   "alt": "",
+   "shiftAlt": ""
+  },
+  "KeyM": {
+   "normal": "ম",
+   "shift": "ঞ",
+   "alt": "",
+   "shiftAlt": ""
+  },
+  "Comma": {
+   "normal": ",",
+   "shift": "<",
+   "alt": "",
+   "shiftAlt": ""
+  },
+  "Period": {
+   "normal": ".",
+   "shift": ">",
+   "alt": "",
+   "shiftAlt": ""
+  },
+  "Slash": {
+   "normal": "/",
+   "shift": "?",
+   "alt": "",
+   "shiftAlt": ""
+  },
+  "Numpad0": {
+   "normal": ""
+  },
+  "Numpad1": {
+   "normal": ""
+  },
+  "Numpad5": {
+   "normal": ""
+  },
+  "Numpad9": {
+   "normal": ""
+  },
+  "NumpadAdd": {
+   "normal": "+"
+  },
+  "NumpadSubtract": {
+   "normal": "-"
+  },
+  "NumpadMultiply": {
+   "normal": "*"
+  },
+  "NumpadDivide": {
+   "normal": "/"
+  },
+  "NumpadDecimal": {
+   "normal": "."
+  }
+ },
+ "national": {
+  "Backquote": {
+   "normal": "‌",
+   "shift": "‍",
+   "alt": "‌",
+   "shiftAlt": "‍"
+  },
+  "Digit1": {
+   "normal": "১",
+   "shift": "!",
+   "alt": "৴",
+   "shiftAlt": ""
+  },
+  "Digit2": {
+   "normal": "২",
+   "shift": "@",
+   "alt": "৵",
+   "shiftAlt": ""
+  },
+  "Digit3": {
+   "normal": "৩",
+   "shift": "#",
+   "alt": "৶",
+   "shiftAlt": ""
+  },
+  "Digit4": {
+   "normal": "৪",
+   "shift": "$",
+   "alt": "৳",
+   "shiftAlt": "৲"
+  },
+  "Digit5": {
+   "normal": "৫",
+   "shift": "%",
+   "alt": "৷",
+   "shiftAlt": ""
+  },
+  "Digit6": {
+   "normal": "৬",
+   "shift": "^",
+   "alt": "৸",
+   "shiftAlt": "ৎ"
+  },
+  "Digit7": {
+   "normal": "৭",
+   "shift": "&",
+   "alt": "",
+   "shiftAlt": ""
+  },
+  "Digit8": {
+   "normal": "৮",
+   "shift": "*",
+   "alt": "",
+   "shiftAlt": ""
+  },
+  "Digit9": {
+   "normal": "৯",
+   "shift": "(",
+   "alt": "",
+   "shiftAlt": ""
+  },
+  "Digit0": {
+   "normal": "০",
+   "shift": ")",
+   "alt": "",
+   "shiftAlt": ""
+  },
+  "Minus": {
+   "normal": "-",
+   "shift": "_",
+   "alt": "",
+   "shiftAlt": ""
+  },
+  "Equal": {
+   "normal": "=",
+   "shift": "+",
+   "alt": "",
+   "shiftAlt": ""
+  },
+  "KeyQ": {
+   "normal": "ঙ",
+   "shift": "ং",
+   "alt": "ৢ",
+   "shiftAlt": "ৣ"
+  },
+  "KeyW": {
+   "normal": "য",
+   "shift": "য়",
+   "alt": "",
+   "shiftAlt": ""
+  },
+  "KeyE": {
+   "normal": "ড",
+   "shift": "ঢ",
+   "alt": "ৄ",
+   "shiftAlt": ""
+  },
+  "KeyR": {
+   "normal": "প",
+   "shift": "ফ",
+   "alt": "",
+   "shiftAlt": ""
+  },
+  "KeyT": {
+   "normal": "ট",
+   "shift": "ঠ",
+   "alt": "",
+   "shiftAlt": ""
+  },
+  "KeyY": {
+   "normal": "চ",
+   "shift": "ছ",
+   "alt": "",
+   "shiftAlt": ""
+  },
+  "KeyU": {
+   "normal": "জ",
+   "shift": "ঝ",
+   "alt": "",
+   "shiftAlt": ""
+  },
+  "KeyI": {
+   "normal": "হ",
+   "shift": "ঞ",
+   "alt": "ঽ",
+   "shiftAlt": ""
+  },
+  "KeyO": {
+   "normal": "গ",
+   "shift": "ঘ",
+   "alt": "",
+   "shiftAlt": ""
+  },
+  "KeyP": {
+   "normal": "ড়",
+   "shift": "ঢ়",
+   "alt": "",
+   "shiftAlt": ""
+  },
+  "BracketLeft": {
+   "normal": "[",
+   "shift": "{",
+   "alt": "",
+   "shiftAlt": ""
+  },
+  "BracketRight": {
+   "normal": "]",
+   "shift": "}",
+   "alt": "",
+   "shiftAlt": ""
+  },
+  "Backslash": {
+   "normal": "\\",
+   "shift": "|",
+   "alt": "",
+   "shiftAlt": ""
+  },
+  "KeyA": {
+   "normal": "ৃ",
+   "shift": "ৗ",
+   "alt": "ঋ",
+   "shiftAlt": "ৠ"
+  },
+  "KeyS": {
+   "normal": "ু",
+   "shift": "ূ",
+   "alt": "উ",
+   "shiftAlt": "ঊ"
+  },
+  "KeyD": {
+   "normal": "ি",
+   "shift": "ী",
+   "alt": "ই",
+   "shiftAlt": "ঈ"
+  },
+  "KeyF": {
+   "normal": "ব",
+   "shift": "ভ",
+   "alt": "ৰ",
+   "shiftAlt": "ৱ"
+  },
+  "KeyG": {
+   "normal": "্",
+   "shift": "।",
+   "alt": "॥",
+   "shiftAlt": ""
+  },
+  "KeyH": {
+   "normal": "া",
+   "shift": "অ",
+   "alt": "আ",
+   "shiftAlt": ""
+  },
+  "KeyJ": {
+   "normal": "ক",
+   "shift": "খ",
+   "alt": "",
+   "shiftAlt": ""
+  },
+  "KeyK": {
+   "normal": "ত",
+   "shift": "থ",
+   "alt": "",
+   "shiftAlt": ""
+  },
+  "KeyL": {
+   "normal": "দ",
+   "shift": "ধ",
+   "alt": "ঌ",
+   "shiftAlt": "ৡ"
+  },
+  "Semicolon": {
+   "normal": ";",
+   "shift": ":",
+   "alt": "",
+   "shiftAlt": ""
+  },
+  "Quote": {
+   "normal": "'",
+   "shift": "\"",
+   "alt": "",
+   "shiftAlt": ""
+  },
+  "KeyZ": {
+   "normal": "ঁ",
+   "shift": "ঃ",
+   "alt": "৺",
+   "shiftAlt": ""
+  },
+  "KeyX": {
+   "normal": "ো",
+   "shift": "ৌ",
+   "alt": "ও",
+   "shiftAlt": "ঔ"
+  },
+  "KeyC": {
+   "normal": "ে",
+   "shift": "ৈ",
+   "alt": "এ",
+   "shiftAlt": "ঐ"
+  },
+  "KeyV": {
+   "normal": "র",
+   "shift": "ল",
+   "alt": "",
+   "shiftAlt": ""
+  },
+  "KeyB": {
+   "normal": "ন",
+   "shift": "ণ",
+   "alt": "",
+   "shiftAlt": ""
+  },
+  "KeyN": {
+   "normal": "স",
+   "shift": "ষ",
+   "alt": "",
+   "shiftAlt": ""
+  },
+  "KeyM": {
+   "normal": "ম",
+   "shift": "শ",
+   "alt": "",
+   "shiftAlt": ""
+  },
+  "Comma": {
+   "normal": ",",
+   "shift": "<",
+   "alt": "",
+   "shiftAlt": ""
+  },
+  "Period": {
+   "normal": ".",
+   "shift": ">",
+   "alt": "",
+   "shiftAlt": ""
+  },
+  "Slash": {
+   "normal": "/",
+   "shift": "?",
+   "alt": "",
+   "shiftAlt": ""
+  },
+  "Numpad0": {
+   "normal": ""
+  },
+  "Numpad1": {
+   "normal": ""
+  },
+  "Numpad5": {
+   "normal": ""
+  },
+  "Numpad9": {
+   "normal": ""
+  },
+  "NumpadAdd": {
+   "normal": "+"
+  },
+  "NumpadSubtract": {
+   "normal": "-"
+  },
+  "NumpadMultiply": {
+   "normal": "*"
+  },
+  "NumpadDivide": {
+   "normal": "/"
+  },
+  "NumpadDecimal": {
+   "normal": "."
+  }
+ },
+ "probhat": {
+  "Backquote": {
+   "normal": "‍",
+   "shift": "~",
+   "alt": "",
+   "shiftAlt": ""
+  },
+  "Digit1": {
+   "normal": "১",
+   "shift": "!",
+   "alt": "৴",
+   "shiftAlt": ""
+  },
+  "Digit2": {
+   "normal": "২",
+   "shift": "@",
+   "alt": "৵",
+   "shiftAlt": ""
+  },
+  "Digit3": {
+   "normal": "৩",
+   "shift": "#",
+   "alt": "৶",
+   "shiftAlt": ""
+  },
+  "Digit4": {
+   "normal": "৪",
+   "shift": "৳",
+   "alt": "৷",
+   "shiftAlt": "৲"
+  },
+  "Digit5": {
+   "normal": "৫",
+   "shift": "%",
+   "alt": "",
+   "shiftAlt": ""
+  },
+  "Digit6": {
+   "normal": "৬",
+   "shift": "^",
+   "alt": "",
+   "shiftAlt": ""
+  },
+  "Digit7": {
+   "normal": "৭",
+   "shift": "ঞ",
+   "alt": "",
+   "shiftAlt": "৺"
+  },
+  "Digit8": {
+   "normal": "৮",
+   "shift": "ৎ",
+   "alt": "",
+   "shiftAlt": ""
+  },
+  "Digit9": {
+   "normal": "৯",
+   "shift": "(",
+   "alt": "",
+   "shiftAlt": ""
+  },
+  "Digit0": {
+   "normal": "০",
+   "shift": ")",
+   "alt": "৸",
+   "shiftAlt": "৹"
+  },
+  "Minus": {
+   "normal": "-",
+   "shift": "_",
+   "alt": "",
+   "shiftAlt": ""
+  },
+  "Equal": {
+   "normal": "=",
+   "shift": "+",
+   "alt": "",
+   "shiftAlt": ""
+  },
+  "KeyQ": {
+   "normal": "দ",
+   "shift": "ধ",
+   "alt": "",
+   "shiftAlt": ""
+  },
+  "KeyW": {
+   "normal": "ূ",
+   "shift": "ঊ",
+   "alt": "",
+   "shiftAlt": ""
+  },
+  "KeyE": {
+   "normal": "ী",
+   "shift": "ঈ",
+   "alt": "",
+   "shiftAlt": ""
+  },
+  "KeyR": {
+   "normal": "র",
+   "shift": "ড়",
+   "alt": "",
+   "shiftAlt": ""
+  },
+  "KeyT": {
+   "normal": "ট",
+   "shift": "ঠ",
+   "alt": "",
+   "shiftAlt": ""
+  },
+  "KeyY": {
+   "normal": "এ",
+   "shift": "ঐ",
+   "alt": "",
+   "shiftAlt": ""
+  },
+  "KeyU": {
+   "normal": "ু",
+   "shift": "উ",
+   "alt": "",
+   "shiftAlt": ""
+  },
+  "KeyI": {
+   "normal": "ি",
+   "shift": "ই",
+   "alt": "",
+   "shiftAlt": ""
+  },
+  "KeyO": {
+   "normal": "ও",
+   "shift": "ঔ",
+   "alt": "",
+   "shiftAlt": ""
+  },
+  "KeyP": {
+   "normal": "প",
+   "shift": "ফ",
+   "alt": "",
+   "shiftAlt": ""
+  },
+  "BracketLeft": {
+   "normal": "ে",
+   "shift": "ৈ",
+   "alt": "",
+   "shiftAlt": ""
+  },
+  "BracketRight": {
+   "normal": "ো",
+   "shift": "ৌ",
+   "alt": "ৗ",
+   "shiftAlt": ""
+  },
+  "Backslash": {
+   "normal": "‌",
+   "shift": "॥",
+   "alt": "",
+   "shiftAlt": ""
+  },
+  "KeyA": {
+   "normal": "া",
+   "shift": "অ",
+   "alt": "ঌ",
+   "shiftAlt": "ৠ"
+  },
+  "KeyS": {
+   "normal": "স",
+   "shift": "ষ",
+   "alt": "ৡ",
+   "shiftAlt": "ৣ"
+  },
+  "KeyD": {
+   "normal": "ড",
+   "shift": "ঢ",
+   "alt": "ৄ",
+   "shiftAlt": "ৢ"
+  },
+  "KeyF": {
+   "normal": "ত",
+   "shift": "থ",
+   "alt": "",
+   "shiftAlt": ""
+  },
+  "KeyG": {
+   "normal": "গ",
+   "shift": "ঘ",
+   "alt": "",
+   "shiftAlt": ""
+  },
+  "KeyH": {
+   "normal": "হ",
+   "shift": "ঃ",
+   "alt": "ঽ",
+   "shiftAlt": ""
+  },
+  "KeyJ": {
+   "normal": "জ",
+   "shift": "ঝ",
+   "alt": "",
+   "shiftAlt": ""
+  },
+  "KeyK": {
+   "normal": "ক",
+   "shift": "খ",
+   "alt": "",
+   "shiftAlt": ""
+  },
+  "KeyL": {
+   "normal": "ল",
+   "shift": "ং",
+   "alt": "",
+   "shiftAlt": ""
+  },
+  "Semicolon": {
+   "normal": ";",
+   "shift": ":",
+   "alt": "",
+   "shiftAlt": ""
+  },
+  "Quote": {
+   "normal": "'",
+   "shift": "\"",
+   "alt": "",
+   "shiftAlt": ""
+  },
+  "KeyZ": {
+   "normal": "য়",
+   "shift": "য",
+   "alt": "",
+   "shiftAlt": ""
+  },
+  "KeyX": {
+   "normal": "শ",
+   "shift": "ঢ়",
+   "alt": "",
+   "shiftAlt": ""
+  },
+  "KeyC": {
+   "normal": "চ",
+   "shift": "ছ",
+   "alt": "",
+   "shiftAlt": ""
+  },
+  "KeyV": {
+   "normal": "আ",
+   "shift": "ঋ",
+   "alt": "",
+   "shiftAlt": ""
+  },
+  "KeyB": {
+   "normal": "ব",
+   "shift": "ভ",
+   "alt": "",
+   "shiftAlt": ""
+  },
+  "KeyN": {
+   "normal": "ন",
+   "shift": "ণ",
+   "alt": "",
+   "shiftAlt": ""
+  },
+  "KeyM": {
+   "normal": "ম",
+   "shift": "ঙ",
+   "alt": "",
+   "shiftAlt": ""
+  },
+  "Comma": {
+   "normal": ",",
+   "shift": "ৃ",
+   "alt": "",
+   "shiftAlt": ""
+  },
+  "Period": {
+   "normal": "।",
+   "shift": "ঁ",
+   "alt": "়",
+   "shiftAlt": ""
+  },
+  "Slash": {
+   "normal": "্",
+   "shift": "?",
+   "alt": "",
+   "shiftAlt": ""
+  },
+  "Numpad0": {
+   "normal": ""
+  },
+  "Numpad1": {
+   "normal": ""
+  },
+  "Numpad5": {
+   "normal": ""
+  },
+  "Numpad9": {
+   "normal": ""
+  },
+  "NumpadAdd": {
+   "normal": "+"
+  },
+  "NumpadSubtract": {
+   "normal": "-"
+  },
+  "NumpadMultiply": {
+   "normal": "*"
+  },
+  "NumpadDivide": {
+   "normal": "/"
+  },
+  "NumpadDecimal": {
+   "normal": "."
+  }
+ },
+ "munir": {
+  "Backquote": {
+   "normal": "৳",
+   "shift": "‍",
+   "alt": "ৰ",
+   "shiftAlt": ""
+  },
+  "Digit1": {
+   "normal": "_",
+   "shift": "ঁ",
+   "alt": "ৱ",
+   "shiftAlt": ""
+  },
+  "Digit2": {
+   "normal": "ই",
+   "shift": "ঐ",
+   "alt": "",
+   "shiftAlt": ""
+  },
+  "Digit3": {
+   "normal": "ও",
+   "shift": "১",
+   "alt": "৲",
+   "shiftAlt": ""
+  },
+  "Digit4": {
+   "normal": "ড",
+   "shift": "২",
+   "alt": "৴",
+   "shiftAlt": ""
+  },
+  "Digit5": {
+   "normal": "?",
+   "shift": "৩",
+   "alt": "৵",
+   "shiftAlt": ""
+  },
+  "Digit6": {
+   "normal": "গ",
+   "shift": "৪",
+   "alt": "৶",
+   "shiftAlt": ""
+  },
+  "Digit7": {
+   "normal": "চ",
+   "shift": "৫",
+   "alt": "৷",
+   "shiftAlt": ""
+  },
+  "Digit8": {
+   "normal": "ং",
+   "shift": "০",
+   "alt": "৸",
+   "shiftAlt": ""
+  },
+  "Digit9": {
+   "normal": "'",
+   "shift": "৯",
+   "alt": "৺",
+   "shiftAlt": ""
+  },
+  "Digit0": {
+   "normal": "ষ",
+   "shift": "৮",
+   "alt": "৹",
+   "shiftAlt": ""
+  },
+  "Minus": {
+   "normal": "(",
+   "shift": "৭",
+   "alt": "",
+   "shiftAlt": ""
+  },
+  "Equal": {
+   "normal": ")",
+   "shift": "৬",
+   "alt": "",
+   "shiftAlt": ""
+  },
+  "KeyQ": {
+   "normal": "ু",
+   "shift": "ূ",
+   "alt": "",
+   "shiftAlt": ""
+  },
+  "KeyW": {
+   "normal": "ৌ",
+   "shift": "র্",
+   "alt": "ৗ",
+   "shiftAlt": ""
+  },
+  "KeyE": {
+   "normal": "ট",
+   "shift": "",
+   "alt": "",
+   "shiftAlt": ""
+  },
+  "KeyR": {
+   "normal": "দ",
+   "shift": "ক্ষ",
+   "alt": "",
+   "shiftAlt": ""
+  },
+  "KeyT": {
+   "normal": "ছ",
+   "shift": "ঝ",
+   "alt": "",
+   "shiftAlt": ""
+  },
+  "KeyY": {
+   "normal": "ঢ",
+   "shift": "ঘ",
+   "alt": "",
+   "shiftAlt": ""
+  },
+  "KeyU": {
+   "normal": "অ",
+   "shift": "ভ",
+   "alt": "",
+   "shiftAlt": ""
+  },
+  "KeyI": {
+   "normal": "য",
+   "shift": "ঠ",
+   "alt": "",
+   "shiftAlt": ""
+  },
+  "KeyO": {
+   "normal": "হ",
+   "shift": "খ",
+   "alt": "",
+   "shiftAlt": ""
+  },
+  "KeyP": {
+   "normal": "ম",
+   "shift": "ধ",
+   "alt": "",
+   "shiftAlt": ""
+  },
+  "BracketLeft": {
+   "normal": "/",
+   "shift": "+",
+   "alt": "",
+   "shiftAlt": ""
+  },
+  "BracketRight": {
+   "normal": "-",
+   "shift": "%",
+   "alt": "",
+   "shiftAlt": ""
+  },
+  "Backslash": {
+   "normal": "‌",
+   "shift": "@",
+   "alt": "",
+   "shiftAlt": ""
+  },
+  "KeyA": {
+   "normal": "্র",
+   "shift": "ৃ",
+   "alt": "ৄ",
+   "shiftAlt": ""
+  },
+  "KeyS": {
+   "normal": ".",
+   "shift": "ড়",
+   "alt": "়",
+   "shiftAlt": ""
+  },
+  "KeyD": {
+   "normal": "স",
+   "shift": "ঢ়",
+   "alt": "ৠ",
+   "shiftAlt": ""
+  },
+  "KeyF": {
+   "normal": "ন",
+   "shift": "ঞ",
+   "alt": "ৡ",
+   "shiftAlt": ""
+  },
+  "KeyG": {
+   "normal": "ে",
+   "shift": "ৎ",
+   "alt": "ৢ",
+   "shiftAlt": ""
+  },
+  "KeyH": {
+   "normal": "া",
+   "shift": "্য",
+   "alt": "ৣ",
+   "shiftAlt": ""
+  },
+  "KeyJ": {
+   "normal": "ত",
+   "shift": "ঈ",
+   "alt": "",
+   "shiftAlt": ""
+  },
+  "KeyK": {
+   "normal": "র",
+   "shift": "ণ",
+   "alt": "",
+   "shiftAlt": ""
+  },
+  "KeyL": {
+   "normal": "ি",
+   "shift": "ী",
+   "alt": "",
+   "shiftAlt": ""
+  },
+  "Semicolon": {
+   "normal": "ব",
+   "shift": "উ",
+   "alt": "",
+   "shiftAlt": ""
+  },
+  "Quote": {
+   "normal": "ক",
+   "shift": "ঋ",
+   "alt": "ঌ",
+   "shiftAlt": ""
+  },
+  "KeyZ": {
+   "normal": "আ",
+   "shift": "ঊ",
+   "alt": "",
+   "shiftAlt": ""
+  },
+  "KeyX": {
+   "normal": "্",
+   "shift": "ঔ",
+   "alt": "",
+   "shiftAlt": ""
+  },
+  "KeyC": {
+   "normal": "ো",
+   "shift": "য়",
+   "alt": "",
+   "shiftAlt": ""
+  },
+  "KeyV": {
+   "normal": ",",
+   "shift": "ৈ",
+   "alt": "",
+   "shiftAlt": ""
+  },
+  "KeyB": {
+   "normal": "প",
+   "shift": "ফ",
+   "alt": "",
+   "shiftAlt": ""
+  },
+  "KeyN": {
+   "normal": "এ",
+   "shift": ";",
+   "alt": "",
+   "shiftAlt": ""
+  },
+  "KeyM": {
+   "normal": "জ",
+   "shift": "ঙ",
+   "alt": "",
+   "shiftAlt": ""
+  },
+  "Comma": {
+   "normal": "শ",
+   "shift": "-",
+   "alt": "",
+   "shiftAlt": ""
+  },
+  "Period": {
+   "normal": "ল",
+   "shift": "থ",
+   "alt": "",
+   "shiftAlt": ""
+  },
+  "Slash": {
+   "normal": "।",
+   "shift": "ঃ",
+   "alt": "॥",
+   "shiftAlt": ""
+  },
+  "Numpad0": {
+   "normal": ""
+  },
+  "Numpad1": {
+   "normal": ""
+  },
+  "Numpad5": {
+   "normal": ""
+  },
+  "Numpad9": {
+   "normal": ""
+  },
+  "NumpadAdd": {
+   "normal": "+"
+  },
+  "NumpadSubtract": {
+   "normal": "-"
+  },
+  "NumpadMultiply": {
+   "normal": "*"
+  },
+  "NumpadDivide": {
+   "normal": "/"
+  },
+  "NumpadDecimal": {
+   "normal": "."
+  }
+ },
+ "avroeasy": {
+  "Backquote": {
+   "normal": "‌",
+   "shift": "‍",
+   "alt": "",
+   "shiftAlt": ""
+  },
+  "Digit1": {
+   "normal": "১",
+   "shift": "!",
+   "alt": "",
+   "shiftAlt": ""
+  },
+  "Digit2": {
+   "normal": "২",
+   "shift": "ঁ",
+   "alt": "",
+   "shiftAlt": ""
+  },
+  "Digit3": {
+   "normal": "৩",
+   "shift": "#",
+   "alt": "",
+   "shiftAlt": ""
+  },
+  "Digit4": {
+   "normal": "৪",
+   "shift": "৳",
+   "alt": "",
+   "shiftAlt": ""
+  },
+  "Digit5": {
+   "normal": "৫",
+   "shift": "%",
+   "alt": "",
+   "shiftAlt": ""
+  },
+  "Digit6": {
+   "normal": "৬",
+   "shift": "ঃ",
+   "alt": "",
+   "shiftAlt": ""
+  },
+  "Digit7": {
+   "normal": "৭",
+   "shift": "ৎ",
+   "alt": "",
+   "shiftAlt": ""
+  },
+  "Digit8": {
+   "normal": "৮",
+   "shift": "*",
+   "alt": "",
+   "shiftAlt": ""
+  },
+  "Digit9": {
+   "normal": "৯",
+   "shift": "(",
+   "alt": "",
+   "shiftAlt": ""
+  },
+  "Digit0": {
+   "normal": "০",
+   "shift": ")",
+   "alt": "",
+   "shiftAlt": ""
+  },
+  "Minus": {
+   "normal": "-",
+   "shift": "_",
+   "alt": "",
+   "shiftAlt": ""
+  },
+  "Equal": {
+   "normal": "=",
+   "shift": "+",
+   "alt": "",
+   "shiftAlt": ""
+  },
+  "KeyQ": {
+   "normal": "ড়",
+   "shift": "ঢ়",
+   "alt": "",
+   "shiftAlt": ""
+  },
+  "KeyW": {
+   "normal": "ং",
+   "shift": "ঙ",
+   "alt": "",
+   "shiftAlt": ""
+  },
+  "KeyE": {
+   "normal": "য",
+   "shift": "য়",
+   "alt": "",
+   "shiftAlt": ""
+  },
+  "KeyR": {
+   "normal": "র",
+   "shift": "ল",
+   "alt": "",
+   "shiftAlt": ""
+  },
+  "KeyT": {
+   "normal": "ট",
+   "shift": "ঠ",
+   "alt": "",
+   "shiftAlt": ""
+  },
+  "KeyY": {
+   "normal": "ড",
+   "shift": "ঢ",
+   "alt": "",
+   "shiftAlt": ""
+  },
+  "KeyU": {
+   "normal": "ত",
+   "shift": "থ",
+   "alt": "",
+   "shiftAlt": ""
+  },
+  "KeyI": {
+   "normal": "দ",
+   "shift": "ধ",
+   "alt": "",
+   "shiftAlt": ""
+  },
+  "KeyO": {
+   "normal": "চ",
+   "shift": "ছ",
+   "alt": "",
+   "shiftAlt": ""
+  },
+  "KeyP": {
+   "normal": "প",
+   "shift": "ফ",
+   "alt": "",
+   "shiftAlt": ""
+  },
+  "BracketLeft": {
+   "normal": "[",
+   "shift": "{",
+   "alt": "",
+   "shiftAlt": ""
+  },
+  "BracketRight": {
+   "normal": "]",
+   "shift": "}",
+   "alt": "",
+   "shiftAlt": ""
+  },
+  "Backslash": {
+   "normal": "ৱ",
+   "shift": "ৰ",
+   "alt": "",
+   "shiftAlt": ""
+  },
+  "KeyA": {
+   "normal": "ো",
+   "shift": "ৌ",
+   "alt": "ও",
+   "shiftAlt": "ঔ"
+  },
+  "KeyS": {
+   "normal": "ে",
+   "shift": "ৈ",
+   "alt": "এ",
+   "shiftAlt": "ঐ"
+  },
+  "KeyD": {
+   "normal": "ু",
+   "shift": "ূ",
+   "alt": "উ",
+   "shiftAlt": "ঊ"
+  },
+  "KeyF": {
+   "normal": "ি",
+   "shift": "ী",
+   "alt": "ই",
+   "shiftAlt": "ঈ"
+  },
+  "KeyG": {
+   "normal": "া",
+   "shift": "অ",
+   "alt": "আ",
+   "shiftAlt": "অ"
+  },
+  "KeyH": {
+   "normal": "্",
+   "shift": "।",
+   "alt": "",
+   "shiftAlt": ""
+  },
+  "KeyJ": {
+   "normal": "জ",
+   "shift": "ঝ",
+   "alt": "",
+   "shiftAlt": ""
+  },
+  "KeyK": {
+   "normal": "ক",
+   "shift": "খ",
+   "alt": "",
+   "shiftAlt": ""
+  },
+  "KeyL": {
+   "normal": "গ",
+   "shift": "ঘ",
+   "alt": "",
+   "shiftAlt": ""
+  },
+  "Semicolon": {
+   "normal": ";",
+   "shift": ":",
+   "alt": "",
+   "shiftAlt": ""
+  },
+  "Quote": {
+   "normal": "'",
+   "shift": "\"",
+   "alt": "",
+   "shiftAlt": ""
+  },
+  "KeyZ": {
+   "normal": "ৃ",
+   "shift": "র্",
+   "alt": "",
+   "shiftAlt": ""
+  },
+  "KeyX": {
+   "normal": "্র",
+   "shift": "্য",
+   "alt": "",
+   "shiftAlt": ""
+  },
+  "KeyC": {
+   "normal": "শ",
+   "shift": "হ",
+   "alt": "",
+   "shiftAlt": ""
+  },
+  "KeyV": {
+   "normal": "স",
+   "shift": "ষ",
+   "alt": "",
+   "shiftAlt": ""
+  },
+  "KeyB": {
+   "normal": "ব",
+   "shift": "ভ",
+   "alt": "",
+   "shiftAlt": ""
+  },
+  "KeyN": {
+   "normal": "ন",
+   "shift": "ণ",
+   "alt": "",
+   "shiftAlt": ""
+  },
+  "KeyM": {
+   "normal": "ম",
+   "shift": "ঞ",
+   "alt": "",
+   "shiftAlt": ""
+  },
+  "Comma": {
+   "normal": ",",
+   "shift": "<",
+   "alt": "",
+   "shiftAlt": ""
+  },
+  "Period": {
+   "normal": ".",
+   "shift": ">",
+   "alt": "",
+   "shiftAlt": ""
+  },
+  "Slash": {
+   "normal": "/",
+   "shift": "?",
+   "alt": "",
+   "shiftAlt": ""
+  },
+  "Numpad0": {
+   "normal": ""
+  },
+  "Numpad1": {
+   "normal": ""
+  },
+  "Numpad5": {
+   "normal": ""
+  },
+  "Numpad9": {
+   "normal": ""
+  },
+  "NumpadAdd": {
+   "normal": "+"
+  },
+  "NumpadSubtract": {
+   "normal": "-"
+  },
+  "NumpadMultiply": {
+   "normal": "*"
+  },
+  "NumpadDivide": {
+   "normal": "/"
+  },
+  "NumpadDecimal": {
+   "normal": "."
+  }
+ }
+}

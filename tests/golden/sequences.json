@@ -1,0 +1,189 @@
+[
+ {
+  "layout": "bornona",
+  "vf": true,
+  "oldReph": false,
+  "keys": [
+   "KeyK",
+   "Shift+KeyF",
+   "KeyM"
+  ],
+  "output": "কর্ম"
+ },
+ {
+  "layout": "bornona",
+  "vf": true,
+  "oldReph": false,
+  "keys": [
+   "KeyI",
+   "KeyE",
+   "KeyK",
+   "Space",
+   "Shift+KeyA",
+   "KeyA",
+   "Space",
+   "KeyV",
+   "KeyA",
+   "Shift+KeyI"
+  ],
+  "output": "ইএক আ ভাঈ"
+ },
+ {
+  "layout": "bornona",
+  "vf": true,
+  "oldReph": false,
+  "keys": [
+   "KeyK",
+   "KeyH",
+   "KeyX",
+   "Space",
+   "KeyK",
+   "Backquote",
+   "KeyX",
+   "Space",
+   "Backslash",
+   "KeyA",
+   "KeyB",
+   "Space",
+   "Digit5",
+   "Digit0",
+   "Shift+Backslash"
+  ],
+  "output": "ক্ষ ক্‌ষ র‍্যাব ৫০/-"
+ },
+ {
+  "layout": "bornona",
+  "vf": true,
+  "oldReph": false,
+  "keys": [
+   "KeyN",
+   "KeyI",
+   "Shift+KeyF",
+   "KeyD",
+   "KeyE",
+   "Shift+KeyS",
+   "Space",
+   "KeyP",
+   "Shift+KeyP",
+   "KeyT",
+   "KeyI",
+   "Space",
+   "KeyB",
+   "Shift+KeyV",
+   "KeyA",
+   "Shift+KeyB"
+  ],
+  "output": "নির্দেশ প্রতি ব্যায়"
+ },
+ {
+  "layout": "bornona",
+  "vf": true,
+  "oldReph": true,
+  "keys": [
+   "KeyK",
+   "KeyM",
+   "Shift+KeyF",
+   "Space",
+   "KeyD",
+   "KeyH",
+   "KeyB",
+   "Shift+KeyF",
+   "Space",
+   "KeyK",
+   "KeyM",
+   "Shift+KeyI",
+   "Shift+KeyF"
+  ],
+  "output": "কর্ম র্দ্ব কর্মী"
+ },
+ {
+  "layout": "bornona",
+  "vf": false,
+  "oldReph": false,
+  "keys": [
+   "KeyI",
+   "KeyE",
+   "Space",
+   "Shift+KeyA",
+   "KeyA"
+  ],
+  "output": "িে অা"
+ },
+ {
+  "layout": "bornona",
+  "vf": true,
+  "oldReph": false,
+  "keys": [
+   "Shift+KeyR",
+   "KeyN",
+   "Space",
+   "Shift+KeyO",
+   "KeyR",
+   "Shift+KeyI"
+  ],
+  "output": "ঋন ঔরী"
+ },
+ {
+  "layout": "national",
+  "vf": true,
+  "oldReph": false,
+  "keys": [
+   "KeyJ",
+   "KeyK",
+   "Space",
+   "KeyA",
+   "KeyF",
+   "KeyG",
+   "KeyH",
+   "Space",
+   "Shift+KeyJ",
+   "Shift+KeyK"
+  ],
+  "output": "কত ঋব্া খথ"
+ },
+ {
+  "layout": "probhat",
+  "vf": true,
+  "oldReph": false,
+  "keys": [
+   "KeyK",
+   "KeyA",
+   "KeyM",
+   "Space",
+   "KeyL",
+   "KeyI",
+   "KeyK",
+   "Space",
+   "Backslash",
+   "Backquote"
+  ],
+  "output": "কাম লিক ‌‍"
+ },
+ {
+  "layout": "avroeasy",
+  "vf": true,
+  "oldReph": false,
+  "keys": [
+   "Alt+KeyF",
+   "Alt+KeyG",
+   "KeyK",
+   "KeyA",
+   "Space",
+   "Shift+Alt+KeyA"
+  ],
+  "output": "ইআকো ঔ"
+ },
+ {
+  "layout": "munir",
+  "vf": true,
+  "oldReph": false,
+  "keys": [
+   "KeyK",
+   "KeyA",
+   "Space",
+   "Alt+KeyW",
+   "Alt+Digit3"
+  ],
+  "output": "র্র ৗ৲"
+ }
+]

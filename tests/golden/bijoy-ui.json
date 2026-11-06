@@ -1,0 +1,64 @@
+{
+ "runs": [
+  {
+   "s": "ফাইলের নাম National (Jatiya).avrolayout, দেখুন। Section 151 CPC অনুযায়ী দরখাস্ত।",
+   "runs": [
+    {
+     "en": false,
+     "text": "dvB‡ji bvg "
+    },
+    {
+     "en": true,
+     "text": "National (Jatiya).avrolayout,"
+    },
+    {
+     "en": false,
+     "text": " †`Lyb| "
+    },
+    {
+     "en": true,
+     "text": "Section 151 CPC"
+    },
+    {
+     "en": false,
+     "text": " Abyhvqx `iLv¯—|"
+    }
+   ]
+  },
+  {
+   "s": "The plaintiff বাদী filed মোকদ্দমা on 5 May 2024.",
+   "runs": [
+    {
+     "en": true,
+     "text": "The plaintiff"
+    },
+    {
+     "en": false,
+     "text": " ev`x "
+    },
+    {
+     "en": true,
+     "text": "filed"
+    },
+    {
+     "en": false,
+     "text": " †gvKÏgv "
+    },
+    {
+     "en": true,
+     "text": "on 5 May 2024."
+    }
+   ]
+  }
+ ],
+ "pastes": [
+  {
+   "html": "<html><head><style>p.MsoNormal{font-family:\"SutonnyMJ\";} span.en{font-family:Calibri}</style></head><body><p class=MsoNormal>Avgvi †mvbvi evsjv <span style='font-family:\"Times New Roman\";mso-bidi-font-family:SutonnyMJ'>National (Jatiya).avrolayout</span></p><p class=MsoNormal>D‡jøL¨ †h, <span class=en>Section 151</span></p></body></html>",
+   "value": "আমার সোনার বাংলা National (Jatiya).avrolayout\nউল্লেখ্য যে, Section 151"
+  },
+  {
+   "html": "<p><span style=\"font-family:Arial\">Only English here</span></p>",
+   "value": ""
+  }
+ ]
+}
