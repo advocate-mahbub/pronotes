@@ -1,7 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { EditorContent, useEditor } from '@tiptap/react';
 import type { LayoutMap } from '../bornona-engine';
-import { editorExtensions, type BornonaConfig } from '../editor';
+import { editorExtensions, PARAGRAPH_STYLES, type BornonaConfig, type ParagraphStyle } from '../editor';
+import { docxBlob, docxFileName, type DocFormat } from '../docx-export';
+import { saveFile } from '../storage/download';
 import { learnTail, learnText, type WordBank } from '../suggest';
 import type { Doc } from '../storage';
 import { OnScreenKeyboard } from './OnScreenKeyboard';
@@ -26,6 +28,8 @@ interface Props {
   onSaveState: (s: SaveState) => void;
   toolbarExtra: React.ReactNode;
   toolbarRight: React.ReactNode;
+  format: DocFormat;
+  say: (msg: string) => void;
 }
 
 /** One open document: toolbar, title, page and the keyboard dock. Remounted per document (fresh undo history). */
@@ -68,7 +72,8 @@ export function Workspace(p: Props) {
       },
     }),
     content: p.doc.content,
-    editorProps: { attributes: { class: 'page-body', lang: 'bn', spellcheck: 'false', autocorrect: 'off', autocapitalize: 'off', 'data-testid': 'editor' } },
+    // Tiptap re-applies these options on re-render, so inputmode must be part of them.
+    editorProps: { attributes: { class: 'page-body', lang: 'bn', spellcheck: 'false', autocorrect: 'off', autocapitalize: 'off', 'data-testid': 'editor', inputmode: p.coarse && p.kbVisible ? 'none' : 'text' } },
     onUpdate: ({ editor }) => {
       pending.current = true;
       cb.current.onSaveState('saving');
@@ -112,6 +117,39 @@ export function Workspace(p: Props) {
     });
   }, [editor, p.coarse, p.kbVisible]);
 
+  // Fit the Legal-size page (8.5 in = 816 px) to the available width.
+  const deskRef = useRef<HTMLDivElement>(null);
+  const [zoom, setZoom] = useState(1);
+  useEffect(() => {
+    const el = deskRef.current;
+    if (!el) return;
+    const ro = new ResizeObserver(() => setZoom(Math.min(1.25, Math.max(0.3, (el.clientWidth - 24) / 816))));
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [editor]);
+
+  const exportDocx = async () => {
+    if (!editor) return;
+    pending.current = true;
+    await flush(editor);
+    try {
+      const ok = await saveFile(docxFileName(title), await docxBlob(editor.getJSON(), title, p.format));
+      if (ok) p.say('Word ফাইল (.docx) তৈরি হয়েছে');
+    } catch {
+      p.say('Word ফাইল তৈরি করা যায়নি');
+    }
+  };
+  const print = async () => {
+    if (!editor) return;
+    pending.current = true;
+    await flush(editor);
+    try {
+      window.print();
+    } catch {
+      p.say('এখানে প্রিন্ট করা যায় না');
+    }
+  };
+
   if (!editor) return null;
   const btn = (label: string, t: string, active: boolean, run: () => void, testid?: string) => (
     <button type="button" className={'tb' + (active ? ' on' : '')} title={t} aria-label={t} aria-pressed={active} data-testid={testid}
@@ -131,12 +169,30 @@ export function Workspace(p: Props) {
         {btn('U', 'Underline (Ctrl/⌘+U)', editor.isActive('underline'), () => editor.chain().focus().toggleUnderline().run())}
         {btn('H', 'Highlight', editor.isActive('highlight'), () => editor.chain().focus().toggleHighlight().run())}
         <span className="sep" />
+        <select className="pstyle" aria-label="অনুচ্ছেদের ধরন" data-testid="pstyle"
+          value={(editor.getAttributes('paragraph').pstyle as ParagraphStyle) || 'normal'}
+          onChange={(e) => editor.chain().focus().setParagraphStyle(e.target.value as ParagraphStyle).run()}>
+          {PARAGRAPH_STYLES.map((s) => <option key={s.id} value={s.id}>{s.label}</option>)}
+        </select>
+        {editor.isActive('table') ? (
+          <>
+            {btn('+সারি', 'নিচে সারি যোগ', false, () => editor.chain().focus().addRowAfter().run(), 'row-add')}
+            {btn('−সারি', 'এই সারি মুছুন', false, () => editor.chain().focus().deleteRow().run(), 'row-del')}
+            {btn('−টেবিল', 'টেবিল মুছুন', false, () => editor.chain().focus().deleteTable().run(), 'table-del')}
+          </>
+        ) : (
+          btn('তফসিল', 'তফসিলের টেবিল (৪ কলাম)', false, () => editor.chain().focus().insertTable({ rows: 3, cols: 4, withHeaderRow: true }).run(), 'table-add')
+        )}
+        <span className="sep" />
         {btn('↶', 'Undo (Ctrl/⌘+Z)', false, () => editor.chain().focus().undo().run())}
         {btn('↷', 'Redo', false, () => editor.chain().focus().redo().run())}
         <span className="grow" />
+        <button type="button" className="btn primary small" data-testid="export-docx" onPointerDown={(e) => e.preventDefault()} onClick={exportDocx}>Word (.docx)</button>
+        {btn('⎙', 'প্রিন্ট / PDF', false, print, 'print')}
         {p.toolbarRight}
       </nav>
-      <main className="desk">
+      <main className="desk" ref={deskRef}
+        style={{ ['--z' as string]: zoom, ['--doc-font' as string]: `"${p.format.font}"`, ['--doc-size' as string]: p.format.size + 'pt', ['--doc-title' as string]: p.format.titleSize + 'pt', ['--doc-line' as string]: p.format.lineSpacing } as React.CSSProperties}>
         <input className="title" data-testid="title" aria-label="ড্রাফটের নাম" value={title}
           onChange={(e) => setTitle(e.target.value)} onBlur={commitTitle}
           onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); commitTitle(); editor.commands.focus(); } }} />

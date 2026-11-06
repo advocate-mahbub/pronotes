@@ -6,6 +6,7 @@ import {
   loadBank, saveBank, requestPersistence, exportAll, restoreAll, parseBackup, backupFileName, type Doc,
 } from '../storage';
 import { saveFile } from '../storage/download';
+import { DEFAULT_FORMAT, type DocFormat } from '../docx-export';
 import { Sidebar } from './Sidebar';
 import { Workspace, type SaveState } from './Workspace';
 import { load, save } from './prefs';
@@ -39,6 +40,7 @@ export function App() {
   const [oldReph, setOldReph] = useState(() => load('oldReph', false));
   const [kbVisible, setKbVisible] = useState(() => load('kb', coarse));
   const [sideOpen, setSideOpen] = useState(() => load('side', true));
+  const [format, setFormat] = useState<DocFormat>(() => ({ ...DEFAULT_FORMAT, ...load<Partial<DocFormat>>('format', {}) }));
   const [wide, setWide] = useState(() => wideQuery?.matches ?? true);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [docs, setDocs] = useState<Doc[]>([]);
@@ -47,6 +49,7 @@ export function App() {
   const [view, setView] = useState<'docs' | 'trash'>('docs');
   const [saveState, setSaveState] = useState<SaveState>('saved');
   const [toast, setToast] = useState('');
+  const [fatal, setFatal] = useState(false);
   const [bankVersion, setBankVersion] = useState(0);
   const bank = useRef<WordBank>(emptyBank());
   const map = useMemo(() => findLayout(layoutId).map, [layoutId]);
@@ -58,6 +61,7 @@ export function App() {
   useEffect(() => save('oldReph', oldReph), [oldReph]);
   useEffect(() => save('kb', kbVisible), [kbVisible]);
   useEffect(() => save('side', sideOpen), [sideOpen]);
+  useEffect(() => save('format', format), [format]);
   useEffect(() => {
     const on = () => setWide(wideQuery?.matches ?? true);
     wideQuery?.addEventListener('change', on);
@@ -87,7 +91,12 @@ export function App() {
   // start-up
   useEffect(() => {
     (async () => {
-      await purgeExpired();
+      try {
+        await purgeExpired();
+      } catch {
+        setFatal(true); // IndexedDB unavailable (e.g. blocked storage)
+        return;
+      }
       await migrateFromM2();
       bank.current = (await loadBank()) ?? emptyBank();
       setBankVersion((v) => v + 1);
@@ -132,7 +141,7 @@ export function App() {
     say('ট্র্যাশে পাঠানো হয়েছে, ৩০ দিনের মধ্যে ফেরত আনা যাবে');
   };
 
-  const prefs = () => ({ layout: layoutId, bangla, vf, oldReph, kb: kbVisible });
+  const prefs = () => ({ layout: layoutId, bangla, vf, oldReph, kb: kbVisible, format });
   const backup = async () => {
     try {
       const f = await exportAll(prefs());
@@ -166,6 +175,15 @@ export function App() {
   );
   const statusText = { saved: 'এই ডিভাইসে সেভ হয়েছে', saving: 'সেভ হচ্ছে…', error: 'সেভ করা যায়নি' }[saveState];
 
+  if (fatal)
+    return (
+      <div className="fatal" role="alert" data-testid="fatal">
+        <h1>ProNotes</h1>
+        <p>এই ব্রাউজারে লেখা সেভ করার জায়গা (IndexedDB) খোলা যাচ্ছে না, তাই লেখা হারানোর ঝুঁকি এড়াতে অ্যাপ বন্ধ রাখা হলো।</p>
+        <p>Private/Incognito মোড বন্ধ করে, বা ব্রাউজারের সেটিংসে এই সাইটের ডেটা রাখার অনুমতি দিয়ে আবার খুলুন।</p>
+      </div>
+    );
+
   return (
     <div className={'app' + (showSide && wide ? ' with-side' : '')}>
       <header className="top">
@@ -188,7 +206,7 @@ export function App() {
               kbVisible={kbVisible} coarse={coarse} bank={bank.current} bankVersion={bankVersion} onBankChanged={onBankChanged}
               onToggleLanguage={() => setBangla((b) => !b)} onSave={onSave}
               onRename={async (id, t) => { await renameDoc(id, t); await refresh(); }}
-              onSaveState={setSaveState}
+              onSaveState={setSaveState} format={format} say={say}
               toolbarExtra={
                 <>
                   <button type="button" className={'tb' + (showSide ? ' on' : '')} title="ডকুমেন্টের তালিকা" aria-label="ডকুমেন্টের তালিকা"
@@ -217,6 +235,26 @@ export function App() {
           <h2>টাইপিং</h2>
           <label><input type="checkbox" data-testid="vf" checked={vf} onChange={(e) => setVf(e.target.checked)} /> স্বর-গঠন: শব্দের শুরুতে বা স্বরবর্ণের পরে কার চাপুন (ি চাপলে হবে ই, ে চাপলে এ, অ-এর পরে া চাপলে আ)</label>
           <label><input type="checkbox" data-testid="oldreph" checked={oldReph} onChange={(e) => setOldReph(e.target.checked)} /> বিজয়-ধাঁচের রেফ: বর্ণ লেখার পরে রেফ চাপুন (ক ম রেফ লিখলে হবে কর্ম)</label>
+          <h2>পাতার ফরম্যাট (Word ফাইল ও প্রিন্ট)</h2>
+          <div className="grid2">
+            <label>ফন্ট
+              <select data-testid="fmt-font" value={format.font} onChange={(e) => setFormat({ ...format, font: e.target.value })}>
+                {['SutonnyOMJ', 'Nikosh', 'Kalpurush', 'SolaimanLipi', 'Noto Serif Bengali', 'Noto Sans Bengali'].map((f) => <option key={f}>{f}</option>)}
+              </select>
+            </label>
+            <label>লাইন স্পেসিং
+              <select data-testid="fmt-line" value={format.lineSpacing} onChange={(e) => setFormat({ ...format, lineSpacing: Number(e.target.value) })}>
+                <option value={1.5}>১.৫</option><option value={2}>২.০</option>
+              </select>
+            </label>
+            <label>মূল লেখা (pt)
+              <input type="number" min={8} max={40} step={0.5} data-testid="fmt-size" value={format.size} onChange={(e) => setFormat({ ...format, size: Number(e.target.value) || DEFAULT_FORMAT.size })} />
+            </label>
+            <label>বড় শিরোনাম (pt)
+              <input type="number" min={8} max={60} step={0.5} data-testid="fmt-title" value={format.titleSize} onChange={(e) => setFormat({ ...format, titleSize: Number(e.target.value) || DEFAULT_FORMAT.titleSize })} />
+            </label>
+          </div>
+          <p className="note">Legal কাগজ (৮.৫×১৪ ইঞ্চি), মার্জিন: উপরে ৩", বামে ১.৫", ডানে ১", নিচে ১.৫"। ফন্ট এই ডিভাইসে না থাকলে পর্দায় অন্য ফন্টে দেখাবে, কিন্তু Word ফাইলে নাম এটাই থাকবে। নিজের ফন্ট আপলোডের ব্যবস্থা আসছে।</p>
           <h2>ব্যাকআপ</h2>
           <p className="note">সব ড্রাফট (ট্র্যাশসহ), শেখা শব্দ আর সেটিংস একটা ফাইলে। iPad-এ ফাইলটা Files বা iCloud Drive-এ রাখুন। ফেরত আনলে আগের কিছু মুছবে না; বদলে যাওয়া ড্রাফট আলাদা কপি হয়ে আসবে।</p>
           <div className="row">
