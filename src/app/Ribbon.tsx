@@ -10,7 +10,13 @@ import type { DocKind } from '../storage';
 import { useT } from '../i18n';
 import { Popover } from './ui';
 import { load, save } from './prefs';
-import { MARGIN_PRESETS, PAPERS, normalizePage, type PageSetup, type PaperId } from '../docx-export/page';
+import { MARGIN_PRESETS, PAPERS, isEnvelope, normalizePage, type PageSetup, type PaperId, type TextDir } from '../docx-export/page';
+
+const TEXT_DIRS: { id: TextDir; label: string; note: string }[] = [
+  { id: 'lr', label: 'স্বাভাবিক', note: 'কাগজ যেভাবে দেখছেন সেভাবেই প্রিন্ট' },
+  { id: 'tb', label: 'উপর থেকে নিচে', note: 'কাগজ খাড়া ঢোকে, লেখা ডানে ঘোরানো' },
+  { id: 'bt', label: 'নিচ থেকে উপরে', note: 'কাগজ খাড়া ঢোকে, লেখা বামে ঘোরানো' },
+];
 import { GRID_CM, type GridPrefs, type ViewPrefs } from './prefs-types';
 
 export type RibbonTab = 'home' | 'insert' | 'page' | 'view' | 'tools' | 'table';
@@ -361,13 +367,24 @@ export function Ribbon(p: Props) {
         onChange={(e) => {
           const id = e.target.value as PaperId;
           if (id === 'custom') return p.onPageSheet();
-          setPg({ paper: id, width: PAPERS[id].width, height: PAPERS[id].height });
+          setPg({ paper: id, width: PAPERS[id].width, height: PAPERS[id].height, ...(isEnvelope(id) ? { orientation: 'landscape' as const } : {}) });
         }}>
         {Object.entries(PAPERS).map(([id, x]) => <option key={id} value={id}>{x.label}</option>)}
         <option value="custom">{t('নিজের মাপ…')}</option>
       </select>
       {btn(t('খাড়া'), t('খাড়া (Portrait)'), pg.orientation === 'portrait', () => setPg({ orientation: 'portrait' }), 'portrait')}
       {btn(t('আড়াআড়ি'), t('আড়াআড়ি (Landscape)'), pg.orientation === 'landscape', () => setPg({ orientation: 'landscape' }), 'landscape')}
+      <Popover label={t('লেখার দিক ▾')} title={t('প্রিন্টে লেখার দিক (খামের জন্য)')} testid="text-dir">
+        {(close) => (
+          <div className="menu">
+            {TEXT_DIRS.map((x) => (
+              <button key={x.id} type="button" data-testid={'dir-' + x.id} aria-pressed={(pg.textDir ?? 'lr') === x.id} onClick={() => { setPg({ textDir: x.id }); close(); }}>
+                {t(x.label)}<small>{t(x.note)}</small>
+              </button>
+            ))}
+          </div>
+        )}
+      </Popover>
       <span className="sep" />
       <Popover label={t('মার্জিন ▾')} title={t('মার্জিন')} testid="margins">
         {(close) => (

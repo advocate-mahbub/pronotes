@@ -57,6 +57,27 @@ export function isToggleKey(ev: KeyInput, k: ToggleKey = 'ctrl+space'): boolean 
   }
 }
 
+/** Key that switches experimental Bijoy (ANSI) typing on and off. */
+export type AnsiKey = 'none' | 'ctrl+shift+a' | 'ctrl+shift+u' | 'ctrl+period';
+export const ANSI_KEYS: { id: AnsiKey; label: string }[] = [
+  { id: 'none', label: 'নেই' },
+  { id: 'ctrl+shift+a', label: 'Ctrl + Shift + A' },
+  { id: 'ctrl+shift+u', label: 'Ctrl + Shift + U' },
+  { id: 'ctrl+period', label: 'Ctrl + .' },
+];
+
+export function isAnsiKey(ev: KeyInput, k: AnsiKey = 'none'): boolean {
+  if (k === 'none' || !ev.ctrlKey || ev.altKey || ev.metaKey) return false;
+  switch (k) {
+    case 'ctrl+shift+a':
+      return !!ev.shiftKey && ev.code === 'KeyA';
+    case 'ctrl+shift+u':
+      return !!ev.shiftKey && ev.code === 'KeyU';
+    case 'ctrl+period':
+      return !ev.shiftKey && ev.code === 'Period';
+  }
+}
+
 export type KeyAction =
   | { kind: 'toggle-language' }
   /** Prevent the browser default and type `text` (pass it through planType). */

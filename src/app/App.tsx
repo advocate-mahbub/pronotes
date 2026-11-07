@@ -12,8 +12,9 @@ import { decideVoice, detectVoiceEnv } from '../voice';
 import { Settings, type FontInfo } from './Settings';
 import type { OutputMode } from './ShareMenu';
 import { DEFAULT_VOICE_PREFS, DEFAULT_VIEW, DEFAULT_GRID, voiceLang, type VoicePrefs, type ViewPrefs } from './prefs-types';
-import { DEFAULT_PAGE, normalizePage, type PageSetup } from '../docx-export/page';
-import type { ToggleKey } from '../bornona-engine';
+import { DEFAULT_PAGE, envelopePage, normalizePage, type PageSetup } from '../docx-export/page';
+import { envelopeContent, envelopeText } from '../templates/envelope';
+import type { ToggleKey, AnsiKey } from '../bornona-engine';
 import { saveFile } from '../storage/download';
 import { DEFAULT_FORMAT, type DocFormat } from '../docx-export/format';
 import { Sidebar } from './Sidebar';
@@ -21,7 +22,7 @@ import { Workspace, type SaveState } from './Workspace';
 import { load, save } from './prefs';
 import { I18nContext, setUiLangGlobal, translate, tr, type UiLang } from '../i18n';
 import { Popover } from './ui';
-import { LOCAL_UNI, WEB_FONTS, ENGLISH_FONTS } from '../fonts';
+import { LOCAL_UNI, WEB_FONTS, ENGLISH_FONTS, isFontAvailable } from '../fonts';
 import './fonts.css';
 import './app.css';
 import { flushAll } from './flush';
@@ -92,6 +93,11 @@ export function App() {
   useEffect(() => save('pageDefault', pageDefault), [pageDefault]);
   useEffect(() => save('fixChandra', fixChandra), [fixChandra]);
   useEffect(() => save('toggleKey', toggleKey), [toggleKey]);
+  /** Experimental Bijoy (ANSI) typing: on/off and the key that switches it. */
+  const [ansiTyping, setAnsiTypingState] = useState(() => load('ansiTyping', false));
+  const [ansiKey, setAnsiKey] = useState<AnsiKey>(() => load<AnsiKey>('ansiKey', 'ctrl+shift+a'));
+  useEffect(() => save('ansiTyping', ansiTyping), [ansiTyping]);
+  useEffect(() => save('ansiKey', ansiKey), [ansiKey]);
   const [ansiFont, setAnsiFont] = useState(() => load('ansiFont', 'SutonnyMJ'));
   const [enFont, setEnFont] = useState(() => load('enFont', 'Times New Roman'));
   const [corrections, setCorrectionsState] = useState('');
@@ -147,6 +153,15 @@ export function App() {
     }, m.length > 40 ? 4500 : 2200);
   }, []);
   /** A message that must not push away one the user is reading (background events). */
+  const ansiTypingRef = useRef(ansiTyping);
+  ansiTypingRef.current = ansiTyping;
+  const setAnsiTyping = useCallback((on: boolean) => {
+    setAnsiTypingState(on);
+    if (!on) return say('টাইপ: ইউনিকোড');
+    const fontOk = fonts.some((f) => f.family === ansiFont) || isFontAvailable(ansiFont, true);
+    say(fontOk ? 'টাইপ: বিজয় ANSI (পরীক্ষামূলক)। কথা বলে লেখা আর শব্দের পরামর্শ এই সময় বন্ধ।'
+      : 'টাইপ: বিজয় ANSI। এই ডিভাইসে {font} ফন্ট নেই, তাই লেখা ভাঙা দেখাবে। Settings → ফন্ট থেকে ফন্ট যোগ করুন।', { font: ansiFont });
+  }, [say, fonts, ansiFont]);
   const sayIfIdle = useCallback((m: string) => {
     if (!toastNow.current) say(m);
   }, [say]);
@@ -237,6 +252,16 @@ export function App() {
     await refresh();
   }, [refresh]);
 
+  /** New envelope: a legal draft on DL envelope paper with the sender/recipient template. */
+  const newEnvelope = async () => {
+    const c = envelopeContent('bn');
+    const d = await createDoc(tr('খাম'), c, envelopeText(c), Date.now(), 'legal');
+    await setDocPage(d.id, envelopePage('env-dl'));
+    await refresh();
+    await open(d.id);
+    setView('docs');
+    say('খাম DL মাপে খোলা হলো। পাতা ট্যাব থেকে মাপ আর “লেখার দিক” বদলাতে পারেন।');
+  };
   const newDoc = async (kind: DocKind = 'legal') => {
     const d = await createDoc(tr(kind === 'note' ? 'নতুন নোট' : 'নতুন ড্রাফট'), undefined, '', Date.now(), kind);
     await refresh();
@@ -414,7 +439,7 @@ export function App() {
   const showSide = sideOpen;
   const sidebar = (
     <Sidebar docs={docs} trash={trash} currentId={current?.id ?? null} view={view} setView={setView} kindIcon={KIND_ICON} kindLabel={KIND_LABEL}
-      onOpen={open} onNew={newDoc}
+      onOpen={open} onNew={newDoc} onNewEnvelope={newEnvelope}
       onDuplicate={async (id) => { const d = await duplicateDoc(id); await refresh(); if (d) await open(d.id); say('কপি তৈরি হয়েছে'); }}
       onTrash={toTrash}
       onRestore={async (id) => { await restoreDoc(id); await refresh(); say('ফেরত আনা হয়েছে'); }}
@@ -480,6 +505,7 @@ export function App() {
               page={normalizePage(current.page, pageDefault)} onPage={changePage}
               onMakeDefaultPage={(pg) => { setPageDefault(pg); say('নতুন লিগ্যাল ড্রাফট এখন থেকে এই পাতায় খুলবে'); }}
               view={viewPrefs} setView={setViewPrefs} fixChandra={fixChandra} toggleKey={toggleKey}
+              ansiTyping={ansiTyping} ansiKey={ansiKey} onToggleAnsi={() => setAnsiTyping(!ansiTypingRef.current)}
               output={output} setOutput={setOutput}
               voice={voice} corrections={corrections} autoBijoy={autoBijoy} ansiFont={ansiFont} enFont={enFont}
               onEditor={(e) => { editorRef.current = e; }}
@@ -509,6 +535,7 @@ export function App() {
           onLearnDoc={learnDoc} onExportWords={exportWords} onImportWords={importWords} onResetWords={resetWords}
           onBackup={backup} onRestore={restore} uiLang={uiLang} setUiLang={setUiLangState}
           fixChandra={fixChandra} setFixChandra={setFixChandra} toggleKey={toggleKey} setToggleKey={setToggleKey}
+          ansiTyping={ansiTyping} setAnsiTyping={setAnsiTyping} ansiKey={ansiKey} setAnsiKey={setAnsiKey}
           app={{
             supported: pwaSupported(), offlineReady, standalone: isStandalone(), apple: isAppleDevice(), canInstall,
             onInstall: async () => { if (await promptInstall()) say('ProNotes ইনস্টল হয়েছে'); },

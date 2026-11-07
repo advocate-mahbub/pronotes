@@ -2,7 +2,9 @@
  * Page setup of one document (paper, orientation, margins, document language, page numbers).
  * All lengths in twips (1440 = 1 inch), the unit Word uses.
  */
-export type PaperId = 'legal' | 'folio' | 'a4' | 'custom';
+export type PaperId = 'legal' | 'folio' | 'a4' | 'env-dl' | 'env-10' | 'env-c5' | 'custom';
+/** Direction of the text on the paper: normal, turned to read top → bottom, or bottom → top (envelopes fed narrow side first). */
+export type TextDir = 'lr' | 'tb' | 'bt';
 export type DocLang = 'bn' | 'en';
 
 export interface PageSetup {
@@ -15,6 +17,8 @@ export interface PageSetup {
   /** Document language: paragraph numbers, page numbers and the default font follow it. */
   lang: DocLang;
   pageNumbers: { show: boolean; align: 'left' | 'center' | 'right'; style: 'full' | 'number' };
+  /** Text direction on the paper (missing = normal). Margins stay as the text is read. */
+  textDir?: TextDir;
 }
 
 const MM = 1440 / 25.4;
@@ -24,7 +28,25 @@ export const PAPERS: Record<Exclude<PaperId, 'custom'>, { label: string; width: 
   legal: { label: 'Legal (8.5 × 14")', width: 12240, height: 20160 },
   folio: { label: 'Folio (210 × 330 mm)', width: mm(210), height: mm(330) },
   a4: { label: 'A4 (210 × 297 mm)', width: mm(210), height: mm(297) },
+  'env-dl': { label: 'খাম DL (110 × 220 mm)', width: mm(110), height: mm(220) },
+  'env-10': { label: 'খাম #10 (4⅛ × 9½")', width: 5940, height: 13680 },
+  'env-c5': { label: 'খাম C5 (162 × 229 mm)', width: mm(162), height: mm(229) },
 };
+export const isEnvelope = (id: PaperId) => id.startsWith('env-');
+
+/** An envelope: landscape, small margins, no page numbers. */
+export function envelopePage(paper: 'env-dl' | 'env-10' | 'env-c5' = 'env-dl'): PageSetup {
+  return {
+    ...DEFAULT_PAGE,
+    paper,
+    width: PAPERS[paper].width,
+    height: PAPERS[paper].height,
+    orientation: 'landscape',
+    margins: { top: 720, right: 720, bottom: 720, left: 720 },
+    pageNumbers: { ...DEFAULT_PAGE.pageNumbers, show: false },
+    textDir: 'lr',
+  };
+}
 
 /** The owner's court drafts: top 3", right 1", bottom 1.5", left 1.5". */
 export const COURT_MARGINS = { top: 4320, right: 1440, bottom: 2160, left: 2160 };
@@ -65,6 +87,21 @@ export function normalizePage(p?: Partial<PageSetup> | null, base: PageSetup = D
 /** Width and height as printed (orientation applied). */
 export function pageSize(p: PageSetup): { w: number; h: number } {
   return p.orientation === 'landscape' ? { w: p.height, h: p.width } : { w: p.width, h: p.height };
+}
+
+/**
+ * The paper as it goes through the printer. With turned text (envelope fed narrow side first)
+ * the paper is upright and the margins are turned with the text.
+ */
+export function physicalPage(p: PageSetup): { w: number; h: number; margins: PageSetup['margins']; landscape: boolean } {
+  const { w, h } = pageSize(p);
+  const m = p.margins;
+  if (!p.textDir || p.textDir === 'lr') return { w, h, margins: m, landscape: p.orientation === 'landscape' };
+  // text read with width w, height h; paper is h wide and w tall
+  const margins = p.textDir === 'tb'
+    ? { top: m.left, right: m.top, bottom: m.right, left: m.bottom }
+    : { top: m.right, right: m.bottom, bottom: m.left, left: m.top };
+  return { w: h, h: w, margins, landscape: false };
 }
 
 export const twToPx = (t: number) => t / 15;

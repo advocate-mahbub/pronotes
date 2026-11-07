@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { EditorContent, useEditor, type Editor } from '@tiptap/react';
 import { fixNukta, type LayoutMap } from '../bornona-engine';
 import { editorExtensions, insertPlainText, textBeforeCaret, type BornonaConfig } from '../editor';
-import { bijoyRuns, convertBijoyPaste, runsToClipboardHtml } from '../bijoy';
+import { bijoyRuns, convertBijoyPaste, runsToClipboardHtml, isBijoyFont, type Run } from '../bijoy';
 import { VoiceController, VoiceDeduper, cleanVoice, decideVoice, detectVoiceEnv, voiceInsertText } from '../voice';
 import { voiceLang, type VoicePrefs } from './prefs-types';
 import { BijoyPanel } from './BijoyPanel';
@@ -55,6 +55,10 @@ interface Props {
   setView: (v: ViewPrefs) => void;
   fixChandra: boolean;
   toggleKey: import('../bornona-engine').ToggleKey;
+  /** Experimental Bijoy (ANSI) typing. */
+  ansiTyping: boolean;
+  ansiKey: import('../bornona-engine').AnsiKey;
+  onToggleAnsi: () => void;
   /** What copying puts on the clipboard: Unicode, or Bijoy (ANSI) for SutonnyMJ users. */
   output: OutputMode;
   setOutput: (m: OutputMode) => void;
@@ -92,7 +96,8 @@ export function Workspace(p: Props) {
   /** One-time notice before the first live voice session (audio goes to the browser's speech service). */
   const [consentOpen, setConsentOpen] = useState(false);
   const cfg = useRef<BornonaConfig>({ bangla: p.bangla, map: p.map, vowelForming: p.vowelForming, oldReph: p.oldReph, suspended: false });
-  cfg.current = { bangla: p.bangla, map: p.map, vowelForming: p.vowelForming, oldReph: p.oldReph, suspended: deviceKb, fixChandra: p.fixChandra, toggleKey: p.toggleKey };
+  cfg.current = { bangla: p.bangla, map: p.map, vowelForming: p.vowelForming, oldReph: p.oldReph, suspended: deviceKb, fixChandra: p.fixChandra, toggleKey: p.toggleKey,
+    ansi: { on: p.ansiTyping, bijoyFont: p.ansiFont || 'SutonnyMJ', englishFont: p.enFont || 'Times New Roman' }, ansiKey: p.ansiKey };
   const inputMode = p.coarse && p.kbVisible && !deviceKb ? 'none' : 'text';
   const getConfig = useCallback(() => cfg.current, []);
 
@@ -155,6 +160,7 @@ export function Workspace(p: Props) {
       },
       convertPaste: (text, html) => (cb.current.autoBijoy ? convertBijoyPaste(text, html) : null),
       onNotice: (m) => cb.current.say(m),
+      onToggleAnsi: () => cb.current.onToggleAnsi(),
     }, { getLayout: () => layoutRef.current }),
     content: p.doc.content,
     // Tiptap re-applies these options on re-render, so inputmode must be part of them.
@@ -347,6 +353,15 @@ export function Workspace(p: Props) {
     const total = pg.lang === 'bn' ? 'counter(pages, bengali)' : 'counter(pages)';
     const content = parts.between !== null ? `"${parts.before}" ${counter} "${parts.between}" ${total}` : counter;
     const box = { left: '@bottom-left', center: '@bottom-center', right: '@bottom-right' }[pg.pageNumbers.align];
+    if (pg.textDir === 'tb' || pg.textDir === 'bt') {
+      // envelope fed narrow side first: upright paper, the page turned on it
+      const W = inch(pwTw), H = inch(phTw);
+      const turn = pg.textDir === 'tb' ? `translateX(${H}) rotate(90deg)` : `translateY(${W}) rotate(-90deg)`;
+      el.textContent = `@page { size: ${H} ${W}; margin: 0; }` +
+        ` @media print { .page-body { position: absolute !important; top: 0; left: 0; box-sizing: border-box; width: ${W}; height: ${H}; overflow: hidden;` +
+        ` padding: ${inch(pg.margins.top)} ${inch(pg.margins.right)} ${inch(pg.margins.bottom)} ${inch(pg.margins.left)} !important; transform-origin: 0 0; transform: ${turn}; } }`;
+      return;
+    }
     el.textContent = `@page { size: ${inch(pwTw)} ${inch(phTw)}; margin: ${inch(pg.margins.top)} ${inch(pg.margins.right)} ${inch(pg.margins.bottom)} ${inch(pg.margins.left)};` +
       (pg.pageNumbers.show ? ` ${box} { content: ${content}; font: 11pt "Noto Sans Bengali", sans-serif; vertical-align: top; padding-top: ${inch(pg.margins.bottom - FOOTER_DIST)}; }` : '') + ' }';
   }, [legal, layoutKey]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -403,7 +418,9 @@ export function Workspace(p: Props) {
         }
       }
       const r = await deliver(blob, filename, mode, title);
-      if (r === 'saved') p.say('{name} তৈরি হয়েছে', { name: filename });
+      if (r === 'saved' && (fmt === 'doc' || fmt === 'doc-ansi') && page?.textDir === 'bt')
+        p.say('{name} তৈরি হয়েছে, তবে .doc ফাইলে “নিচ থেকে উপরে” লেখা ঘোরে না। ঘোরানো খামের জন্য .docx বা প্রিন্ট ব্যবহার করুন।', { name: filename });
+      else if (r === 'saved') p.say('{name} তৈরি হয়েছে', { name: filename });
       else if (r === 'shared') p.say('শেয়ার করা হয়েছে');
     } catch {
       p.say('ফাইল তৈরি করা যায়নি');
@@ -429,8 +446,20 @@ export function Workspace(p: Props) {
       if (cb.current.output !== 'ansi' || !e.clipboardData) return;
       const { from, to, empty } = editor.state.selection;
       if (empty) return;
-      const text = editor.state.doc.textBetween(from, to, '\n', ' ');
-      const r = bijoyRuns(text);
+      // text already typed in Bijoy (ANSI typing) is passed through, the rest is converted
+      const r: Run[] = [];
+      let first = true;
+      editor.state.doc.nodesBetween(from, to, (node, pos) => {
+        if (node.isBlock && node.isTextblock) {
+          if (!first) r.push({ en: true, text: '\n' });
+          first = false;
+        }
+        if (!node.isText) return;
+        const t = node.text!.slice(Math.max(0, from - pos), to - pos);
+        const f = node.marks.find((m) => m.type.name === 'textStyle')?.attrs.fontFamily;
+        if (isBijoyFont(f, cb.current.ansiFont)) r.push({ en: false, text: t });
+        else r.push(...bijoyRuns(t));
+      });
       e.preventDefault();
       e.clipboardData.setData('text/plain', r.map((x) => x.text).join(''));
       e.clipboardData.setData('text/html', runsToClipboardHtml(r, cb.current.ansiFont || 'SutonnyMJ', cb.current.enFont || 'Times New Roman'));
@@ -489,12 +518,17 @@ export function Workspace(p: Props) {
           <EditorContent editor={editor} />
         </div>
       </main>
-        {p.output === 'ansi' && (
+        {p.ansiTyping && (
+          <button type="button" className="ansi-badge typing" data-testid="ansi-typing-badge" title={t('বাংলা বিজয়-এ (SutonnyMJ) লেখা হচ্ছে। চাপলে ইউনিকোডে ফিরবে।')}
+            onPointerDown={(e) => e.preventDefault()} onClick={p.onToggleAnsi}>{t('টাইপ: বিজয় ANSI (পরীক্ষামূলক)')}</button>
+        )}
+        {p.output === 'ansi' && !p.ansiTyping && (
           <button type="button" className="ansi-badge" data-testid="ansi-badge" title={t('কপি করলে বিজয় (ANSI) যাবে। চাপলে ইউনিকোডে ফিরবে।')}
             onPointerDown={(e) => e.preventDefault()} onClick={() => p.setOutput('unicode')}>{t('কপি: ANSI')}</button>
         )}
         <button type="button" className={'mic' + (listening ? ' live' : '') + (deviceKb ? ' device' : '')} data-testid="mic"
           aria-pressed={listening || deviceKb} aria-label={listening ? t('ভয়েস থামান') : t('ভয়েস টাইপিং')} title={listening ? t('ভয়েস থামান') : t('ভয়েস টাইপিং')}
+          disabled={p.ansiTyping}
           onPointerDown={(e) => e.preventDefault()} onClick={toggleVoice}>{MIC}</button>
       </div>
       {consentOpen && (
@@ -524,7 +558,7 @@ export function Workspace(p: Props) {
             <button type="button" className="btn primary" data-testid="voice-back" onPointerDown={(e) => e.preventDefault()} onClick={exitDeviceKb}>{t('বর্ণনা কিবোর্ডে ফিরুন')}</button>
           </div>
         ) : (
-          <SuggestionBar editor={editor} bank={p.bank} version={p.bankVersion} />
+          p.ansiTyping ? null : <SuggestionBar editor={editor} bank={p.bank} version={p.bankVersion} />
         )}
         {p.kbVisible && !deviceKb && (
           <OnScreenKeyboard editor={editor} map={p.map} bangla={p.bangla} getConfig={getConfig} onToggleLanguage={p.onToggleLanguage}

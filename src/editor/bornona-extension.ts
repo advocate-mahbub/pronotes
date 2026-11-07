@@ -6,7 +6,8 @@
 import { Extension } from '@tiptap/core';
 import { Plugin, PluginKey } from '@tiptap/pm/state';
 import type { EditorView } from '@tiptap/pm/view';
-import { resolveKey, resolveTypedChar, planType, fixNukta, type LayoutMap, type ToggleKey } from '../bornona-engine';
+import { resolveKey, resolveTypedChar, planType, fixNukta, isAnsiKey, type LayoutMap, type ToggleKey, type AnsiKey } from '../bornona-engine';
+import { typeAnsi, backspaceAnsi, insertEnglishAnsi, type AnsiConfig } from './ansi-typing';
 
 export interface BornonaConfig {
   bangla: boolean;
@@ -17,6 +18,9 @@ export interface BornonaConfig {
   suspended: boolean;
   fixChandra?: boolean;
   toggleKey?: ToggleKey;
+  /** Experimental Bijoy (ANSI) typing. */
+  ansi?: AnsiConfig;
+  ansiKey?: AnsiKey;
 }
 
 export interface BornonaOptions {
@@ -34,6 +38,8 @@ export interface BornonaOptions {
    */
   convertPaste: (text: string, html: string) => { text: string; message: string } | null;
   onNotice: (message: string) => void;
+  /** The ANSI typing key was pressed. */
+  onToggleAnsi: () => void;
 }
 
 const LEAF = String.fromCharCode(0xfffc);
@@ -47,6 +53,11 @@ export function textBeforeCaret(view: EditorView): string {
 
 /** Type `out` at the caret, applying vowel forming / reph exactly like v8. */
 export function typeText(view: EditorView, out: string, cfg: BornonaConfig): void {
+  if (cfg.ansi?.on) {
+    if (cfg.bangla) typeAnsi(view, out, { ...cfg.ansi, vowelForming: cfg.vowelForming, oldReph: cfg.oldReph, fixChandra: cfg.fixChandra });
+    else insertEnglishAnsi(view, out, cfg.ansi);
+    return;
+  }
   const { state } = view;
   const sel = state.selection;
   const edit = planType(textBeforeCaret(view), sel.empty, out, cfg);
@@ -72,9 +83,10 @@ export function insertPlainText(view: EditorView, text: string): void {
 }
 
 /** Delete one character before the caret (on-screen ⌫). */
-export function deleteBackward(view: EditorView, joinBackward: () => boolean): void {
+export function deleteBackward(view: EditorView, joinBackward: () => boolean, cfg?: BornonaConfig): void {
   const { state } = view;
   const sel = state.selection;
+  if (cfg?.ansi?.on && backspaceAnsi(view, cfg.ansi)) return;
   if (!sel.empty) return view.dispatch(state.tr.deleteSelection().scrollIntoView());
   if (sel.$from.parentOffset > 0) {
     const before = textBeforeCaret(view);
@@ -97,6 +109,7 @@ export const BornonaExtension = Extension.create<BornonaOptions>({
       onTextInserted: () => {},
       convertPaste: () => null,
       onNotice: () => {},
+      onToggleAnsi: () => {},
     };
   },
 
@@ -109,15 +122,29 @@ export const BornonaExtension = Extension.create<BornonaOptions>({
           handleKeyDown(view, event) {
             if (view.composing) return false;
             const cfg = opts.getConfig();
-            if (event.key === 'Enter' && !event.isComposing) opts.onWordDone(textBeforeCaret(view));
+            const ki = {
+              code: event.code, key: event.key, shiftKey: event.shiftKey, altKey: event.altKey, ctrlKey: event.ctrlKey,
+              metaKey: event.metaKey, altGraph: event.getModifierState?.('AltGraph'), isComposing: event.isComposing,
+            };
+            if (isAnsiKey(ki, cfg.ansiKey)) {
+              opts.onToggleAnsi();
+              return true;
+            }
+            const ansi = cfg.ansi?.on && !cfg.suspended ? cfg.ansi : null;
+            if (ansi && event.key === 'Backspace' && !event.ctrlKey && !event.altKey && !event.metaKey) return backspaceAnsi(view, ansi);
+            if (event.key === 'Enter' && !event.isComposing && !ansi) opts.onWordDone(textBeforeCaret(view));
             const a = resolveKey(
-              {
-                code: event.code, key: event.key, shiftKey: event.shiftKey, altKey: event.altKey, ctrlKey: event.ctrlKey,
-                metaKey: event.metaKey, altGraph: event.getModifierState?.('AltGraph'), isComposing: event.isComposing,
-              },
+              ki,
               { bangla: cfg.bangla, map: cfg.map, suspended: cfg.suspended, toggleKey: cfg.toggleKey },
             );
-            if (!a) return false;
+            if (!a) {
+              // English (or a space) next to Bijoy text must not take the Bijoy font
+              if (ansi && event.key.length === 1 && !event.ctrlKey && !event.altKey && !event.metaKey && !cfg.bangla) {
+                insertEnglishAnsi(view, event.key, ansi);
+                return true;
+              }
+              return false;
+            }
             if (a.kind === 'toggle-language') {
               opts.onToggleLanguage();
               return true;
@@ -130,7 +157,13 @@ export const BornonaExtension = Extension.create<BornonaOptions>({
           handleTextInput(view, _from, _to, text) {
             const cfg = opts.getConfig();
             const r = resolveTypedChar(text, { bangla: cfg.bangla, map: cfg.map, suspended: cfg.suspended });
-            if (!r) return false;
+            if (!r) {
+              if (cfg.ansi?.on && !cfg.suspended && !cfg.bangla) {
+                insertEnglishAnsi(view, text, cfg.ansi);
+                return true;
+              }
+              return false;
+            }
             typeText(view, r, cfg);
             return true;
           },
@@ -155,6 +188,8 @@ export const BornonaExtension = Extension.create<BornonaOptions>({
   onTransaction({ transaction }) {
     // ignore undo/redo and programmatic document loads
     if (!transaction.docChanged || transaction.getMeta('history$') || transaction.getMeta('pronotes-load')) return;
+    // Bijoy text is not words to learn or suggest from
+    if (this.options.getConfig().ansi?.on) return;
     let inserted = '';
     for (const step of transaction.steps) {
       const slice = (step as unknown as { slice?: { content: { size: number; textBetween: (a: number, b: number, s?: string) => string } } }).slice;

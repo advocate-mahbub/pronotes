@@ -52,7 +52,7 @@ export function OnScreenKeyboard({ editor, map, bangla, getConfig, onToggleLangu
   const press = (code: string) => {
     const view = editor.view;
     const box = activeBornonaBox();
-    const back = box ? () => backspaceBox(box) : () => deleteBackward(view, () => editor.commands.joinBackward());
+    const back = box ? () => backspaceBox(box) : () => deleteBackward(view, () => editor.commands.joinBackward(), getConfig());
     const type = (s: string) => (box ? typeIntoBox(box, s, getConfig()) : typeText(view, s, getConfig()));
     switch (code) {
       case '#Shift': {

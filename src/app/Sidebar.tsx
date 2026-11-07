@@ -14,6 +14,7 @@ interface Props {
   kindLabel: Record<DocKind, string>;
   onOpen: (id: string) => void;
   onNew: (kind: DocKind) => void;
+  onNewEnvelope: () => void;
   onDuplicate: (id: string) => void;
   onTrash: (id: string) => void;
   onRestore: (id: string) => void;
@@ -37,6 +38,7 @@ export function Sidebar(p: Props) {
                   {p.kindIcon[k]} {t(p.kindLabel[k])}
                 </button>
               ))}
+              <button type="button" data-testid="new-envelope" onClick={() => { close(); p.onNewEnvelope(); }}>✉ {t('খাম')}</button>
               <button type="button" disabled>{p.kindIcon.chart} {t(p.kindLabel.chart)} ({t('শীঘ্রই')})</button>
             </div>
           )}

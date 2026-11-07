@@ -9,10 +9,10 @@ import {
   Tab, Table, TableCell, TableLayoutType, TableRow, TextRun, WidthType, type IParagraphOptions, type IRunOptions, type ParagraphChild,
 } from 'docx';
 import type { JSONContent } from '@tiptap/core';
-import { bijoyRuns, toBijoy } from '../bijoy';
+import { bijoyRuns, toBijoy, isBijoyFont, nodeFont } from '../bijoy';
 import { STYLE_TWIPS, type ParagraphStyle } from '../editor/legal-format';
 import { DEFAULT_FORMAT, NOTE_FONT, NOTE_SIZE, type DocFormat } from './format';
-import { DEFAULT_PAGE, FOOTER_DIST, HEADER_DIST, NOTE_PAGE, normalizePage, pageNumberParts, pageSize, paraNumber, type PageSetup } from './page';
+import { DEFAULT_PAGE, FOOTER_DIST, HEADER_DIST, NOTE_PAGE, normalizePage, pageNumberParts, pageSize, paraNumber, physicalPage, type PageSetup } from './page';
 
 export { DEFAULT_FORMAT, type DocFormat };
 export * from './page';
@@ -101,7 +101,8 @@ function runs(nodes: JSONContent[] = []): ParagraphChild[] {
     if (n.type === 'hardBreak') out.push(new TextRun({ break: 1 }));
     else if (n.type === 'text' && n.text) {
       const o = runOptions(n);
-      if (!ANSI) out.push(new TextRun(o));
+      // text typed in Bijoy (ANSI typing) is already Bijoy: keep it in its own font
+      if (!ANSI || isBijoyFont(nodeFont(n), ANSI.bijoyFont)) out.push(new TextRun(o));
       else for (const r of bijoyRuns(n.text)) out.push(new TextRun({ ...o, text: r.text, font: fontObj(r.en ? ANSI.englishFont : ANSI.bijoyFont) }));
     }
   }
@@ -273,6 +274,8 @@ export function buildDocx(doc: JSONContent, title: string, f: DocFormat = DEFAUL
   const bullet = (lvl: number) => ({ level: lvl, format: LevelFormat.BULLET, text: ['•', '◦', '▪'][lvl], alignment: AlignmentType.LEFT, style: { paragraph: { indent: { left: 720 * (lvl + 1), hanging: 360 } } } });
   const decimal = (lvl: number) => ({ level: lvl, format: LevelFormat.DECIMAL, text: `%${lvl + 1}.`, alignment: AlignmentType.LEFT, style: { paragraph: { indent: { left: 720 * (lvl + 1), hanging: 360 } } } });
 
+  const turned = !!page.textDir && page.textDir !== 'lr';
+  const phys = physicalPage(page);
   return new Document({
     title,
     creator: 'ProNotes',
@@ -307,11 +310,18 @@ export function buildDocx(doc: JSONContent, title: string, f: DocFormat = DEFAUL
     sections: [
       {
         properties: {
-          page: {
-            // docx swaps width and height itself for landscape, so it gets the portrait size
-            size: { width: page.width, height: page.height, orientation: page.orientation === 'landscape' ? PageOrientation.LANDSCAPE : PageOrientation.PORTRAIT },
-            margin: { ...page.margins, header: HEADER_DIST, footer: FOOTER_DIST },
-          },
+          page: turned
+            ? {
+                // envelope fed narrow side first: upright paper, the text turned on it
+                size: { width: phys.w, height: phys.h, orientation: PageOrientation.PORTRAIT },
+                margin: { ...phys.margins, header: HEADER_DIST, footer: FOOTER_DIST },
+                textDirection: (page.textDir === 'tb' ? 'tbRl' : 'btLr') as never,
+              }
+            : {
+                // docx swaps width and height itself for landscape, so it gets the portrait size
+                size: { width: page.width, height: page.height, orientation: page.orientation === 'landscape' ? PageOrientation.LANDSCAPE : PageOrientation.PORTRAIT },
+                margin: { ...page.margins, header: HEADER_DIST, footer: FOOTER_DIST },
+              },
         },
         footers: page.pageNumbers.show ? { default: new Footer({ children: [new Paragraph({ alignment: align, children: footerChildren })] }) } : undefined,
         children: body,

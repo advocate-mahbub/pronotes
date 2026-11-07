@@ -119,3 +119,15 @@ export function convertBijoyPaste(text: string, html: string, parser?: DOMParser
   if (looksBijoy(text)) return { text: toUnicode(text), message: PASTE_MSG_TEXT };
   return null;
 }
+
+/** A font that holds Bijoy (ANSI) text: SutonnyMJ, SulekhaT, … (not the Unicode SutonnyOMJ). */
+export function isBijoyFont(f: unknown, bijoyFont?: string): boolean {
+  const n = String(f ?? '').replace(/["']/g, '').split(',')[0].trim();
+  return !!n && (n === bijoyFont || (/mj$|^sulekha|bijoy/i.test(n) && !/omj$/i.test(n)));
+}
+
+/** Font of a Tiptap JSON text node (textStyle mark), if any. */
+export function nodeFont(n: { marks?: { type: string; attrs?: Record<string, unknown> }[] }): string | undefined {
+  const f = n.marks?.find((m) => m.type === 'textStyle')?.attrs?.fontFamily;
+  return f ? String(f).replace(/["']/g, '').split(',')[0].trim() : undefined;
+}

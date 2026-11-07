@@ -5,9 +5,9 @@
  * English runs in an English font.
  */
 import type { JSONContent } from '@tiptap/core';
-import { bijoyRuns, toBijoy } from '../bijoy';
+import { bijoyRuns, toBijoy, isBijoyFont } from '../bijoy';
 import { DEFAULT_FORMAT, NOTE_FONT, NOTE_SIZE, type DocFormat } from '../docx-export/format';
-import { DEFAULT_PAGE, FOOTER_DIST, HEADER_DIST, NOTE_PAGE, normalizePage, pageNumberParts, pageSize, paraNumber, type PageSetup } from '../docx-export/page';
+import { DEFAULT_PAGE, FOOTER_DIST, HEADER_DIST, NOTE_PAGE, normalizePage, pageNumberParts, pageSize, paraNumber, physicalPage, type PageSetup } from '../docx-export/page';
 import { STYLE_TWIPS } from '../editor/legal-format';
 
 export interface RtfOptions {
@@ -78,6 +78,8 @@ const HIGHLIGHT: Record<string, string> = { '#fff59d': 'FFFF00', '#c5e1a5': '00F
 function run(n: JSONContent, c: Ctx, extra = ''): string {
   let fmt = '';
   let font = c.baseFont;
+  /** font set on this run itself (not the document default) */
+  let markFont = '';
   let size = c.size;
   for (const m of n.marks || []) {
     const a = (m.attrs || {}) as Record<string, unknown>;
@@ -92,7 +94,7 @@ function run(n: JSONContent, c: Ctx, extra = ''): string {
       case 'textStyle':
         if (typeof a.color === 'string' && /^#?[0-9a-f]{6}$/i.test(a.color)) fmt += '\\cf' + colorIdx(c, a.color);
         if (a.fontSize) size = parseFloat(String(a.fontSize)) || size;
-        if (a.fontFamily) font = String(a.fontFamily).replace(/["']/g, '').split(',')[0].trim();
+        if (a.fontFamily) font = markFont = String(a.fontFamily).replace(/["']/g, '').split(',')[0].trim();
         if (a.scale != null && Number(a.scale) !== 100) fmt += '\\charscalex' + Math.round(Number(a.scale));
         if (a.spacing != null && Number(a.spacing) !== 0) fmt += '\\expndtw' + Math.round(Number(a.spacing) * 20);
         if (a.position != null && Number(a.position) !== 0) fmt += (Number(a.position) > 0 ? '\\up' : '\\dn') + Math.round(Math.abs(Number(a.position)) * 2);
@@ -107,7 +109,7 @@ function run(n: JSONContent, c: Ctx, extra = ''): string {
     return `{\\rtlch\\fcs1\\af${fi}\\afs${hs} \\ltrch\\fcs0\\f${fi}\\fs${hs}${fmt}${extra} ${rtfText(text)}}`;
   };
   const text = n.type === 'hardBreak' ? '\n' : n.text ?? '';
-  if (!c.ansi) return piece(text, font);
+  if (!c.ansi || isBijoyFont(markFont, c.ansi.bijoyFont)) return piece(text, font);
   return bijoyRuns(text).map((r) => piece(r.text, r.en ? c.ansi!.englishFont : c.ansi!.bijoyFont)).join('');
 }
 
@@ -232,7 +234,7 @@ function blocks(nodes: JSONContent[], c: Ctx, depth = 0): string {
 export function toRtf(doc: JSONContent, title: string, f: DocFormat = DEFAULT_FORMAT, o: RtfOptions = {}): string {
   const legal = (o.kind ?? 'legal') !== 'note';
   const page = normalizePage(o.page, legal ? DEFAULT_PAGE : NOTE_PAGE);
-  const { w, h } = pageSize(page);
+  const { w } = pageSize(page);
   titleSize = f.titleSize ?? DEFAULT_FORMAT.titleSize;
   const baseFont = o.ansi ? o.ansi.bijoyFont : !legal ? NOTE_FONT : page.lang === 'en' ? f.fontEn || DEFAULT_FORMAT.fontEn : f.font;
   const c: Ctx = {
@@ -251,8 +253,13 @@ export function toRtf(doc: JSONContent, title: string, f: DocFormat = DEFAULT_FO
   const fonttbl = '{\\fonttbl' + c.fonts.map((name, i) => `{\\f${i}\\fnil\\fcharset0 ${rtfText(name)};}`).join('') + '}';
   const colortbl = '{\\colortbl;' + c.colors.map((x) => `\\red${parseInt(x.slice(0, 2), 16)}\\green${parseInt(x.slice(2, 4), 16)}\\blue${parseInt(x.slice(4, 6), 16)};`).join('') + '}';
   const info = `{\\info{\\title ${rtfText(title)}}{\\author ProNotes}}`;
-  const sect = `\\paperw${w}\\paperh${h}\\margl${page.margins.left}\\margr${page.margins.right}\\margt${page.margins.top}\\margb${page.margins.bottom}` +
-    `\\headery${HEADER_DIST}\\footery${FOOTER_DIST}${page.orientation === 'landscape' ? '\\landscape' : ''}\\sectd\\pgwsxn${w}\\pghsxn${h}${page.orientation === 'landscape' ? '\\lndscpsxn' : ''}`;
+  // turned text (envelope fed narrow side first): upright paper, text flow turned (\\stextflow1 = tbRl).
+  // Bottom-to-top has no RTF code we could verify, so a .doc keeps that page as it is seen (decision 37).
+  const ph = physicalPage(page.textDir === 'bt' ? { ...page, textDir: 'lr' } : page);
+  const flow = page.textDir === 'tb' ? '\\stextflow1' : '';
+  const pm = ph.margins;
+  const sect = `\\paperw${ph.w}\\paperh${ph.h}\\margl${pm.left}\\margr${pm.right}\\margt${pm.top}\\margb${pm.bottom}` +
+    `\\headery${HEADER_DIST}\\footery${FOOTER_DIST}${ph.landscape ? '\\landscape' : ''}\\sectd${flow}\\pgwsxn${ph.w}\\pghsxn${ph.h}${ph.landscape ? '\\lndscpsxn' : ''}`;
   return `{\\rtf1\\ansi\\ansicpg1252\\deff0\\uc1\n${fonttbl}\n${colortbl}\n${info}\n${sect}\n${footer}${body}}`;
 }
 

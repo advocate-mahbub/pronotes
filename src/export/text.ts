@@ -5,20 +5,24 @@
  */
 import type { JSONContent } from '@tiptap/core';
 import { paraNumber, type DocLang } from '../docx-export/page';
+import { isBijoyFont, nodeFont, toUnicode } from '../bijoy';
+import { fixNukta } from '../bornona-engine';
 
 export interface TextOptions {
   lang: DocLang;
   legal: boolean;
 }
 
-const inline = (nodes: JSONContent[] = []) => nodes.map((n) => (n.type === 'hardBreak' ? '\n' : n.text ?? '')).join('');
+/** Text of a node; text typed in Bijoy (ANSI typing) comes back as Unicode. */
+const textOf = (n: JSONContent) => (n.text && isBijoyFont(nodeFont(n as never)) ? fixNukta(toUnicode(n.text)) : n.text ?? '');
+const inline = (nodes: JSONContent[] = []) => nodes.map((n) => (n.type === 'hardBreak' ? '\n' : textOf(n))).join('');
 
 /** Markdown for the inline content with bold/italic/strike/sup/sub. */
 function inlineMd(nodes: JSONContent[] = []): string {
   return nodes
     .map((n) => {
       if (n.type === 'hardBreak') return '  \n';
-      let s = (n.text ?? '').replace(/([\\`*_[\]#|<>~])/g, '\\$1');
+      let s = textOf(n).replace(/([\\`*_[\]#|<>~])/g, '\\$1');
       if (!s.trim()) return s;
       const marks = new Set((n.marks || []).map((m) => m.type));
       if (marks.has('superscript')) s = `<sup>${s}</sup>`;

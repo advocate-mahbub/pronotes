@@ -1,7 +1,7 @@
 import { useRef, useState } from 'react';
 import { DEFAULT_FORMAT, type DocFormat } from '../docx-export/format';
 import { ENGLISH_FONTS, LOCAL_ANSI, LOCAL_UNI, WEB_FONTS, isFontAvailable } from '../fonts';
-import { TOGGLE_KEYS, type Layout, type ToggleKey } from '../bornona-engine';
+import { TOGGLE_KEYS, ANSI_KEYS, type Layout, type ToggleKey, type AnsiKey } from '../bornona-engine';
 import type { VoicePrefs } from './prefs-types';
 import { useT, type UiLang } from '../i18n';
 
@@ -50,6 +50,10 @@ interface Props {
   setFixChandra: (v: boolean) => void;
   toggleKey: ToggleKey;
   setToggleKey: (k: ToggleKey) => void;
+  ansiTyping: boolean;
+  setAnsiTyping: (v: boolean) => void;
+  ansiKey: AnsiKey;
+  setAnsiKey: (k: AnsiKey) => void;
 }
 
 export interface AppInfo {
@@ -142,7 +146,9 @@ export function Settings(p: Props) {
             </select>
           </label>
           <label>{t('ইউনিকোড ⇄ ANSI বদল')}
-            <select disabled value=""><option value="">{t('ধাপ ৪-এ আসছে')}</option></select>
+            <select data-testid="ansi-key" value={p.ansiKey} onChange={(e) => p.setAnsiKey(e.target.value as AnsiKey)}>
+              {ANSI_KEYS.map((k) => <option key={k.id} value={k.id}>{t(k.label)}</option>)}
+            </select>
           </label>
         </div>
         <p className="note">{t('iPad-এ Ctrl+Space অনেক সময় iPad নিজেই ভাষা বদলাতে নিয়ে নেয়; তখন F12 বা Ctrl+M বেছে নিন। ফিজিক্যাল কিবোর্ডেই কাজ করে; অন-স্ক্রিন কিবোর্ডে EN/বাং বাটন আছে।')}</p>
@@ -151,6 +157,9 @@ export function Settings(p: Props) {
         <label><input type="checkbox" data-testid="oldreph" checked={p.oldReph} onChange={(e) => p.setOldReph(e.target.checked)} /> {t('বিজয়-ধাঁচের রেফ: বর্ণ লেখার পরে রেফ চাপুন (ক ম রেফ লিখলে হবে কর্ম)')}</label>
         <label><input type="checkbox" data-testid="vf" checked={p.vf} onChange={(e) => p.setVf(e.target.checked)} /> {t('স্বর-গঠন: শব্দের শুরুতে বা স্বরবর্ণের পরে কার চাপুন (ি চাপলে হবে ই, ে চাপলে এ, অ-এর পরে া চাপলে আ)')}</label>
         <p className="note">{t('Bornona-য় ই, উ, এ, ও-এর আলাদা key নেই, তাই এটা চালু রাখতে হয়। যে লেআউটে পূর্ণ স্বরবর্ণের আলাদা key আছে (যেমন National, Probhat), সেখানে চাইলে বন্ধ রাখতে পারেন।')}</p>
+        <h3 className="sub-h">{t('বিজয় (ANSI)-তে টাইপ (পরীক্ষামূলক)')}</h3>
+        <label><input type="checkbox" data-testid="ansi-typing" checked={p.ansiTyping} onChange={(e) => p.setAnsiTyping(e.target.checked)} /> {t('বাংলা লেখা সরাসরি বিজয় ANSI-তে (SutonnyMJ) রাখো')}</label>
+        <p className="note">{t('শুধু পুরোনো SutonnyMJ ফাইলে কপি-পেস্ট করার জন্য। এই অবস্থায় শব্দের পরামর্শ, শেখা, কথা বলে লেখা আর খোঁজা ঠিকমতো কাজ করে না, আর ফন্ট না থাকলে লেখা ভাঙা দেখায়। সাধারণ কাজে ইউনিকোডে লিখে “কপি: ANSI” বা বিজয় Word ফাইল নেওয়াই ভালো। পরে Converter → “পুরো ড্রাফট ইউনিকোডে” দিয়ে ফেরানো যায়।')}</p>
         <label><input type="checkbox" data-testid="fix-chandra" checked={p.fixChandra} onChange={(e) => p.setFixChandra(e.target.checked)} /> {t('চন্দ্রবিন্দুর জায়গা নিজে থেকে ঠিক করো (ক ঁ া লিখলে হবে কাঁ)')}</label>
       </details>
 
