@@ -6,3 +6,4 @@ playwright-report/
 *.local
 .DS_Store
 dist-preview/
+i18n-missing.json

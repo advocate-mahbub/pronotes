@@ -112,6 +112,7 @@ test('pasting Bijoy text converts it to Unicode (setting on), leaves it when off
 test('Bijoy panel: Unicode → Bijoy preview, Bijoy → Unicode insert', async ({ page, context }) => {
   await context.grantPermissions(['clipboard-read', 'clipboard-write']);
   await start(page);
+  await page.getByTestId('tab-tools').click();
   await page.getByTestId('bijoy-toggle').click();
   await page.getByTestId('bijoy-in').fill('Avgvi †mvbvi evsjv');
   await page.getByTestId('to-unicode').click();

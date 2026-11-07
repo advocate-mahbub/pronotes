@@ -5,7 +5,7 @@ import { emptyBank, learnText, mergeBankFile, pruneBank, type WordBank, type Wor
 import {
   listDocs, getDoc, createDoc, saveContent, renameDoc, duplicateDoc, trashDoc, restoreDoc, deleteForever, purgeExpired,
   loadBank, saveBank, requestPersistence, exportAll, restoreAll, parseBackup, backupFileName, mergeCorrections,
-  listFonts, putFont, removeFont, loadLayouts, saveLayouts, loadCorrections, saveCorrections, type Doc,
+  listFonts, putFont, removeFont, loadLayouts, saveLayouts, loadCorrections, saveCorrections, setDocKind, kindOf, type Doc, type DocKind,
 } from '../storage';
 import { MAX_FONT_BYTES, familyFor, registerFont, unregisterFont } from '../fonts';
 import { decideVoice, detectVoiceEnv } from '../voice';
@@ -16,7 +16,9 @@ import { DEFAULT_FORMAT, type DocFormat } from '../docx-export/format';
 import { Sidebar } from './Sidebar';
 import { Workspace, type SaveState } from './Workspace';
 import { load, save } from './prefs';
-import { bnNum } from './format';
+import { I18nContext, setUiLangGlobal, translate, tr, type UiLang } from '../i18n';
+import { Popover } from './ui';
+import { LOCAL_UNI, WEB_FONTS, ENGLISH_FONTS } from '../fonts';
 import './fonts.css';
 import './app.css';
 import { flushAll } from './flush';
@@ -42,7 +44,29 @@ async function migrateFromM2(): Promise<void> {
   save('migratedM3', true);
 }
 
+export type Theme = 'auto' | 'light' | 'dark';
+export const KIND_LABEL: Record<DocKind, string> = { note: 'সাধারণ নোট', legal: 'লিগ্যাল ড্রাফট', chart: 'টাইটেল চার্ট' };
+export const KIND_ICON: Record<DocKind, string> = { note: '📝', legal: '⚖', chart: '⛓' };
+
+const svg = (d: string) => <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path fill="currentColor" d={d} /></svg>;
+const THEME_ICON: Record<Theme, React.ReactNode> = {
+  auto: svg('M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18Zm0 2v14a7 7 0 0 1 0-14Z'),
+  light: svg('M12 7a5 5 0 1 0 0 10 5 5 0 0 0 0-10Zm0-5 1.2 3h-2.4L12 2Zm0 20-1.2-3h2.4L12 22ZM2 12l3-1.2v2.4L2 12Zm20 0-3 1.2v-2.4L22 12ZM4.9 4.9l3 1.3-1.7 1.7-1.3-3Zm14.2 14.2-3-1.3 1.7-1.7 1.3 3Zm0-14.2-1.3 3-1.7-1.7 3-1.3ZM4.9 19.1l1.3-3 1.7 1.7-3 1.3Z'),
+  dark: svg('M20 14.5A8.5 8.5 0 0 1 9.5 4a8.5 8.5 0 1 0 10.5 10.5Z'),
+};
+
 export function App() {
+  const [uiLang, setUiLangState] = useState<UiLang>(() => load<UiLang>('uiLang', 'bn'));
+  setUiLangGlobal(uiLang);
+  const i18n = useMemo(() => ({ lang: uiLang, t: (s: string, v?: Record<string, string | number>) => translate(uiLang, s, v) }), [uiLang]);
+  const t = i18n.t;
+  const [theme, setTheme] = useState<Theme>(() => load<Theme>('theme', 'auto'));
+  useEffect(() => save('uiLang', uiLang), [uiLang]);
+  useEffect(() => {
+    save('theme', theme);
+    if (theme === 'auto') delete document.documentElement.dataset.theme;
+    else document.documentElement.dataset.theme = theme;
+  }, [theme]);
   const [layoutId, setLayoutId] = useState(() => load('layout', 'bornona'));
   const [bangla, setBangla] = useState(() => load('bangla', true));
   const [vf, setVf] = useState(() => load('vf', true));
@@ -95,7 +119,9 @@ export function App() {
 
   const toastTimer = useRef<number>(undefined);
   const toastNow = useRef('');
-  const say = useCallback((m: string) => {
+  /** Show a message. `m` is the Bangla text (translated here for the English interface). */
+  const say = useCallback((m0: string, vars?: Record<string, string | number>) => {
+    const m = tr(m0, vars);
     setToast(m);
     toastNow.current = m;
     clearTimeout(toastTimer.current);
@@ -172,7 +198,7 @@ export function App() {
       setCorrectionsState(await loadCorrections());
       loadStoredFonts();
       let list = await listDocs();
-      if (!list.length) list = [await createDoc()];
+      if (!list.length) list = [await createDoc(tr('নতুন ড্রাফট'))];
       const last = load<string | null>('current', null);
       await open(list.find((d) => d.id === last)?.id ?? list[0].id);
       await refresh();
@@ -195,8 +221,8 @@ export function App() {
     await refresh();
   }, [refresh]);
 
-  const newDoc = async () => {
-    const d = await createDoc();
+  const newDoc = async (kind: DocKind = 'legal') => {
+    const d = await createDoc(tr(kind === 'note' ? 'নতুন নোট' : 'নতুন ড্রাফট'), undefined, '', Date.now(), kind);
     await refresh();
     await open(d.id);
     setView('docs');
@@ -217,7 +243,7 @@ export function App() {
     try {
       const f = await exportAll(prefs());
       const ok = await saveFile(backupFileName(), new Blob([JSON.stringify(f)], { type: 'application/json' }));
-      if (ok) say(`${bnNum(f.docs.length)}টা ড্রাফট আর শব্দভান্ডারের ব্যাকআপ তৈরি হয়েছে`);
+      if (ok) say('{n}টা ড্রাফট আর শব্দভান্ডারের ব্যাকআপ তৈরি হয়েছে', { n: f.docs.length });
     } catch {
       say('ব্যাকআপ তৈরি করা যায়নি');
     }
@@ -230,7 +256,7 @@ export function App() {
       setCustomLayouts(await loadLayouts());
       setCorrectionsState(await loadCorrections());
       await refresh();
-      say(`ফেরত এসেছে: নতুন ${bnNum(r.added)}টা, আলাদা কপি ${bnNum(r.copies)}টা, আগে থেকেই ছিল ${bnNum(r.unchanged)}টা`);
+      say('ফেরত এসেছে: নতুন {a}টা, আলাদা কপি {c}টা, আগে থেকেই ছিল {u}টা', { a: r.added, c: r.copies, u: r.unchanged });
     } catch {
       say('ফাইলটা ProNotes-এর ব্যাকআপ না, বা পড়া যায়নি');
     }
@@ -244,7 +270,7 @@ export function App() {
       await saveLayouts(next);
       setCustomLayouts(next);
       setLayoutId(L.id);
-      say(L.name + ' লেআউট যোগ হলো');
+      say('{name} লেআউট যোগ হলো', { name: L.name });
     } catch {
       say('ফাইলটা Avro লেআউট (.avrolayout) হিসেবে পড়া গেল না');
     }
@@ -287,7 +313,7 @@ export function App() {
     setFonts((l) => [...l, { id: rec.id, family: rec.family, fileName: rec.fileName, role }]);
     if (role === 'ansi') setAnsiFont(rec.family);
     else setFormat((f) => ({ ...f, font: rec.family }));
-    say(rec.family + ' যোগ হয়েছে');
+    say('{name} যোগ হয়েছে', { name: rec.family });
   };
   const deleteFont = async (id: string) => {
     try {
@@ -320,12 +346,13 @@ export function App() {
     if (!ed) return;
     const n = learnText(bank.current, ed.state.doc.textBetween(0, ed.state.doc.content.size, '\n', ' '));
     onBankChanged();
-    say(n ? `${bnNum(n)}টা শব্দ শেখা হলো` : 'শেখার মতো শব্দ পাওয়া যায়নি');
+    if (n) say('{n}টা শব্দ শেখা হলো', { n });
+    else say('শেখার মতো শব্দ পাওয়া যায়নি');
   };
   const exportWords = async () => {
     const data: WordBankFile = { app: 'bornona-pad', version: 1, exported: new Date().toISOString(), words: bank.current.w, next: bank.current.b, corrections };
     const ok = await saveFile('bornona-words-' + new Date().toISOString().slice(0, 10) + '.json', new Blob([JSON.stringify(data)], { type: 'application/json' }));
-    if (ok) say(`${bnNum(Object.keys(bank.current.w).length)}টা শব্দ এক্সপোর্ট হলো`);
+    if (ok) say('{n}টা শব্দ এক্সপোর্ট হলো', { n: Object.keys(bank.current.w).length });
   };
   const importWords = async (file: File) => {
     try {
@@ -333,7 +360,7 @@ export function App() {
       const n = mergeBankFile(bank.current, d, fixNukta);
       if (d.corrections) setCorrections(mergeCorrections(corrections, d.corrections));
       onBankChanged();
-      say(`${bnNum(n)}টা নতুন শব্দ যোগ হলো`);
+      say('{n}টা নতুন শব্দ যোগ হলো', { n });
     } catch {
       say('ফাইলটা বর্ণনা প্যাডের শব্দভান্ডার না');
     }
@@ -344,9 +371,25 @@ export function App() {
     say('শেখা শব্দ মুছে ফেলা হয়েছে');
   };
 
+  const changeKind = async (kind: DocKind) => {
+    if (!current || kind === kindOf(current)) return;
+    await flushAll();
+    await setDocKind(current.id, kind);
+    const d = await getDoc(current.id);
+    if (d) setCurrent(d);
+    await refresh();
+    say('ধরন বদলে {kind} করা হলো', { kind: tr(KIND_LABEL[kind]) });
+  };
+  const fontChoices = useMemo(
+    () => [...new Set([format.font, ...LOCAL_UNI, ...WEB_FONTS, ...fonts.filter((f) => f.role === 'uni').map((f) => f.family), ...ENGLISH_FONTS])],
+    [format.font, fonts],
+  );
+  const themeNext: Record<Theme, Theme> = { auto: 'light', light: 'dark', dark: 'auto' };
+  const themeLabel: Record<Theme, string> = { auto: 'রং: ডিভাইস অনুযায়ী', light: 'রং: আলো', dark: 'রং: অন্ধকার' };
+
   const showSide = sideOpen;
   const sidebar = (
-    <Sidebar docs={docs} trash={trash} currentId={current?.id ?? null} view={view} setView={setView}
+    <Sidebar docs={docs} trash={trash} currentId={current?.id ?? null} view={view} setView={setView} kindIcon={KIND_ICON} kindLabel={KIND_LABEL}
       onOpen={open} onNew={newDoc}
       onDuplicate={async (id) => { const d = await duplicateDoc(id); await refresh(); if (d) await open(d.id); say('কপি তৈরি হয়েছে'); }}
       onTrash={toTrash}
@@ -354,34 +397,50 @@ export function App() {
       onDeleteForever={async (id) => { await deleteForever(id); await refresh(); say('স্থায়ীভাবে মুছে ফেলা হয়েছে'); }}
       onClose={wide ? undefined : () => setSideOpen(false)} />
   );
-  const statusText = { saved: 'এই ডিভাইসে সেভ হয়েছে', saving: 'সেভ হচ্ছে…', error: 'সেভ করা যায়নি' }[saveState];
+  const statusText = t({ saved: 'এই ডিভাইসে সেভ হয়েছে', saving: 'সেভ হচ্ছে…', error: 'সেভ করা যায়নি' }[saveState]);
+  const curKind = current ? kindOf(current) : 'legal';
 
   if (fatal)
     return (
       <div className="fatal" role="alert" data-testid="fatal">
         <h1>ProNotes</h1>
-        <p>এই ব্রাউজারে লেখা সেভ করার জায়গা (IndexedDB) খোলা যাচ্ছে না, তাই লেখা হারানোর ঝুঁকি এড়াতে অ্যাপ বন্ধ রাখা হলো।</p>
-        <p>Private/Incognito মোড বন্ধ করে, বা ব্রাউজারের সেটিংসে এই সাইটের ডেটা রাখার অনুমতি দিয়ে আবার খুলুন।</p>
+        <p>{t('এই ব্রাউজারে লেখা সেভ করার জায়গা (IndexedDB) খোলা যাচ্ছে না, তাই লেখা হারানোর ঝুঁকি এড়াতে অ্যাপ বন্ধ রাখা হলো।')}</p>
+        <p>{t('Private/Incognito মোড বন্ধ করে, বা ব্রাউজারের সেটিংসে এই সাইটের ডেটা রাখার অনুমতি দিয়ে আবার খুলুন।')}</p>
       </div>
     );
 
   return (
+    <I18nContext.Provider value={i18n}>
     <div className={'app' + (showSide && wide ? ' with-side' : '')}>
       <header className="top">
         <div className="brand">
           <span className="name">ProNotes</span>
-          <span className="sub">{layout.name} layout</span>
+          {current && (
+            <Popover label={<>{KIND_ICON[curKind]} {t(KIND_LABEL[curKind])} ▾</>} title={t('ডকুমেন্টের ধরন')} testid="kind" className="kind">
+              {(close) => (
+                <div className="menu">
+                  <p className="note">{t('এই ডকুমেন্টের ধরন বদলান (লেখা যেমন আছে থাকবে):')}</p>
+                  {(['note', 'legal'] as DocKind[]).map((k) => (
+                    <button key={k} type="button" data-testid={'kind-' + k} aria-pressed={k === curKind} onClick={() => { close(); changeKind(k); }}>{KIND_ICON[k]} {t(KIND_LABEL[k])}</button>
+                  ))}
+                  <button type="button" disabled>{KIND_ICON.chart} {t(KIND_LABEL.chart)} ({t('শীঘ্রই')})</button>
+                </div>
+              )}
+            </Popover>
+          )}
         </div>
         <span className={'status ' + saveState} data-testid="save-status" role="status">{statusText}</span>
-        <select className="layout" aria-label="কিবোর্ড লেআউট" data-testid="layout" value={layoutId} onChange={(e) => setLayoutId(e.target.value)}>
-          <optgroup label="সাথে দেওয়া">{BUILTIN_LAYOUTS.map((l) => <option key={l.id} value={l.id}>{l.name}</option>)}</optgroup>
-          {customLayouts.length > 0 && <optgroup label="আপনার যোগ করা">{customLayouts.map((l) => <option key={l.id} value={l.id}>{l.name}</option>)}</optgroup>}
+        <select className="layout" aria-label={t('কিবোর্ড লেআউট')} title={t('কিবোর্ড লেআউট')} data-testid="layout" value={layoutId} onChange={(e) => setLayoutId(e.target.value)}>
+          <optgroup label={t('সাথে দেওয়া')}>{BUILTIN_LAYOUTS.map((l) => <option key={l.id} value={l.id}>{l.name}</option>)}</optgroup>
+          {customLayouts.length > 0 && <optgroup label={t('আপনার যোগ করা')}>{customLayouts.map((l) => <option key={l.id} value={l.id}>{l.name}</option>)}</optgroup>}
         </select>
-        <div className="seg" role="group" aria-label="ভাষা">
+        <div className="seg" role="group" aria-label={t('টাইপিং-এর ভাষা')} title={t('টাইপিং-এর ভাষা (Ctrl+Space)')}>
           <button type="button" aria-pressed={bangla} data-testid="mode-bn" onClick={() => setBangla(true)}>বাংলা</button>
           <button type="button" aria-pressed={!bangla} data-testid="mode-en" onClick={() => setBangla(false)}>English</button>
         </div>
-        <button type="button" className={'tb' + (settingsOpen ? ' on' : '')} title="সেটিংস" aria-label="সেটিংস" data-testid="settings"
+        <button type="button" className="tb theme" data-testid="theme" data-theme-mode={theme} title={t(themeLabel[theme])} aria-label={t(themeLabel[theme])}
+          onClick={() => setTheme(themeNext[theme])}>{THEME_ICON[theme]}</button>
+        <button type="button" className={'tb' + (settingsOpen ? ' on' : '')} title={t('সেটিংস')} aria-label={t('সেটিংস')} data-testid="settings"
           onClick={() => setSettingsOpen((v) => !v)}>⚙</button>
       </header>
 
@@ -393,18 +452,17 @@ export function App() {
               kbVisible={kbVisible} coarse={coarse} bank={bank.current} bankVersion={bankVersion} onBankChanged={onBankChanged}
               onToggleLanguage={() => setBangla((b) => !b)} onSave={onSave}
               onRename={async (id, t) => { await renameDoc(id, t); await refresh(); }}
-              onSaveState={setSaveState} format={format} say={say}
+              onSaveState={setSaveState} format={format} say={say} fonts={fontChoices}
               voice={voice} corrections={corrections} autoBijoy={autoBijoy} ansiFont={ansiFont} enFont={enFont}
               onEditor={(e) => { editorRef.current = e; }}
               toolbarExtra={
                 <>
-                  <button type="button" className={'tb' + (showSide ? ' on' : '')} title="ডকুমেন্টের তালিকা" aria-label="ডকুমেন্টের তালিকা"
+                  <button type="button" className={'tb' + (showSide ? ' on' : '')} title={t('ডকুমেন্টের তালিকা')} aria-label={t('ডকুমেন্টের তালিকা')}
                     data-testid="side-toggle" onPointerDown={(e) => e.preventDefault()} onClick={() => setSideOpen((v) => !v)}>☰</button>
-                  <span className="sep" />
                 </>
               }
               toolbarRight={
-        <button type="button" className={'tb' + (kbVisible ? ' on' : '')} title="অন-স্ক্রিন কিবোর্ড" aria-label="অন-স্ক্রিন কিবোর্ড" data-testid="kb-toggle"
+        <button type="button" className={'tb' + (kbVisible ? ' on' : '')} title={t('অন-স্ক্রিন কিবোর্ড')} aria-label={t('অন-স্ক্রিন কিবোর্ড')} data-testid="kb-toggle"
           onPointerDown={(e) => e.preventDefault()} onClick={() => setKbVisible((v) => !v)}>⌨</button>
               } />
           )}
@@ -421,7 +479,7 @@ export function App() {
           autoBijoy={autoBijoy} setAutoBijoy={setAutoBijoy}
           wordCount={Object.keys(bank.current.w).length + 0 * bankVersion}
           onLearnDoc={learnDoc} onExportWords={exportWords} onImportWords={importWords} onResetWords={resetWords}
-          onBackup={backup} onRestore={restore}
+          onBackup={backup} onRestore={restore} uiLang={uiLang} setUiLang={setUiLangState}
           app={{
             supported: pwaSupported(), offlineReady, standalone: isStandalone(), apple: isAppleDevice(), canInstall,
             onInstall: async () => { if (await promptInstall()) say('ProNotes ইনস্টল হয়েছে'); },
@@ -431,13 +489,14 @@ export function App() {
 
       {needRefresh && (
         <div className="update" role="status" data-testid="update-banner">
-          <span>ProNotes-এর নতুন ভার্সন এসেছে। আপনার লেখা সেভ করে আপডেট হবে।</span>
-          <button type="button" className="btn primary small" data-testid="update-now" disabled={updating} onClick={doUpdate}>{updating ? 'আপডেট হচ্ছে…' : 'এখন আপডেট করুন'}</button>
-          <button type="button" className="btn small" data-testid="update-later" onClick={() => setNeedRefresh(false)}>পরে</button>
+          <span>{t('ProNotes-এর নতুন ভার্সন এসেছে। আপনার লেখা সেভ করে আপডেট হবে।')}</span>
+          <button type="button" className="btn primary small" data-testid="update-now" disabled={updating} onClick={doUpdate}>{updating ? t('আপডেট হচ্ছে…') : t('এখন আপডেট করুন')}</button>
+          <button type="button" className="btn small" data-testid="update-later" onClick={() => setNeedRefresh(false)}>{t('পরে')}</button>
         </div>
       )}
 
       {toast && <div className="toast" role="status" data-testid="toast">{toast}</div>}
     </div>
+    </I18nContext.Provider>
   );
 }

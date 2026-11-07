@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { EditorContent, useEditor, type Editor } from '@tiptap/react';
 import { fixNukta, type LayoutMap } from '../bornona-engine';
-import { editorExtensions, insertPlainText, textBeforeCaret, PARAGRAPH_STYLES, type BornonaConfig, type ParagraphStyle } from '../editor';
+import { editorExtensions, insertPlainText, textBeforeCaret, type BornonaConfig } from '../editor';
 import { convertBijoyPaste } from '../bijoy';
 import { VoiceController, VoiceDeduper, cleanVoice, decideVoice, detectVoiceEnv, voiceInsertText } from '../voice';
 import { voiceLang, type VoicePrefs } from './prefs-types';
@@ -11,7 +11,12 @@ import { registerFlush } from './flush';
 import type { DocFormat } from '../docx-export/format';
 import { saveFile } from '../storage/download';
 import { learnTail, learnText, type WordBank } from '../suggest';
-import type { Doc } from '../storage';
+import { kindOf, type Doc } from '../storage';
+import { useT } from '../i18n';
+import { Ribbon } from './Ribbon';
+import { FindBar, FontPanel, ParagraphPanel, WordCount } from './Panels';
+import { Popover } from './ui';
+import { attachBornona } from './bornona-input';
 import { OnScreenKeyboard } from './OnScreenKeyboard';
 import { SuggestionBar } from './SuggestionBar';
 
@@ -35,6 +40,8 @@ interface Props {
   toolbarExtra: React.ReactNode;
   toolbarRight: React.ReactNode;
   format: DocFormat;
+  /** Font families for the font box (document default first). */
+  fonts: string[];
   say: (msg: string) => void;
   voice: VoicePrefs;
   corrections: string;
@@ -48,11 +55,18 @@ interface Props {
 const MIC = (
   <svg viewBox="0 0 24 24" width="26" height="26" aria-hidden="true"><path fill="currentColor" d="M12 15a3.5 3.5 0 0 0 3.5-3.5v-6a3.5 3.5 0 1 0-7 0v6A3.5 3.5 0 0 0 12 15Zm6.2-3.6a.9.9 0 0 0-1.8 0 4.4 4.4 0 0 1-8.8 0 .9.9 0 0 0-1.8 0 6.2 6.2 0 0 0 5.3 6.1V20H8.6a.9.9 0 0 0 0 1.8h6.8a.9.9 0 0 0 0-1.8h-2.5v-2.5a6.2 6.2 0 0 0 5.3-6.1Z"/></svg>
 );
+/** Notes use the app's own font, so they look the same on every device. */
+export const NOTE_FONT = 'Noto Sans Bengali';
+export const NOTE_SIZE = 13;
 const LANG_NAMES: Record<string, string> = { 'bn-BD': 'বাংলা', 'bn-IN': 'বাংলা', 'en-US': 'English', 'en-GB': 'English', 'en-IN': 'English' };
 
 /** One open document: toolbar, title, page and the keyboard dock. Remounted per document (fresh undo history). */
 export function Workspace(p: Props) {
+  const { t } = useT();
+  const kind = kindOf(p.doc);
   const [flash, setFlash] = useState<string | null>(null);
+  const [find, setFind] = useState<{ replace: boolean } | null>(null);
+  const [panel, setPanel] = useState<'font' | 'para' | 'wc' | null>(null);
   const [title, setTitle] = useState(p.doc.title);
   /** Voice through the device keyboard's own mic: the engine is suspended and the device keyboard is used. */
   const [deviceKb, setDeviceKb] = useState(false);
@@ -101,7 +115,12 @@ export function Workspace(p: Props) {
     }),
     content: p.doc.content,
     // Tiptap re-applies these options on re-render, so inputmode must be part of them.
-    editorProps: { attributes: { class: 'page-body', lang: 'bn', spellcheck: 'false', autocorrect: 'off', autocapitalize: 'off', 'data-testid': 'editor', inputmode: inputMode } },
+    editorProps: {
+      attributes: { class: 'page-body', lang: 'bn', spellcheck: 'false', autocorrect: 'off', autocapitalize: 'off', 'data-testid': 'editor', inputmode: inputMode },
+      // keep the caret clear of the sticky draft title above and the mic below
+      scrollMargin: { top: 64, bottom: 72, left: 8, right: 8 },
+      scrollThreshold: { top: 64, bottom: 72, left: 8, right: 8 },
+    },
     onUpdate: ({ editor }) => {
       pending.current = true;
       cb.current.onSaveState('saving');
@@ -121,10 +140,19 @@ export function Workspace(p: Props) {
     if (!editor) return;
     const hide = () => document.visibilityState === 'hidden' && flush(editor);
     const key = (e: KeyboardEvent) => {
-      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') {
+      if (!(e.ctrlKey || e.metaKey) || e.altKey) return;
+      const k = e.key.toLowerCase();
+      if (k === 's') {
         e.preventDefault();
         pending.current = true;
         flush(editor);
+      } else if (k === 'f' || k === 'h') {
+        e.preventDefault();
+        setFind({ replace: k === 'h' });
+      } else if (editor.isFocused && ['l', 'e', 'r', 'j'].includes(k) && !e.shiftKey) {
+        // Word's alignment shortcuts
+        e.preventDefault();
+        editor.chain().focus().setTextAlign({ l: 'left', e: 'center', r: 'right', j: 'justify' }[k]!).run();
       }
     };
     document.addEventListener('visibilitychange', hide);
@@ -147,6 +175,8 @@ export function Workspace(p: Props) {
           class: 'page-body', lang: 'bn', spellcheck: 'false', autocorrect: 'off', autocapitalize: 'off', 'data-testid': 'editor',
           inputmode: inputMode,
         },
+        scrollMargin: { top: 64, bottom: 72, left: 8, right: 8 },
+        scrollThreshold: { top: 64, bottom: 72, left: 8, right: 8 },
       },
     });
   }, [editor, inputMode]);
@@ -274,72 +304,64 @@ export function Workspace(p: Props) {
     }
   };
 
+  // Bornona typing in the title box too
+  const titleRef = useRef<HTMLInputElement>(null);
+  useEffect(() => {
+    if (!titleRef.current) return;
+    return attachBornona(titleRef.current, getConfig, () => cb.current.onToggleLanguage());
+  }, [editor, getConfig]);
+  const toggleLang = useCallback(() => cb.current.onToggleLanguage(), []);
+
   if (!editor) return null;
-  const btn = (label: string, t: string, active: boolean, run: () => void, testid?: string) => (
-    <button type="button" className={'tb' + (active ? ' on' : '')} title={t} aria-label={t} aria-pressed={active} data-testid={testid}
-      onPointerDown={(e) => e.preventDefault()} onClick={run}>
-      {label}
-    </button>
-  );
   const commitTitle = () => {
     if (title.trim() !== p.doc.title) p.onRename(p.doc.id, title);
   };
+  const share = (
+    <Popover label="⤴" title={t('শেয়ার / Export')} testid="share" className="share">
+      {(close) => (
+        <div className="menu">
+          <button type="button" data-testid="export-docx" onClick={() => { close(); exportDocx(); }}>Word (.docx)</button>
+          <button type="button" data-testid="print" onClick={() => { close(); print(); }}>{t('প্রিন্ট / PDF')}</button>
+          <p className="note">{t('আরও ফরম্যাট (.doc, ANSI, .txt, .md, .html) পরের ধাপে।')}</p>
+        </div>
+      )}
+    </Popover>
+  );
 
   return (
     <>
-      <nav className="toolbar" aria-label="লেখার সরঞ্জাম">
-        {p.toolbarExtra}
-        {btn('B', 'Bold (Ctrl/⌘+B)', editor.isActive('bold'), () => editor.chain().focus().toggleBold().run(), 'bold')}
-        {btn('U', 'Underline (Ctrl/⌘+U)', editor.isActive('underline'), () => editor.chain().focus().toggleUnderline().run())}
-        {btn('H', 'Highlight', editor.isActive('highlight'), () => editor.chain().focus().toggleHighlight().run())}
-        <span className="sep" />
-        <select className="pstyle" aria-label="অনুচ্ছেদের ধরন" data-testid="pstyle"
-          value={(editor.getAttributes('paragraph').pstyle as ParagraphStyle) || 'normal'}
-          onChange={(e) => editor.chain().focus().setParagraphStyle(e.target.value as ParagraphStyle).run()}>
-          {PARAGRAPH_STYLES.map((s) => <option key={s.id} value={s.id}>{s.label}</option>)}
-        </select>
-        {editor.isActive('table') ? (
-          <>
-            {btn('+সারি', 'নিচে সারি যোগ', false, () => editor.chain().focus().addRowAfter().run(), 'row-add')}
-            {btn('−সারি', 'এই সারি মুছুন', false, () => editor.chain().focus().deleteRow().run(), 'row-del')}
-            {btn('−টেবিল', 'টেবিল মুছুন', false, () => editor.chain().focus().deleteTable().run(), 'table-del')}
-          </>
-        ) : (
-          btn('তফসিল', 'তফসিলের টেবিল (৪ কলাম)', false, () => editor.chain().focus().insertTable({ rows: 3, cols: 4, withHeaderRow: true }).run(), 'table-add')
-        )}
-        <span className="sep" />
-        {btn('↶', 'Undo (Ctrl/⌘+Z)', false, () => editor.chain().focus().undo().run())}
-        {btn('↷', 'Redo', false, () => editor.chain().focus().redo().run())}
-        <span className="sep" />
-        {btn('বিজয়', 'ইউনিকোড ⇄ বিজয়', convOpen, () => setConvOpen((v) => !v), 'bijoy-toggle')}
-        <span className="grow" />
-        <button type="button" className="btn primary small" data-testid="export-docx" title="Word ফাইল (.docx)" onPointerDown={(e) => e.preventDefault()} onClick={exportDocx}>Word</button>
-        {btn('⎙', 'প্রিন্ট / PDF', false, print, 'print')}
-        {p.toolbarRight}
-      </nav>
+      <Ribbon editor={editor} kind={kind} fonts={p.fonts} defaultFont={kind === 'note' ? NOTE_FONT : p.format.font} defaultSize={kind === 'note' ? NOTE_SIZE : p.format.size} bangla={p.bangla}
+        start={p.toolbarExtra} end={<>{share}{p.toolbarRight}</>}
+        onFind={(replace) => setFind({ replace })} onConverter={() => setConvOpen((v) => !v)} converterOpen={convOpen}
+        onWordCount={() => setPanel('wc')} onFontPanel={() => setPanel('font')} onParagraphPanel={() => setPanel('para')} />
+      {find && <FindBar editor={editor} showReplace={find.replace} getConfig={getConfig} onToggleLanguage={toggleLang}
+        onClose={() => { setFind(null); editor.commands.focus(); }} />}
+      {panel === 'font' && <FontPanel editor={editor} onClose={() => setPanel(null)} />}
+      {panel === 'para' && <ParagraphPanel editor={editor} onClose={() => setPanel(null)} />}
+      {panel === 'wc' && <WordCount editor={editor} onClose={() => setPanel(null)} />}
       <div className="deskwrap">
       <main className="desk" ref={deskRef}
         style={{ ['--z' as string]: zoom, ['--doc-font' as string]: `"${p.format.font}"`, ['--doc-size' as string]: p.format.size + 'pt', ['--doc-title' as string]: p.format.titleSize + 'pt', ['--doc-line' as string]: p.format.lineSpacing } as React.CSSProperties}>
-        <input className="title" data-testid="title" aria-label="ড্রাফটের নাম" value={title}
+        <input ref={titleRef} className="title" data-testid="title" aria-label={t('ড্রাফটের নাম')} value={title}
           onChange={(e) => setTitle(e.target.value)} onBlur={commitTitle}
           onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); commitTitle(); editor.commands.focus(); } }} />
-        <div className="page">
+        <div className={'page ' + kind} data-kind={kind}>
           <EditorContent editor={editor} />
         </div>
       </main>
         <button type="button" className={'mic' + (listening ? ' live' : '') + (deviceKb ? ' device' : '')} data-testid="mic"
-          aria-pressed={listening || deviceKb} aria-label={listening ? 'ভয়েস থামান' : 'ভয়েস টাইপিং'} title={listening ? 'ভয়েস থামান' : 'ভয়েস টাইপিং'}
+          aria-pressed={listening || deviceKb} aria-label={listening ? t('ভয়েস থামান') : t('ভয়েস টাইপিং')} title={listening ? t('ভয়েস থামান') : t('ভয়েস টাইপিং')}
           onPointerDown={(e) => e.preventDefault()} onClick={toggleVoice}>{MIC}</button>
       </div>
       {consentOpen && (
         <div className="modal" role="dialog" aria-modal="true" aria-labelledby="vc-title" data-testid="voice-consent">
           <div className="box">
-            <h2 id="vc-title">সরাসরি ভয়েস চালুর আগে</h2>
-            <p>সরাসরি ভয়েস টাইপিং-এ আপনার কথা (অডিও) ব্রাউজারের ভয়েস সার্ভিসে যায়; Chrome বা Edge-এ সেটা Google বা Microsoft-এর সার্ভারে। লেখা ও ড্রাফট এই ডিভাইসেই থাকে, কিন্তু যা বলবেন তা বাইরে যাবে।</p>
-            <p>মক্কেলের নাম, ঠিকানা, দলিল নম্বর বা গোপন তথ্য বলার দরকার হলে কিবোর্ডে লিখুন। মাইক না চাপলে কিছুই বাইরে যায় না।</p>
+            <h2 id="vc-title">{t('সরাসরি ভয়েস চালুর আগে')}</h2>
+            <p>{t('সরাসরি ভয়েস টাইপিং-এ আপনার কথা (অডিও) ব্রাউজারের ভয়েস সার্ভিসে যায়; Chrome বা Edge-এ সেটা Google বা Microsoft-এর সার্ভারে। লেখা ও ড্রাফট এই ডিভাইসেই থাকে, কিন্তু যা বলবেন তা বাইরে যাবে।')}</p>
+            <p>{t('মক্কেলের নাম, ঠিকানা, দলিল নম্বর বা গোপন তথ্য বলার দরকার হলে কিবোর্ডে লিখুন। মাইক না চাপলে কিছুই বাইরে যায় না।')}</p>
             <div className="row">
-              <button type="button" className="btn primary" data-testid="voice-consent-ok" onClick={() => { save('voiceConsent', true); setConsentOpen(false); startLive(); }}>বুঝেছি, চালু করুন</button>
-              <button type="button" className="btn" data-testid="voice-consent-cancel" onClick={() => { setConsentOpen(false); edRef.current?.commands.focus(); }}>বাতিল</button>
+              <button type="button" className="btn primary" data-testid="voice-consent-ok" onClick={() => { save('voiceConsent', true); setConsentOpen(false); startLive(); }}>{t('বুঝেছি, চালু করুন')}</button>
+              <button type="button" className="btn" data-testid="voice-consent-cancel" onClick={() => { setConsentOpen(false); edRef.current?.commands.focus(); }}>{t('বাতিল')}</button>
             </div>
           </div>
         </div>
@@ -349,13 +371,13 @@ export function Workspace(p: Props) {
         {listening ? (
           <div className="sug voice" data-testid="voice-bar">
             <span className="dotrec" aria-hidden="true" />
-            <span className="interim" data-testid="voice-interim">{interim ? fixNukta(interim) : `শুনছি… (${LANG_NAMES[langNow] || langNow}) বলুন`}</span>
-            <button type="button" className="btn live" data-testid="voice-stop" onPointerDown={(e) => e.preventDefault()} onClick={() => ctrl.current!.stop()}>থামুন</button>
+            <span className="interim" data-testid="voice-interim">{interim ? fixNukta(interim) : t('শুনছি… ({lang}) বলুন', { lang: t(LANG_NAMES[langNow] || langNow) })}</span>
+            <button type="button" className="btn live" data-testid="voice-stop" onPointerDown={(e) => e.preventDefault()} onClick={() => ctrl.current!.stop()}>{t('থামুন')}</button>
           </div>
         ) : deviceKb ? (
           <div className="sug voice" data-testid="voice-bar">
-            <span className="interim">ডিভাইসের কিবোর্ডের মাইক চেপে বলুন</span>
-            <button type="button" className="btn primary" data-testid="voice-back" onPointerDown={(e) => e.preventDefault()} onClick={exitDeviceKb}>বর্ণনা কিবোর্ডে ফিরুন</button>
+            <span className="interim">{t('ডিভাইসের কিবোর্ডের মাইক চেপে বলুন')}</span>
+            <button type="button" className="btn primary" data-testid="voice-back" onPointerDown={(e) => e.preventDefault()} onClick={exitDeviceKb}>{t('বর্ণনা কিবোর্ডে ফিরুন')}</button>
           </div>
         ) : (
           <SuggestionBar editor={editor} bank={p.bank} version={p.bankVersion} />

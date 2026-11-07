@@ -7,8 +7,13 @@ import type { JSONContent } from '@tiptap/core';
 import type { WordBank } from '../suggest';
 import type { Layout } from '../bornona-engine';
 
+/** 'note' = free notes, 'legal' = court draft on a page, 'chart' = title chart (v2.2). Missing = 'legal' (drafts made before v2). */
+export type DocKind = 'note' | 'legal' | 'chart';
+export const kindOf = (d: Pick<Doc, 'kind'>): DocKind => d.kind ?? 'legal';
+
 export interface Doc {
   id: string;
+  kind?: DocKind;
   title: string;
   content: JSONContent;
   /** Plain text, kept for search (Phase 2) and backup readability. */
@@ -84,8 +89,8 @@ export async function getDoc(id: string): Promise<Doc | undefined> {
   return (await db()).get('docs', id);
 }
 
-export async function createDoc(title = 'নতুন ড্রাফট', content: JSONContent = EMPTY_DOC, text = '', now = Date.now()): Promise<Doc> {
-  const d: Doc = { id: newId(), title, content, text, createdAt: now, updatedAt: now, deletedAt: null };
+export async function createDoc(title = 'নতুন ড্রাফট', content: JSONContent = EMPTY_DOC, text = '', now = Date.now(), kind: DocKind = 'legal'): Promise<Doc> {
+  const d: Doc = { id: newId(), kind, title, content, text, createdAt: now, updatedAt: now, deletedAt: null };
   await (await db()).put('docs', d);
   return d;
 }
@@ -110,7 +115,11 @@ export async function renameDoc(id: string, title: string, now = Date.now()): Pr
 export async function duplicateDoc(id: string, now = Date.now()): Promise<Doc | undefined> {
   const d = await getDoc(id);
   if (!d) return;
-  return createDoc(d.title + ' (কপি)', structuredClone(d.content), d.text, now);
+  return createDoc(d.title + ' (কপি)', structuredClone(d.content), d.text, now, kindOf(d));
+}
+
+export async function setDocKind(id: string, kind: DocKind, now = Date.now()): Promise<void> {
+  await update(id, (d) => ({ ...d, kind, updatedAt: now }));
 }
 
 export async function trashDoc(id: string, now = Date.now()): Promise<void> {

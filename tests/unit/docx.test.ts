@@ -85,3 +85,24 @@ describe('.docx export matches the court format', () => {
     expect(docxFileName('  ')).toBe('ProNotes.docx');
   });
 });
+
+describe('note blocks are not lost in the Word file (full styling comes with the export step)', () => {
+  it('headings, bullet/numbered/check lists and page breaks', async () => {
+    const t = (text: string) => [{ type: 'text', text }];
+    const li = (text: string, attrs?: object) => ({ type: attrs ? 'taskItem' : 'listItem', attrs, content: [{ type: 'paragraph', content: t(text) }] });
+    const doc = {
+      type: 'doc',
+      content: [
+        { type: 'heading', attrs: { level: 1 }, content: t('শুনানির নোট') },
+        { type: 'bulletList', content: [li('প্রথম')] },
+        { type: 'orderedList', attrs: { start: 1 }, content: [li('দ্বিতীয়')] },
+        { type: 'taskList', content: [li('তৃতীয়', { checked: true })] },
+        { type: 'pageBreak' },
+        { type: 'paragraph', content: t('শেষ') },
+      ],
+    };
+    const xml = await (await JSZip.loadAsync(await docxBuffer(doc, 'নোট'))).file('word/document.xml')!.async('string');
+    for (const s of ['শুনানির নোট', 'প্রথম', 'দ্বিতীয়', 'তৃতীয়', 'শেষ', '•', '1.', '☑']) expect(xml).toContain(s);
+    expect(xml).toContain('<w:br w:type="page"/>');
+  });
+});

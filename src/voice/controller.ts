@@ -88,6 +88,13 @@ const ERRORS: Record<string, string> = {
   'language-not-supported': 'এই ব্রাউজার এই ভাষার ভয়েস সাপোর্ট করে না।',
 };
 
+/** Every message this module can show (for the English interface check). */
+export const ERRORS_FOR_I18N = [
+  ...Object.values(ERRORS),
+  'অনেকক্ষণ কিছু শোনা যায়নি, ভয়েস বন্ধ হলো',
+  'ভয়েস চালু করা গেল না, আবার চাপুন',
+];
+
 export interface VoiceCallbacks {
   lang: () => string;
   /** A final result (raw transcript). */

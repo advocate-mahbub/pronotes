@@ -2,17 +2,19 @@ import { useRef, useState } from 'react';
 import type { Editor } from '@tiptap/react';
 import { bijoyRuns, bijoyFromHtml, runsToClipboardHtml, toUnicode, PASTE_MSG_HTML, type Run } from '../bijoy';
 import { insertPlainText } from '../editor';
+import { useT } from '../i18n';
 
 interface Props {
   editor: Editor;
   /** Bijoy font for the preview and for Word ('' = show the raw ANSI letters). */
   ansiFont: string;
   enFont: string;
-  say: (m: string) => void;
+  say: (m: string, vars?: Record<string, string | number>) => void;
 }
 
 /** Unicode → Bijoy (rich copy for Word) and Bijoy → Unicode (insert at the caret). Ported from v8. */
 export function BijoyPanel({ editor, ansiFont, enFont, say }: Props) {
+  const { t } = useT();
   const [runs, setRuns] = useState<Run[]>([]);
   const [input, setInput] = useState('');
   const out = useRef<HTMLDivElement>(null);
@@ -27,8 +29,8 @@ export function BijoyPanel({ editor, ansiFont, enFont, say }: Props) {
     setRuns(r);
     const plain = r.map((x) => x.text).join('');
     const html = runsToClipboardHtml(r, wordFont, enFont);
-    const part = empty ? 'পুরো লেখা' : 'সিলেক্ট করা অংশ';
-    const ok = () => say(`${part} বিজয়ে কপি হয়েছে। Word-এ পেস্ট করলে বাংলা ${wordFont}, ইংরেজি ${enFont} ফন্টে বসবে।`);
+    const ok = () =>
+      say(empty ? 'পুরো লেখা বিজয়ে কপি হয়েছে। Word-এ পেস্ট করলে বাংলা {bf}, ইংরেজি {ef} ফন্টে বসবে।' : 'সিলেক্ট করা অংশ বিজয়ে কপি হয়েছে। Word-এ পেস্ট করলে বাংলা {bf}, ইংরেজি {ef} ফন্টে বসবে।', { bf: wordFont, ef: enFont });
     const selectPreview = () =>
       requestAnimationFrame(() => {
         if (!out.current) return;
@@ -66,19 +68,20 @@ export function BijoyPanel({ editor, ansiFont, enFont, say }: Props) {
   };
 
   return (
-    <section className="conv" aria-label="ইউনিকোড ⇄ বিজয়" data-testid="bijoy-panel">
+    <section className="conv" aria-label={t('ইউনিকোড ⇄ বিজয়')} data-testid="bijoy-panel">
       <div>
-        <h3>ইউনিকোড → বিজয় (ANSI)</h3>
-        <p className="note">পুরো লেখা, বা সিলেক্ট করা অংশ, বিজয়ে বদলে কপি হবে। Word-এ পেস্ট করলে বাংলা অংশ {wordFont} আর ইংরেজি অংশ {enFont} ফন্টে নিজে থেকে বসবে।</p>
-        <div ref={out} className={'bjprev' + (ansiFont ? ' ansi' : '')} tabIndex={0} data-testid="bijoy-out" data-ph="বিজয় লেখা এখানে দেখাবে"
+        <h2 className="conv-title">Converter</h2>
+        <h3>{t('ইউনিকোড → বিজয় (ANSI)')}</h3>
+        <p className="note">{t('পুরো লেখা, বা সিলেক্ট করা অংশ, বিজয়ে বদলে কপি হবে। Word-এ পেস্ট করলে বাংলা অংশ {bf} আর ইংরেজি অংশ {ef} ফন্টে নিজে থেকে বসবে।', { bf: wordFont, ef: enFont })}</p>
+        <div ref={out} className={'bjprev' + (ansiFont ? ' ansi' : '')} tabIndex={0} data-testid="bijoy-out" data-ph={t('বিজয় লেখা এখানে দেখাবে')}
           style={ansiFont ? ({ ['--f-ansi' as string]: `"${ansiFont}"` } as React.CSSProperties) : undefined}>
           {runs.map((r, i) => <span key={i} className={r.en ? 'en' : 'bn'}>{r.text}</span>)}
         </div>
-        <button type="button" className="btn primary" data-testid="to-bijoy" onPointerDown={(e) => e.preventDefault()} onClick={toBijoy}>বিজয়ে বদলে কপি করুন</button>
+        <button type="button" className="btn primary" data-testid="to-bijoy" onPointerDown={(e) => e.preventDefault()} onClick={toBijoy}>{t('বিজয়ে বদলে কপি করুন')}</button>
       </div>
       <div>
-        <h3>বিজয় → ইউনিকোড</h3>
-        <p className="note">Word থেকে কপি করে এখানে বা সরাসরি লেখার পাতায় পেস্ট করুন। শুধু SutonnyMJ ফন্টের অংশ বদলাবে, ইংরেজি অংশ যেমন আছে থাকবে। ফন্টের তথ্য ছাড়া সাদা লেখা হলে সবটাই বিজয় ধরে বদলাবে।</p>
+        <h3>{t('বিজয় → ইউনিকোড')}</h3>
+        <p className="note">{t('Word থেকে কপি করে এখানে বা সরাসরি লেখার পাতায় পেস্ট করুন। শুধু SutonnyMJ ফন্টের অংশ বদলাবে, ইংরেজি অংশ যেমন আছে থাকবে। ফন্টের তথ্য ছাড়া সাদা লেখা হলে সবটাই বিজয় ধরে বদলাবে।')}</p>
         <textarea data-testid="bijoy-in" spellCheck={false} placeholder="Avgvi †mvbvi evsjv" value={input} onChange={(e) => setInput(e.target.value)}
           onPaste={(e) => {
             const u = bijoyFromHtml(e.clipboardData.getData('text/html'));
@@ -87,7 +90,7 @@ export function BijoyPanel({ editor, ansiFont, enFont, say }: Props) {
             insert(u);
             say(PASTE_MSG_HTML);
           }} />
-        <button type="button" className="btn primary" data-testid="to-unicode" onClick={toUni}>ইউনিকোডে বদলে বসান</button>
+        <button type="button" className="btn primary" data-testid="to-unicode" onClick={toUni}>{t('ইউনিকোডে বদলে বসান')}</button>
       </div>
     </section>
   );

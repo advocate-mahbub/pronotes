@@ -34,6 +34,7 @@ test('new draft, rename, switch between drafts; undo stays per draft', async ({ 
   await page.getByTestId('title').fill('আরজি');
   await page.getByTestId('title').press('Enter');
   await page.getByTestId('new-doc').click();
+  await page.getByTestId('new-legal').click();
   await editor(page).click();
   await typeKeys(page, ['KeyM']);
   await page.getByTestId('title').fill('জবাব');

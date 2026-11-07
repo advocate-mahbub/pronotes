@@ -2,6 +2,8 @@ import { useEffect, useRef, useState } from 'react';
 import type { Editor } from '@tiptap/react';
 import { ROWS, US, charFor, hasAltLayer, type LayoutMap } from '../bornona-engine';
 import { typeText, deleteBackward, textBeforeCaret, type BornonaConfig } from '../editor';
+import { useT } from '../i18n';
+import { activeBornonaBox, backspaceBox, typeIntoBox } from './bornona-input';
 
 const ZW: Record<string, string> = { [String.fromCharCode(0x200c)]: 'ZWNJ', [String.fromCharCode(0x200d)]: 'ZWJ' };
 const MARKS = 'ািীুূৃেৈোৌ্ঁংঃৗৄৢৣ';
@@ -19,6 +21,7 @@ interface Props {
 
 /** Bornona on-screen keyboard. Keys never take focus, so the iPad's own keyboard stays closed. */
 export function OnScreenKeyboard({ editor, map, bangla, getConfig, onToggleLanguage, onWordDone, flash }: Props) {
+  const { t } = useT();
   const [shift, setShift] = useState(0); // 0 off, 1 next key, 2 locked
   const [alt, setAlt] = useState(false);
   const [phys, setPhys] = useState({ shift: false, alt: false });
@@ -48,7 +51,9 @@ export function OnScreenKeyboard({ editor, map, bangla, getConfig, onToggleLangu
 
   const press = (code: string) => {
     const view = editor.view;
-    const back = () => deleteBackward(view, () => editor.commands.joinBackward());
+    const box = activeBornonaBox();
+    const back = box ? () => backspaceBox(box) : () => deleteBackward(view, () => editor.commands.joinBackward());
+    const type = (s: string) => (box ? typeIntoBox(box, s, getConfig()) : typeText(view, s, getConfig()));
     switch (code) {
       case '#Shift': {
         const now = Date.now();
@@ -65,25 +70,29 @@ export function OnScreenKeyboard({ editor, map, bangla, getConfig, onToggleLangu
         repeat.current.t = window.setTimeout(() => (repeat.current.i = window.setInterval(back, 70)), 450);
         return;
       case '#Enter':
+        if (box) {
+          box.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+          return;
+        }
         onWordDone(textBeforeCaret(view));
         editor.commands.enter();
         return;
       case '#Space':
-        return typeText(view, ' ', getConfig());
+        return type(' ');
       case '#Dari':
-        return typeText(view, bangla ? '।' : '.', getConfig());
+        return type(bangla ? '।' : '.');
     }
     const out = charFor(map, code, sh, al, bangla);
-    if (out) typeText(view, out, getConfig());
+    if (out) type(out);
     if (shift === 1) setShift(0);
     if (alt) setAlt(false);
   };
 
   const label = (code: string) =>
-    ({ '#Enter': '↵', '#Shift': shift === 2 ? '⇪' : '⇧', '#Back': '⌫', '#Space': 'স্পেস', '#Dari': bangla ? '।' : '.', '#Mode': bangla ? 'EN' : 'বাং', '#Alt': 'AltGr' })[code];
+    ({ '#Enter': '↵', '#Shift': shift === 2 ? '⇪' : '⇧', '#Back': '⌫', '#Space': t('স্পেস'), '#Dari': bangla ? '।' : '.', '#Mode': bangla ? 'EN' : 'বাং', '#Alt': 'AltGr' })[code];
 
   return (
-    <div className={'kb' + (sh ? ' shift' : '')} role="group" aria-label="বর্ণনা অন-স্ক্রিন কিবোর্ড" data-testid="osk"
+    <div className={'kb' + (sh ? ' shift' : '')} role="group" aria-label={t('বর্ণনা অন-স্ক্রিন কিবোর্ড')} data-testid="osk"
       onPointerUp={stopRepeat} onPointerCancel={stopRepeat} onPointerLeave={stopRepeat}>
       {ROWS.map((row, ri) => (
         <div className="kb-row" key={ri}>

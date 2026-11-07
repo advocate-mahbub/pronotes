@@ -28,7 +28,9 @@ test('paragraph styles, Bangla numbering, schedule table, .docx export', async (
 
   await page.keyboard.press('Enter');
   await page.getByTestId('pstyle').selectOption('normal');
+  await page.getByTestId('tab-insert').click();
   await page.getByTestId('table-add').click();
+  await page.getByTestId('tab-table').click();
   await expect(editor(page).locator('table tr')).toHaveCount(3);
   await typeKeys(page, ['KeyK']); // first header cell
   await page.getByTestId('row-add').click();
@@ -42,7 +44,7 @@ test('paragraph styles, Bangla numbering, schedule table, .docx export', async (
     const orig = HTMLAnchorElement.prototype.click;
     HTMLAnchorElement.prototype.click = function () { (window as unknown as { __dl: string }).__dl = this.download; return orig.call(this); };
   });
-  const [dl] = await Promise.all([page.waitForEvent('download'), page.getByTestId('export-docx').click()]);
+  const [dl] = await Promise.all([page.waitForEvent('download'), page.getByTestId('share').click().then(() => page.getByTestId('export-docx').click())]);
   expect(await page.evaluate(() => (window as unknown as { __dl: string }).__dl)).toBe('পরীক্ষা আরজি.docx');
   const zip = await JSZip.loadAsync(fs.readFileSync(await dl.path()));
   const doc = await zip.file('word/document.xml')!.async('string');
@@ -61,7 +63,7 @@ test('format settings change the page and the Word file', async ({ page }) => {
   await page.getByTestId('fmt-line').selectOption('2');
   await page.getByTestId('settings').click();
   await expect(editor(page)).toHaveCSS('font-size', '21.3333px');
-  const [dl] = await Promise.all([page.waitForEvent('download'), page.getByTestId('export-docx').click()]);
+  const [dl] = await Promise.all([page.waitForEvent('download'), page.getByTestId('share').click().then(() => page.getByTestId('export-docx').click())]);
   const styles = await (await JSZip.loadAsync(fs.readFileSync(await dl.path()))).file('word/styles.xml')!.async('string');
   expect(styles).toContain('<w:sz w:val="32"/>');
   expect(styles).toContain('w:line="480"');

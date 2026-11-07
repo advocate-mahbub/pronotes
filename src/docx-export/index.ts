@@ -3,7 +3,7 @@
  * 1.5 lines, justified text, Bangla paragraph numbers, schedule tables, "পাতা – X/Y" footer at the right.
  */
 import {
-  AlignmentType, BorderStyle, Document, Footer, LineRuleType, Packer, PageNumber, Paragraph, Tab, Table, TableCell,
+  AlignmentType, BorderStyle, Document, Footer, LineRuleType, Packer, PageBreak, PageNumber, Paragraph, Tab, Table, TableCell,
   TableLayoutType, TableRow, TextRun, WidthType, type IRunOptions, type ParagraphChild,
 } from 'docx';
 import type { JSONContent } from '@tiptap/core';
@@ -93,10 +93,25 @@ function cellParagraph(p: JSONContent, counter: { n: number }, header: boolean):
 export function buildDocx(doc: JSONContent, title: string, f: DocFormat = DEFAULT_FORMAT): Document {
   const counter = { n: 0 };
   const body: (Paragraph | Table)[] = [];
-  for (const n of doc.content || []) {
-    if (n.type === 'paragraph') body.push(paragraph(n, counter));
-    else if (n.type === 'table') body.push(table(n, counter), new Paragraph({ style: 'PNCell', children: [] }));
-  }
+  const walk = (nodes: JSONContent[], depth = 0) => {
+    for (const n of nodes) {
+      if (n.type === 'paragraph') body.push(paragraph(n, counter));
+      else if (n.type === 'table') body.push(table(n, counter), new Paragraph({ style: 'PNCell', children: [] }));
+      else if (n.type === 'heading') {
+        // full heading styles come with the export step; keep the text and make it stand out meanwhile
+        const size = Math.round(f.size * 2 * ({ 1: 1.6, 2: 1.3, 3: 1.12 }[(n.attrs?.level as 1 | 2 | 3) ?? 2] ?? 1.3));
+        body.push(new Paragraph({ children: runs(n.content).length ? [new TextRun({ text: (n.content || []).map((c) => c.text || '').join(''), bold: true, size, sizeComplexScript: size })] : [] }));
+      } else if (n.type === 'bulletList' || n.type === 'orderedList' || n.type === 'taskList') {
+        (n.content || []).forEach((li, i) => {
+          const mark = n.type === 'bulletList' ? '•' : n.type === 'taskList' ? (li.attrs?.checked ? '☑' : '☐') : (Number(n.attrs?.start ?? 1) + i) + '.';
+          const [first, ...rest] = li.content || [];
+          body.push(new Paragraph({ indent: { left: 360 * (depth + 1), hanging: 360 }, children: [new TextRun({ children: [mark, new Tab()] }), ...runs(first?.content)] }));
+          walk(rest, depth + 1);
+        });
+      } else if (n.type === 'pageBreak') body.push(new Paragraph({ children: [new PageBreak()] }));
+    }
+  };
+  walk(doc.content || []);
   if (!body.length) body.push(new Paragraph(''));
   const halfPt = Math.round(f.size * 2);
   const font = { ascii: f.font, hAnsi: f.font, cs: f.font, eastAsia: f.font };
