@@ -5,12 +5,14 @@ import { emptyBank, learnText, mergeBankFile, pruneBank, type WordBank, type Wor
 import {
   listDocs, getDoc, createDoc, saveContent, renameDoc, duplicateDoc, trashDoc, restoreDoc, deleteForever, purgeExpired,
   loadBank, saveBank, requestPersistence, exportAll, restoreAll, parseBackup, backupFileName, mergeCorrections,
-  listFonts, putFont, removeFont, loadLayouts, saveLayouts, loadCorrections, saveCorrections, setDocKind, kindOf, type Doc, type DocKind,
+  listFonts, putFont, removeFont, loadLayouts, saveLayouts, loadCorrections, saveCorrections, setDocKind, setDocPage, kindOf, type Doc, type DocKind,
 } from '../storage';
 import { MAX_FONT_BYTES, familyFor, registerFont, unregisterFont } from '../fonts';
 import { decideVoice, detectVoiceEnv } from '../voice';
 import { Settings, type FontInfo } from './Settings';
-import { DEFAULT_VOICE_PREFS, voiceLang, type VoicePrefs } from './prefs-types';
+import { DEFAULT_VOICE_PREFS, DEFAULT_VIEW, DEFAULT_GRID, voiceLang, type VoicePrefs, type ViewPrefs } from './prefs-types';
+import { DEFAULT_PAGE, normalizePage, type PageSetup } from '../docx-export/page';
+import type { ToggleKey } from '../bornona-engine';
 import { saveFile } from '../storage/download';
 import { DEFAULT_FORMAT, type DocFormat } from '../docx-export/format';
 import { Sidebar } from './Sidebar';
@@ -76,6 +78,17 @@ export function App() {
   const [format, setFormat] = useState<DocFormat>(() => ({ ...DEFAULT_FORMAT, ...load<Partial<DocFormat>>('format', {}) }));
   const [voice, setVoice] = useState<VoicePrefs>(() => ({ ...DEFAULT_VOICE_PREFS, ...load<Partial<VoicePrefs>>('voice', {}) }));
   const [autoBijoy, setAutoBijoy] = useState(() => load('autoBijoy', true));
+  const [viewPrefs, setViewPrefs] = useState<ViewPrefs>(() => {
+    const v = load<Partial<ViewPrefs>>('view', {});
+    return { ...DEFAULT_VIEW, ...v, grid: { ...DEFAULT_GRID, ...(v.grid ?? {}) } };
+  });
+  const [pageDefault, setPageDefault] = useState<PageSetup>(() => normalizePage(load<Partial<PageSetup> | null>('pageDefault', null), DEFAULT_PAGE));
+  const [fixChandra, setFixChandra] = useState(() => load('fixChandra', true));
+  const [toggleKey, setToggleKey] = useState<ToggleKey>(() => load<ToggleKey>('toggleKey', 'ctrl+space'));
+  useEffect(() => save('view', viewPrefs), [viewPrefs]);
+  useEffect(() => save('pageDefault', pageDefault), [pageDefault]);
+  useEffect(() => save('fixChandra', fixChandra), [fixChandra]);
+  useEffect(() => save('toggleKey', toggleKey), [toggleKey]);
   const [ansiFont, setAnsiFont] = useState(() => load('ansiFont', 'SutonnyMJ'));
   const [enFont, setEnFont] = useState(() => load('enFont', 'Times New Roman'));
   const [corrections, setCorrectionsState] = useState('');
@@ -371,6 +384,14 @@ export function App() {
     say('শেখা শব্দ মুছে ফেলা হয়েছে');
   };
 
+  // page changes show at once; the database writes run one after another, in order
+  const pageWrites = useRef<Promise<void>>(Promise.resolve());
+  const changePage = (page: PageSetup) => {
+    if (!current) return;
+    const id = current.id;
+    setCurrent((d) => (d && d.id === id ? { ...d, page } : d));
+    pageWrites.current = pageWrites.current.then(() => setDocPage(id, page)).catch(() => say('পাতার সেটিং সেভ করা যায়নি'));
+  };
   const changeKind = async (kind: DocKind) => {
     if (!current || kind === kindOf(current)) return;
     await flushAll();
@@ -453,6 +474,9 @@ export function App() {
               onToggleLanguage={() => setBangla((b) => !b)} onSave={onSave}
               onRename={async (id, t) => { await renameDoc(id, t); await refresh(); }}
               onSaveState={setSaveState} format={format} say={say} fonts={fontChoices}
+              page={normalizePage(current.page, pageDefault)} onPage={changePage}
+              onMakeDefaultPage={(pg) => { setPageDefault(pg); say('নতুন লিগ্যাল ড্রাফট এখন থেকে এই পাতায় খুলবে'); }}
+              view={viewPrefs} setView={setViewPrefs} fixChandra={fixChandra} toggleKey={toggleKey}
               voice={voice} corrections={corrections} autoBijoy={autoBijoy} ansiFont={ansiFont} enFont={enFont}
               onEditor={(e) => { editorRef.current = e; }}
               toolbarExtra={
@@ -480,6 +504,7 @@ export function App() {
           wordCount={Object.keys(bank.current.w).length + 0 * bankVersion}
           onLearnDoc={learnDoc} onExportWords={exportWords} onImportWords={importWords} onResetWords={resetWords}
           onBackup={backup} onRestore={restore} uiLang={uiLang} setUiLang={setUiLangState}
+          fixChandra={fixChandra} setFixChandra={setFixChandra} toggleKey={toggleKey} setToggleKey={setToggleKey}
           app={{
             supported: pwaSupported(), offlineReady, standalone: isStandalone(), apple: isAppleDevice(), canInstall,
             onInstall: async () => { if (await promptInstall()) say('ProNotes ইনস্টল হয়েছে'); },

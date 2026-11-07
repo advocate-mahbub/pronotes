@@ -11,7 +11,7 @@ export type LineRule = 'auto' | 'atLeast' | 'exact';
 
 /** Paragraph attributes (types: paragraph, heading). null = not set (style or document default applies). */
 export interface ParagraphFormat {
-  /** Left indent in twips (Word's "Left"). */
+  /** Left indent in twips, Word's "Left": where the lines after the first one start. */
   indL: number | null;
   indR: number | null;
   /** First-line indent in twips; negative = hanging indent. */
@@ -54,12 +54,10 @@ const bool = (v: string | null) => v === 'true';
 
 export function paragraphStyleCss(a: Partial<ParagraphFormat>): string {
   const css: string[] = [];
-  if (a.indL != null) css.push(`margin-left:${twipsToPx(a.indL)}px`);
+  // a direct indent replaces the paragraph style's own (padding-left of the numbered style)
+  if (a.indL != null) css.push(`padding-left:0;margin-left:${twipsToPx(a.indL)}px`);
   if (a.indR != null) css.push(`margin-right:${twipsToPx(a.indR)}px`);
-  if (a.first != null) {
-    if (a.first < 0) css.push(`padding-left:${twipsToPx(-a.first)}px`);
-    css.push(`text-indent:${twipsToPx(a.first)}px`);
-  }
+  if (a.first != null) css.push(`text-indent:${twipsToPx(a.first)}px`);
   if (a.spBefore != null) css.push(`margin-top:${a.spBefore}pt`);
   if (a.spAfter != null) css.push(`margin-bottom:${a.spAfter}pt`);
   if (a.lineRule && a.lineVal != null) {
@@ -309,3 +307,22 @@ export const FormattingMarks = Extension.create({
     };
   },
 });
+
+/**
+ * Indents a paragraph style gives by itself (Word terms, twips): used by the ruler and the
+ * Paragraph panel to show the current values when the paragraph has no direct indent.
+ */
+export const STYLE_INDENTS: Record<string, { indL: number; first: number }> = {
+  normal: { indL: 0, first: 720 },
+  numbered: { indL: 720, first: -720 },
+  party: { indL: 3280, first: 0 },
+  party2: { indL: 3680, first: 0 },
+};
+export function effectiveIndent(attrs: Record<string, unknown>, legal: boolean): { indL: number; indR: number; first: number } {
+  const st = legal ? STYLE_INDENTS[String(attrs.pstyle || 'normal')] : undefined;
+  return {
+    indL: (attrs.indL as number | null) ?? st?.indL ?? 0,
+    indR: (attrs.indR as number | null) ?? 0,
+    first: (attrs.first as number | null) ?? st?.first ?? 0,
+  };
+}

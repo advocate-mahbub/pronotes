@@ -42,7 +42,7 @@ export function attachBornona(el: Box, getConfig: () => BornonaConfig, onToggleL
     const cfg = getConfig();
     const a = resolveKey(
       { code: ev.code, key: ev.key, shiftKey: ev.shiftKey, altKey: ev.altKey, ctrlKey: ev.ctrlKey, metaKey: ev.metaKey, altGraph: ev.getModifierState?.('AltGraph'), isComposing: ev.isComposing },
-      { bangla: cfg.bangla, map: cfg.map, suspended: cfg.suspended },
+      { bangla: cfg.bangla, map: cfg.map, suspended: cfg.suspended, toggleKey: cfg.toggleKey },
     );
     if (!a) return;
     ev.preventDefault();

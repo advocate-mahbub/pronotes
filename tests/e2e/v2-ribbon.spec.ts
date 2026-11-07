@@ -52,7 +52,7 @@ test('home tab: bold, italic, strike, superscript, colour, size, font, alignment
   await page.getByTestId('color-menu').locator('.sw').nth(2).click();
   await expect(editor(page).locator('span[style*="color"]').first()).toBeVisible();
   await tool(page, 'clear-format');
-  await expect(editor(page).locator('strong, em, s, sup, span[style]')).toHaveCount(0);
+  await expect(editor(page).locator('p').first().locator('strong, em, s, sup, span[style]')).toHaveCount(0);
   await expect(p).not.toHaveAttribute('style', /text-align/);
 });
 
@@ -111,7 +111,8 @@ test('paragraph panel: indents, hanging, exact line spacing, keep with next', as
   await expect(p).toHaveAttribute('data-keepnext', 'true');
   await expect(p).toHaveCSS('line-height', '24px');
   await expect(p).toHaveCSS('margin-top', '8px');
-  await expect(p).toHaveCSS('padding-left', '37.8px');
+  await expect(p).toHaveCSS('margin-left', '75.6px');
+  await expect(p).toHaveCSS('text-indent', '-37.8px');
 });
 
 test('find and replace (Ctrl+F / Ctrl+H); the boxes type Bangla through Bornona', async ({ page }) => {
@@ -226,7 +227,7 @@ test('app language English ⇄ Bangla; document text and typing are not affected
   await page.getByTestId('settings').click();
   await page.getByTestId('ui-en').click();
   await expect(page.getByTestId('tab-home')).toHaveText('Home');
-  await expect(page.getByTestId('settings-panel')).toContainText('Typing and keyboard layout');
+  await expect(page.getByTestId('settings-panel')).toContainText('Keyboard and typing');
   await expect(page.getByTestId('save-status')).toHaveText(/Saved on this device|Saving…/);
   await expect(page.locator('html')).toHaveAttribute('lang', 'en');
   await page.getByTestId('settings').click();

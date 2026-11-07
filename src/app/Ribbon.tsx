@@ -10,8 +10,10 @@ import type { DocKind } from '../storage';
 import { useT } from '../i18n';
 import { Popover } from './ui';
 import { load, save } from './prefs';
+import { MARGIN_PRESETS, PAPERS, normalizePage, type PageSetup, type PaperId } from '../docx-export/page';
+import { GRID_CM, type GridPrefs, type ViewPrefs } from './prefs-types';
 
-export type RibbonTab = 'home' | 'insert' | 'tools' | 'table';
+export type RibbonTab = 'home' | 'insert' | 'page' | 'view' | 'tools' | 'table';
 
 interface Props {
   editor: Editor;
@@ -31,6 +33,15 @@ interface Props {
   onWordCount: () => void;
   onFontPanel: () => void;
   onParagraphPanel: () => void;
+  /** Legal drafts: page setup and view. */
+  page: PageSetup;
+  onPage: (p: PageSetup) => void;
+  onPageSheet: () => void;
+  view: ViewPrefs;
+  setView: (v: ViewPrefs) => void;
+  pages: number;
+  /** current zoom in percent (for the zoom box) */
+  zoomPct: number;
 }
 
 const COLORS = ['#000000', '#444444', '#c62828', '#d84315', '#f9a825', '#2e7d32', '#1565c0', '#6a1b9a'];
@@ -62,8 +73,8 @@ export function Ribbon(p: Props) {
   const [collapsed, setCollapsed] = useState(() => load('ribbonCollapsed', false));
   useEffect(() => save('ribbonCollapsed', collapsed), [collapsed]);
   useEffect(() => {
-    if (!inTable && tab === 'table') setTab('home');
-  }, [inTable, tab]);
+    if ((!inTable && tab === 'table') || (p.kind !== 'legal' && (tab === 'page' || tab === 'view'))) setTab('home');
+  }, [inTable, tab, p.kind]);
 
   // ----- current values -----
   const ts = ed.getAttributes('textStyle');
@@ -340,7 +351,127 @@ export function Ribbon(p: Props) {
     </>
   );
 
-  const tabs: [RibbonTab, string][] = [['home', 'হোম'], ['insert', 'ঢোকান'], ['tools', 'টুলস']];
+  // ----- page tab -----
+  const pg = p.page;
+  const setPg = (patch: Partial<PageSetup>) => p.onPage(normalizePage({ ...pg, ...patch }, pg));
+  const marginId = MARGIN_PRESETS.find((x) => JSON.stringify(x.m) === JSON.stringify(pg.margins))?.id ?? 'custom';
+  const pageTab = (
+    <>
+      <select className="sel paper" aria-label={t('কাগজের মাপ')} title={t('কাগজের মাপ')} data-testid="paper" value={pg.paper}
+        onChange={(e) => {
+          const id = e.target.value as PaperId;
+          if (id === 'custom') return p.onPageSheet();
+          setPg({ paper: id, width: PAPERS[id].width, height: PAPERS[id].height });
+        }}>
+        {Object.entries(PAPERS).map(([id, x]) => <option key={id} value={id}>{x.label}</option>)}
+        <option value="custom">{t('নিজের মাপ…')}</option>
+      </select>
+      {btn(t('খাড়া'), t('খাড়া (Portrait)'), pg.orientation === 'portrait', () => setPg({ orientation: 'portrait' }), 'portrait')}
+      {btn(t('আড়াআড়ি'), t('আড়াআড়ি (Landscape)'), pg.orientation === 'landscape', () => setPg({ orientation: 'landscape' }), 'landscape')}
+      <span className="sep" />
+      <Popover label={t('মার্জিন ▾')} title={t('মার্জিন')} testid="margins">
+        {(close) => (
+          <div className="menu">
+            {MARGIN_PRESETS.map((x) => (
+              <button key={x.id} type="button" data-testid={'margin-' + x.id} aria-pressed={marginId === x.id} onClick={() => { setPg({ margins: x.m }); close(); }}>{t(x.label)}</button>
+            ))}
+            <button type="button" onClick={() => { close(); p.onPageSheet(); }}>{t('নিজের মার্জিন…')}</button>
+          </div>
+        )}
+      </Popover>
+      <select className="sel lang" aria-label={t('ডকুমেন্টের ভাষা')} title={t('ডকুমেন্টের ভাষা')} data-testid="doc-lang" value={pg.lang} onChange={(e) => setPg({ lang: e.target.value as PageSetup['lang'] })}>
+        <option value="bn">{t('ডকুমেন্ট: বাংলা')}</option>
+        <option value="en">{t('ডকুমেন্ট: English')}</option>
+      </select>
+      <Popover label={t('পাতা নম্বর ▾')} title={t('পাতা নম্বর')} testid="page-numbers">
+        {(close) => (
+          <div className="menu">
+            <button type="button" data-testid="pn-off" aria-pressed={!pg.pageNumbers.show} onClick={() => { setPg({ pageNumbers: { ...pg.pageNumbers, show: false } }); close(); }}>{t('পাতা নম্বর নেই')}</button>
+            {(['left', 'center', 'right'] as const).map((a) => (
+              <button key={a} type="button" data-testid={'pn-' + a} aria-pressed={pg.pageNumbers.show && pg.pageNumbers.align === a}
+                onClick={() => { setPg({ pageNumbers: { ...pg.pageNumbers, show: true, align: a } }); close(); }}>
+                {t({ left: 'নিচে বামে', center: 'নিচে মাঝে', right: 'নিচে ডানে' }[a])}
+              </button>
+            ))}
+            <button type="button" data-testid="pn-style" onClick={() => { setPg({ pageNumbers: { ...pg.pageNumbers, style: pg.pageNumbers.style === 'full' ? 'number' : 'full' } }); close(); }}>
+              {pg.pageNumbers.style === 'full' ? t('শুধু নম্বর দেখান') : t('পুরো লেখা দেখান (পাতা – ১/৩)')}
+            </button>
+          </div>
+        )}
+      </Popover>
+      {btn(t('পাতা সেটআপ…'), t('পাতা সেটআপ'), false, p.onPageSheet, 'page-setup')}
+    </>
+  );
+
+  // ----- view tab -----
+  const v = p.view;
+  const g = v.grid;
+  const setGrid = (patch: Partial<GridPrefs>) => p.setView({ ...v, grid: { ...g, ...patch } });
+  const zoomTo = (z: ViewPrefs['zoom']) => p.setView({ ...v, zoom: z });
+  const ZOOMS = [50, 75, 90, 100, 125, 150, 200];
+  const viewTab = (
+    <>
+      {btn(t('Print Layout'), t('পাতা আলাদা আলাদা দেখান'), v.layout === 'print', () => p.setView({ ...v, layout: 'print' }), 'layout-print')}
+      {btn(t('Web Layout'), t('একটানা পাতা'), v.layout === 'web', () => p.setView({ ...v, layout: 'web' }), 'layout-web')}
+      {v.layout === 'print' && <span className="pages" data-testid="page-count">{t('{n} পাতা', { n: p.pages })}</span>}
+      <span className="sep" />
+      {btn(t('Ruler'), t('মাপকাঠি দেখান/লুকান'), v.ruler, () => p.setView({ ...v, ruler: !v.ruler }), 'ruler-toggle')}
+      {v.ruler && btn(v.rulerUnit === 'cm' ? t('সেমি') : t('ইঞ্চি'), t('Ruler-এর একক'), false, () => p.setView({ ...v, rulerUnit: v.rulerUnit === 'cm' ? 'in' : 'cm' }), 'ruler-unit')}
+      {btn(t('Gridlines'), t('Gridlines দেখান/লুকান'), g.on, () => setGrid({ on: !g.on }), 'grid-toggle')}
+      <Popover label="▾" title={t('Gridlines-এর অপশন')} testid="grid-opts">
+        {() => (
+          <div className="menu grid-menu">
+            <p className="note">{t('ঘরের মাপ')}</p>
+            <div className="chips">
+              {(['sm', 'md', 'lg'] as const).map((s) => (
+                <button key={s} type="button" data-testid={'grid-' + s} aria-pressed={g.size === s} onClick={() => setGrid({ on: true, size: s })}>
+                  {t({ sm: 'ছোট', md: 'মাঝারি', lg: 'বড়' }[s])} ({t('{n} সেমি', { n: GRID_CM[s] })})
+                </button>
+              ))}
+              <button type="button" aria-pressed={g.size === 'custom'} data-testid="grid-custom" onClick={() => setGrid({ on: true, size: 'custom' })}>{t('নিজের মাপ')}</button>
+              {g.size === 'custom' && (
+                <input className="mini-in" inputMode="decimal" aria-label={t('সেমি')} data-testid="grid-custom-cm" defaultValue={g.custom}
+                  onBlur={(e) => { const n = parseFloat(e.target.value); if (n > 0) setGrid({ custom: n }); }} />
+              )}
+            </div>
+            <p className="note">{t('দিক')}</p>
+            <div className="chips">
+              {(['grid', 'h', 'v', 'dots'] as const).map((d) => (
+                <button key={d} type="button" data-testid={'grid-dir-' + d} aria-pressed={g.dir === d} onClick={() => setGrid({ on: true, dir: d })}>
+                  {t({ grid: 'ছক', h: 'শুধু আড়াআড়ি', v: 'শুধু খাড়া', dots: 'বিন্দু' }[d])}
+                </button>
+              ))}
+            </div>
+            <label className="chk"><input type="checkbox" data-testid="grid-linegrid" checked={g.lineGrid} onChange={(e) => setGrid({ on: true, lineGrid: e.target.checked })} /> {t('লেখার লাইনের গ্রিড (লাইনের ফাঁক অনুযায়ী)')}</label>
+            <label className="chk"><input type="checkbox" data-testid="grid-margins" checked={g.margins} onChange={(e) => setGrid({ margins: e.target.checked })} /> {t('মার্জিনের দাগ')}</label>
+            <label className="chk"><input type="checkbox" data-testid="grid-center" checked={g.center} onChange={(e) => setGrid({ center: e.target.checked })} /> {t('মাঝের দাগ')}</label>
+            <label className="chk"><input type="checkbox" data-testid="grid-tables" checked={g.tables} onChange={(e) => setGrid({ tables: e.target.checked })} /> {t('টেবিলের গ্রিড')}</label>
+            <p className="note">{t('গাঢ়ত্ব')}</p>
+            <div className="chips">
+              {(['light', 'medium', 'dark'] as const).map((s) => (
+                <button key={s} type="button" data-testid={'grid-str-' + s} aria-pressed={g.strength === s} onClick={() => setGrid({ strength: s })}>{t({ light: 'হালকা', medium: 'মাঝারি', dark: 'গাঢ়' }[s])}</button>
+              ))}
+            </div>
+          </div>
+        )}
+      </Popover>
+      <span className="sep" />
+      {btn('−', t('ছোট করে দেখুন'), false, () => zoomTo(Math.max(25, ([...ZOOMS].reverse().find((z) => z < p.zoomPct - 1) ?? 25))), 'zoom-out')}
+      <select className="sel zoom" aria-label="Zoom" title="Zoom" data-testid="zoom" value={typeof v.zoom === 'number' ? String(v.zoom) : v.zoom}
+        onChange={(e) => zoomTo(/^\d+$/.test(e.target.value) ? Number(e.target.value) : (e.target.value as 'width' | 'page'))}>
+        <option value="width">{t('পাতার চওড়া')} ({p.zoomPct}%)</option>
+        <option value="page">{t('পুরো পাতা')}</option>
+        {ZOOMS.map((z) => <option key={z} value={z}>{z}%</option>)}
+        {typeof v.zoom === 'number' && !ZOOMS.includes(v.zoom) && <option value={v.zoom}>{v.zoom}%</option>}
+      </select>
+      {btn('+', t('বড় করে দেখুন'), false, () => zoomTo(Math.min(300, ZOOMS.find((z) => z > p.zoomPct + 1) ?? 300)), 'zoom-in')}
+      {btn('100%', t('আসল মাপ'), v.zoom === 100, () => zoomTo(100), 'zoom-100')}
+    </>
+  );
+
+  const tabs: [RibbonTab, string][] = legal
+    ? [['home', 'হোম'], ['insert', 'ঢোকান'], ['page', 'পাতা'], ['view', 'View'], ['tools', 'টুলস']]
+    : [['home', 'হোম'], ['insert', 'ঢোকান'], ['tools', 'টুলস']];
   if (inTable) tabs.push(['table', 'টেবিল']);
   return (
     <nav className={'ribbon' + (collapsed ? ' collapsed' : '')} aria-label={t('লেখার সরঞ্জাম')}>
@@ -360,7 +491,7 @@ export function Ribbon(p: Props) {
       </div>
       {!collapsed && (
         <div className="ribbon-body" role="tabpanel" data-testid={'panel-' + tab}>
-          <div className="ribbon-row">{tab === 'home' ? home : tab === 'insert' ? insert : tab === 'tools' ? tools : table}</div>
+          <div className="ribbon-row">{tab === 'home' ? home : tab === 'insert' ? insert : tab === 'page' ? pageTab : tab === 'view' ? viewTab : tab === 'tools' ? tools : table}</div>
         </div>
       )}
     </nav>

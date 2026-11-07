@@ -255,3 +255,93 @@ export function WordCount({ editor, onClose }: { editor: Editor; onClose: () => 
     </Sheet>
   );
 }
+
+/* ---------- Page setup (Word's Page Setup dialog) ---------- */
+import { PAPERS, normalizePage, type PageSetup, type PaperId } from '../docx-export/page';
+
+export function PageSetupSheet({ page, onApply, onClose, onMakeDefault }: { page: PageSetup; onApply: (p: PageSetup) => void; onClose: () => void; onMakeDefault: (p: PageSetup) => void }) {
+  const { t } = useT();
+  const [unit, setUnit] = useState<'cm' | 'in'>('cm');
+  const per = unit === 'cm' ? 1440 / 2.54 : 1440;
+  const show = (tw: number) => String(Math.round((tw / per) * 100) / 100);
+  const [paper, setPaper] = useState<PaperId>(page.paper);
+  const [w, setW] = useState(show(page.width));
+  const [h, setH] = useState(show(page.height));
+  const [orient, setOrient] = useState(page.orientation);
+  const [m, setM] = useState({ top: show(page.margins.top), right: show(page.margins.right), bottom: show(page.margins.bottom), left: show(page.margins.left) });
+  const [lang, setLang] = useState(page.lang);
+  const [pn, setPn] = useState(page.pageNumbers);
+  const switchUnit = (u: 'cm' | 'in') => {
+    const conv = (s: string) => String(Math.round(((parseFloat(s) || 0) * per) / (u === 'cm' ? 1440 / 2.54 : 1440) * 100) / 100);
+    setW(conv(w)); setH(conv(h));
+    setM({ top: conv(m.top), right: conv(m.right), bottom: conv(m.bottom), left: conv(m.left) });
+    setUnit(u);
+  };
+  const pick = (id: PaperId) => {
+    setPaper(id);
+    if (id !== 'custom') { setW(show(PAPERS[id].width)); setH(show(PAPERS[id].height)); }
+  };
+  const tw2 = (s: string) => Math.max(0, Math.round((parseFloat(s) || 0) * per));
+  const build = (): PageSetup =>
+    normalizePage({
+      paper, width: Math.max(1440, tw2(w)), height: Math.max(1440, tw2(h)), orientation: orient,
+      margins: { top: tw2(m.top), right: tw2(m.right), bottom: tw2(m.bottom), left: tw2(m.left) }, lang, pageNumbers: pn,
+    });
+  return (
+    <Sheet title={t('পাতা সেটআপ')} onClose={onClose} testid="page-sheet"
+      footer={<>
+        <button type="button" className="btn primary" data-testid="page-apply" onClick={() => { onApply(build()); onClose(); }}>{t('প্রয়োগ করুন')}</button>
+        <button type="button" className="btn" data-testid="page-default" onClick={() => { const p = build(); onApply(p); onMakeDefault(p); onClose(); }}>{t('নতুন ড্রাফটের ডিফল্টও করুন')}</button>
+        <button type="button" className="btn" onClick={onClose}>{t('বাতিল')}</button>
+      </>}>
+      <div className="seg small" role="group" aria-label={t('একক')}>
+        <button type="button" aria-pressed={unit === 'cm'} onClick={() => switchUnit('cm')}>{t('সেমি')}</button>
+        <button type="button" aria-pressed={unit === 'in'} data-testid="unit-in" onClick={() => switchUnit('in')}>{t('ইঞ্চি')}</button>
+      </div>
+      <h3>{t('কাগজ')}</h3>
+      <div className="form">
+        <label>{t('মাপ')}
+          <select data-testid="ps-paper" value={paper} onChange={(e) => pick(e.target.value as PaperId)}>
+            {Object.entries(PAPERS).map(([id, p]) => <option key={id} value={id}>{p.label}</option>)}
+            <option value="custom">{t('নিজের মাপ')}</option>
+          </select>
+        </label>
+        <label>{t('চওড়া')}<input inputMode="decimal" data-testid="ps-w" value={w} disabled={paper !== 'custom'} onChange={(e) => setW(e.target.value)} /></label>
+        <label>{t('লম্বা')}<input inputMode="decimal" data-testid="ps-h" value={h} disabled={paper !== 'custom'} onChange={(e) => setH(e.target.value)} /></label>
+        <label>{t('দিক')}
+          <select data-testid="ps-orient" value={orient} onChange={(e) => setOrient(e.target.value as PageSetup['orientation'])}>
+            <option value="portrait">{t('খাড়া (Portrait)')}</option><option value="landscape">{t('আড়াআড়ি (Landscape)')}</option>
+          </select>
+        </label>
+      </div>
+      <h3>{t('মার্জিন')}</h3>
+      <div className="form">
+        {(['top', 'bottom', 'left', 'right'] as const).map((k) => (
+          <label key={k}>{t({ top: 'উপরে', bottom: 'নিচে', left: 'বামে', right: 'ডানে' }[k])}
+            <input inputMode="decimal" data-testid={'ps-m-' + k} value={m[k]} onChange={(e) => setM({ ...m, [k]: e.target.value })} />
+          </label>
+        ))}
+      </div>
+      <h3>{t('ডকুমেন্টের ভাষা ও পাতা নম্বর')}</h3>
+      <div className="form">
+        <label>{t('ডকুমেন্টের ভাষা')}
+          <select data-testid="ps-lang" value={lang} onChange={(e) => setLang(e.target.value as PageSetup['lang'])}>
+            <option value="bn">{t('বাংলা (১।, পাতা – ১/৩)')}</option><option value="en">English (1., Page 1 of 3)</option>
+          </select>
+        </label>
+        <label className="check"><input type="checkbox" data-testid="ps-pn" checked={pn.show} onChange={(e) => setPn({ ...pn, show: e.target.checked })} /> {t('পাতা নম্বর দিন')}</label>
+        <label>{t('কোথায়')}
+          <select data-testid="ps-pn-align" value={pn.align} disabled={!pn.show} onChange={(e) => setPn({ ...pn, align: e.target.value as PageSetup['pageNumbers']['align'] })}>
+            <option value="left">{t('বামে')}</option><option value="center">{t('মাঝে')}</option><option value="right">{t('ডানে')}</option>
+          </select>
+        </label>
+        <label>{t('ধরন')}
+          <select data-testid="ps-pn-style" value={pn.style} disabled={!pn.show} onChange={(e) => setPn({ ...pn, style: e.target.value as PageSetup['pageNumbers']['style'] })}>
+            <option value="full">{lang === 'bn' ? 'পাতা – ১/৩' : 'Page 1 of 3'}</option><option value="number">{t('শুধু নম্বর')}</option>
+          </select>
+        </label>
+      </div>
+      <p className="note">{t('Word ফাইলের পাতা নম্বরে Word নিজের সংখ্যা (1, 2, 3) বসায়; পর্দায় বাংলা ড্রাফটে বাংলা সংখ্যা দেখায়। ProNotes থেকে সরাসরি প্রিন্টে পাতা নম্বর Chrome/Edge-এ আসে, iPad-এর Safari-তে আসে না।')}</p>
+    </Sheet>
+  );
+}

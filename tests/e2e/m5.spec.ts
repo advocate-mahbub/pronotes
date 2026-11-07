@@ -142,7 +142,7 @@ function avroXml(name: string, map: Record<string, string[]>): string {
 test('custom .avrolayout: import, type with it, survives reload, delete needs two taps', async ({ page }) => {
   const probhat = layouts.find((l) => l.id === 'probhat')!;
   await start(page);
-  await section(page, 'টাইপিং ও কিবোর্ড লেআউট');
+  await section(page, 'কিবোর্ড ও টাইপিং');
   await page.getByTestId('layout-add-file').setInputFiles({ name: 'Test.avrolayout', mimeType: 'text/xml', buffer: Buffer.from(avroXml('পরীক্ষা লেআউট', probhat.map)) });
   await expect(page.getByTestId('toast')).toContainText('পরীক্ষা লেআউট');
   await expect(page.getByTestId('layout')).toHaveValue(/^custom-/);
@@ -153,7 +153,7 @@ test('custom .avrolayout: import, type with it, survives reload, delete needs tw
   await page.reload();
   await expect(page.getByTestId('layout')).toHaveValue(/^custom-/);
   await expect(page.getByTestId('layout').locator('optgroup[label="আপনার যোগ করা"] option')).toHaveText(['পরীক্ষা লেআউট']);
-  await section(page, 'টাইপিং ও কিবোর্ড লেআউট');
+  await section(page, 'কিবোর্ড ও টাইপিং');
   const del = page.getByTestId('layout-list').getByRole('button');
   await del.click();
   await expect(page.getByTestId('layout-list')).toBeVisible();
@@ -164,7 +164,7 @@ test('custom .avrolayout: import, type with it, survives reload, delete needs tw
 
 test('bad layout file shows a message', async ({ page }) => {
   await start(page);
-  await section(page, 'টাইপিং ও কিবোর্ড লেআউট');
+  await section(page, 'কিবোর্ড ও টাইপিং');
   await page.getByTestId('layout-add-file').setInputFiles({ name: 'x.avrolayout', mimeType: 'text/xml', buffer: Buffer.from('<Layout/>') });
   await expect(page.getByTestId('toast')).toContainText('পড়া গেল না');
 });

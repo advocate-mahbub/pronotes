@@ -58,7 +58,7 @@ test('format settings change the page and the Word file', async ({ page }) => {
   await start(page);
   await typeKeys(page, ['KeyK']);
   await page.getByTestId('settings').click();
-  await page.locator('summary', { hasText: 'পাতার ফরম্যাট' }).click();
+  await page.locator('summary', { hasText: 'ফন্ট' }).click();
   await page.getByTestId('fmt-size').fill('16');
   await page.getByTestId('fmt-line').selectOption('2');
   await page.getByTestId('settings').click();
@@ -73,7 +73,7 @@ test('print shows only the page, on Legal paper', async ({ page }) => {
   await start(page);
   await typeKeys(page, ['KeyK', 'Shift+KeyF', 'KeyM']);
   await page.emulateMedia({ media: 'print' });
-  await expect(page.locator('.toolbar')).toBeHidden();
+  await expect(page.locator('.ribbon')).toBeHidden();
   await expect(page.locator('.dock')).toBeHidden();
   await expect(editor(page)).toHaveText('কর্ম');
   const pdf = (await page.pdf({ preferCSSPageSize: true })).toString('latin1');

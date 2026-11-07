@@ -96,3 +96,30 @@ describe('.avrolayout import', () => {
     expect(() => parseAvroLayout('<Layout></Layout>')).toThrow();
   });
 });
+
+describe('v2: switch key and chandrabindu fix', () => {
+  const k = (code: string, key: string, mods: Partial<{ ctrlKey: boolean; altKey: boolean; shiftKey: boolean; metaKey: boolean }> = {}) => ({
+    code, key, shiftKey: false, altKey: false, ctrlKey: false, metaKey: false, ...mods,
+  });
+  it('the chosen key switches the language; the others type normally', () => {
+    const st = { bangla: true, map: BUILTIN_LAYOUTS[0].map };
+    expect(resolveKey(k('Space', ' ', { ctrlKey: true }), st)).toEqual({ kind: 'toggle-language' });
+    expect(resolveKey(k('F12', 'F12'), { ...st, toggleKey: 'f12' })).toEqual({ kind: 'toggle-language' });
+    expect(resolveKey(k('Space', ' ', { ctrlKey: true }), { ...st, toggleKey: 'f12' })).toBeNull();
+    expect(resolveKey(k('KeyM', 'm', { ctrlKey: true }), { ...st, toggleKey: 'ctrl+m' })).toEqual({ kind: 'toggle-language' });
+    expect(resolveKey(k('Backquote', '`', { ctrlKey: true }), { ...st, toggleKey: 'ctrl+backquote' })).toEqual({ kind: 'toggle-language' });
+    expect(resolveKey(k('Space', ' ', { altKey: true }), { ...st, toggleKey: 'alt+space' })).toEqual({ kind: 'toggle-language' });
+    // works in English mode too, so you can switch back
+    expect(resolveKey(k('F12', 'F12'), { ...st, bangla: false, toggleKey: 'f12' })).toEqual({ kind: 'toggle-language' });
+  });
+  it('ঁ typed before a kar moves after it when the fix is on', () => {
+    const o = { bangla: true, vowelForming: true, oldReph: false, fixChandra: true };
+    const ca = String.fromCharCode(0x0981);
+    expect(planType('ক' + ca, true, 'া', o)).toEqual({ deleteBefore: 1, text: 'া' + ca });
+    expect(planType('চ' + ca, true, 'ি', o)).toEqual({ deleteBefore: 1, text: 'ি' + ca });
+    // off: unchanged (v8 behaviour, and vowel forming applies after ঁ)
+    expect(planType('ক' + ca, true, 'া', { ...o, fixChandra: false })).toEqual({ deleteBefore: 0, text: 'আ' });
+    // ঁ after a full vowel is left alone
+    expect(planType('আ' + ca, true, 'া', o).deleteBefore).toBe(0);
+  });
+});

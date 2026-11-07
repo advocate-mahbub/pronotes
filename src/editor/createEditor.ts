@@ -11,6 +11,7 @@ import { BornonaExtension, type BornonaOptions } from './bornona-extension';
 import { LegalParagraph } from './legal-format';
 import { CharFormatting, FormattingMarks, PageBreak, ParagraphFormatting } from './formatting';
 import { FindReplace } from './find-replace';
+import { Pagination, type PageLayout } from './pagination';
 
 /** Markdown-like shortcuts ("- ", "1. ", "# ", "[ ] ") must never reshape a legal draft while typing. */
 const noInput = { addInputRules: () => [] };
@@ -19,7 +20,7 @@ const noInput = { addInputRules: () => [] };
  * Extensions used by the ProNotes editor (all document kinds share one schema;
  * the toolbar decides which tools each kind shows). Code and links stay off.
  */
-export function editorExtensions(bornona: Partial<BornonaOptions> & Pick<BornonaOptions, 'getConfig'>) {
+export function editorExtensions(bornona: Partial<BornonaOptions> & Pick<BornonaOptions, 'getConfig'>, opts: { getLayout?: () => PageLayout } = {}) {
   return [
     StarterKit.configure({
       link: false, codeBlock: false, code: false, blockquote: false, horizontalRule: false,
@@ -44,6 +45,7 @@ export function editorExtensions(bornona: Partial<BornonaOptions> & Pick<Bornona
     PageBreak,
     FindReplace,
     FormattingMarks,
+    Pagination.configure({ getLayout: opts.getLayout ?? (() => ({ on: false }) as PageLayout) }),
     BornonaExtension.configure(bornona),
   ];
 }

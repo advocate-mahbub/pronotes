@@ -6,6 +6,7 @@ import { openDB, type DBSchema, type IDBPDatabase } from 'idb';
 import type { JSONContent } from '@tiptap/core';
 import type { WordBank } from '../suggest';
 import type { Layout } from '../bornona-engine';
+import type { PageSetup } from '../docx-export/page';
 
 /** 'note' = free notes, 'legal' = court draft on a page, 'chart' = title chart (v2.2). Missing = 'legal' (drafts made before v2). */
 export type DocKind = 'note' | 'legal' | 'chart';
@@ -14,6 +15,8 @@ export const kindOf = (d: Pick<Doc, 'kind'>): DocKind => d.kind ?? 'legal';
 export interface Doc {
   id: string;
   kind?: DocKind;
+  /** Page setup of a legal draft (missing = the app's default page). */
+  page?: PageSetup;
   title: string;
   content: JSONContent;
   /** Plain text, kept for search (Phase 2) and backup readability. */
@@ -115,11 +118,17 @@ export async function renameDoc(id: string, title: string, now = Date.now()): Pr
 export async function duplicateDoc(id: string, now = Date.now()): Promise<Doc | undefined> {
   const d = await getDoc(id);
   if (!d) return;
-  return createDoc(d.title + ' (কপি)', structuredClone(d.content), d.text, now, kindOf(d));
+  const c = await createDoc(d.title + ' (কপি)', structuredClone(d.content), d.text, now, kindOf(d));
+  if (d.page) await setDocPage(c.id, structuredClone(d.page), now);
+  return d.page ? { ...c, page: d.page } : c;
 }
 
 export async function setDocKind(id: string, kind: DocKind, now = Date.now()): Promise<void> {
   await update(id, (d) => ({ ...d, kind, updatedAt: now }));
+}
+
+export async function setDocPage(id: string, page: PageSetup, now = Date.now()): Promise<void> {
+  await update(id, (d) => ({ ...d, page, updatedAt: now }));
 }
 
 export async function trashDoc(id: string, now = Date.now()): Promise<void> {

@@ -27,6 +27,34 @@ export interface EngineState {
   map: LayoutMap;
   /** e.g. while the phone's own keyboard is open for voice typing. */
   suspended?: boolean;
+  /** Key that switches Bangla ⇄ English (default Ctrl+Space). */
+  toggleKey?: ToggleKey;
+}
+
+/** Keys offered for switching Bangla ⇄ English. Ctrl+Space is v8's (and Avro's) default. */
+export type ToggleKey = 'ctrl+space' | 'f12' | 'ctrl+m' | 'ctrl+backquote' | 'alt+space';
+export const TOGGLE_KEYS: { id: ToggleKey; label: string }[] = [
+  { id: 'ctrl+space', label: 'Ctrl + Space' },
+  { id: 'f12', label: 'F12' },
+  { id: 'ctrl+m', label: 'Ctrl + M' },
+  { id: 'ctrl+backquote', label: 'Ctrl + `' },
+  { id: 'alt+space', label: 'Alt + Space' },
+];
+
+export function isToggleKey(ev: KeyInput, k: ToggleKey = 'ctrl+space'): boolean {
+  const onlyCtrl = ev.ctrlKey && !ev.altKey && !ev.metaKey && !ev.shiftKey;
+  switch (k) {
+    case 'ctrl+space':
+      return ev.ctrlKey && !ev.altKey && !ev.metaKey && (ev.code === 'Space' || ev.key === ' ');
+    case 'f12':
+      return ev.code === 'F12' && !ev.ctrlKey && !ev.altKey && !ev.metaKey;
+    case 'ctrl+m':
+      return onlyCtrl && ev.code === 'KeyM';
+    case 'ctrl+backquote':
+      return onlyCtrl && ev.code === 'Backquote';
+    case 'alt+space':
+      return ev.altKey && !ev.ctrlKey && !ev.metaKey && ev.code === 'Space';
+  }
 }
 
 export type KeyAction =
@@ -52,7 +80,7 @@ export function charFor(map: LayoutMap, code: string, shift: boolean, alt = fals
 
 /** Decide what a physical key press does (v8 `keydown` handler). */
 export function resolveKey(ev: KeyInput, state: EngineState): KeyAction {
-  if (ev.ctrlKey && !ev.altKey && !ev.metaKey && (ev.code === 'Space' || ev.key === ' ')) return { kind: 'toggle-language' };
+  if (isToggleKey(ev, state.toggleKey)) return { kind: 'toggle-language' };
   const alt = !ev.metaKey && (ev.altKey || Boolean(ev.altGraph));
   const map = state.map;
   if (state.suspended || !state.bangla || ev.isComposing || ev.metaKey || (ev.ctrlKey && !alt) || (alt && !hasAltLayer(map))) return null;
@@ -94,7 +122,12 @@ export interface TypeOptions {
   vowelForming: boolean;
   /** বিজয়-ধাঁচের রেফ: রেফ typed after the consonant moves before it. */
   oldReph: boolean;
+  /** Avro's "fix Chandrabindu position": ঁ typed before a kar moves after it (ক ঁ া → কাঁ). */
+  fixChandra?: boolean;
 }
+
+const CHANDRA = 'ঁ';
+const isKar = (c: string) => c.length === 1 && 'ািীুূৃেৈোৌৗ'.includes(c);
 
 const KAR: Record<string, string> = {
   'া': 'আ', 'ি': 'ই', 'ী': 'ঈ', 'ু': 'উ', 'ূ': 'ঊ', 'ৃ': 'ঋ', 'ে': 'এ', 'ৈ': 'ঐ', 'ো': 'ও', 'ৌ': 'ঔ',
@@ -112,6 +145,9 @@ const RE_CLUS = /[ক-হড়ঢ়য়](?:্[ক-হড়ঢ়য়])*[া-ৌৗ]?$/;
 export function planInsert(before: string, collapsed: boolean, text: string, opts: TypeOptions): Edit {
   let deleteBefore = 0;
   let t = text;
+  if (opts.bangla && opts.fixChandra && collapsed && isKar(t) && before.endsWith(CHANDRA) && isCons(before[before.length - 2])) {
+    return { deleteBefore: 1, text: fixNukta(t + CHANDRA) };
+  }
   if (opts.bangla && opts.vowelForming && KAR[t] && collapsed) {
     const prev = before[before.length - 1];
     if (prev === 'অ' && t === 'া') {

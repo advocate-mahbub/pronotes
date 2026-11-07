@@ -6,7 +6,7 @@
 import { Extension } from '@tiptap/core';
 import { Plugin, PluginKey } from '@tiptap/pm/state';
 import type { EditorView } from '@tiptap/pm/view';
-import { resolveKey, resolveTypedChar, planType, fixNukta, type LayoutMap } from '../bornona-engine';
+import { resolveKey, resolveTypedChar, planType, fixNukta, type LayoutMap, type ToggleKey } from '../bornona-engine';
 
 export interface BornonaConfig {
   bangla: boolean;
@@ -15,6 +15,8 @@ export interface BornonaConfig {
   oldReph: boolean;
   /** true while the device's own keyboard is used (e.g. voice typing on iPad). */
   suspended: boolean;
+  fixChandra?: boolean;
+  toggleKey?: ToggleKey;
 }
 
 export interface BornonaOptions {
@@ -113,7 +115,7 @@ export const BornonaExtension = Extension.create<BornonaOptions>({
                 code: event.code, key: event.key, shiftKey: event.shiftKey, altKey: event.altKey, ctrlKey: event.ctrlKey,
                 metaKey: event.metaKey, altGraph: event.getModifierState?.('AltGraph'), isComposing: event.isComposing,
               },
-              { bangla: cfg.bangla, map: cfg.map, suspended: cfg.suspended },
+              { bangla: cfg.bangla, map: cfg.map, suspended: cfg.suspended, toggleKey: cfg.toggleKey },
             );
             if (!a) return false;
             if (a.kind === 'toggle-language') {
