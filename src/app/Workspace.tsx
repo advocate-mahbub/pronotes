@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { EditorContent, useEditor, type Editor } from '@tiptap/react';
 import { fixNukta, type LayoutMap } from '../bornona-engine';
 import { editorExtensions, insertPlainText, textBeforeCaret, type BornonaConfig } from '../editor';
-import { convertBijoyPaste } from '../bijoy';
+import { bijoyRuns, convertBijoyPaste, runsToClipboardHtml } from '../bijoy';
 import { VoiceController, VoiceDeduper, cleanVoice, decideVoice, detectVoiceEnv, voiceInsertText } from '../voice';
 import { voiceLang, type VoicePrefs } from './prefs-types';
 import { BijoyPanel } from './BijoyPanel';
@@ -13,13 +13,14 @@ import { FOOTER_DIST, digits, normalizePage, pageNumberParts, pageSize, type Pag
 import { pageCount, relayout, type PageLayout, } from '../editor';
 import { GRID_CM, type GridPrefs, type ViewPrefs } from './prefs-types';
 import { Ruler } from './Ruler';
-import { saveFile } from '../storage/download';
 import { learnTail, learnText, type WordBank } from '../suggest';
 import { kindOf, type Doc } from '../storage';
 import { useT } from '../i18n';
 import { Ribbon } from './Ribbon';
 import { FindBar, FontPanel, PageSetupSheet, ParagraphPanel, WordCount } from './Panels';
-import { Popover } from './ui';
+import { ShareMenu, type ExportFormat, type OutputMode } from './ShareMenu';
+import { deliver, MIME } from '../export/deliver';
+import { tr } from '../i18n';
 import { attachBornona } from './bornona-input';
 import { OnScreenKeyboard } from './OnScreenKeyboard';
 import { SuggestionBar } from './SuggestionBar';
@@ -54,7 +55,10 @@ interface Props {
   setView: (v: ViewPrefs) => void;
   fixChandra: boolean;
   toggleKey: import('../bornona-engine').ToggleKey;
-  say: (msg: string) => void;
+  /** What copying puts on the clipboard: Unicode, or Bijoy (ANSI) for SutonnyMJ users. */
+  output: OutputMode;
+  setOutput: (m: OutputMode) => void;
+  say: (msg: string, vars?: Record<string, string | number>) => void;
   voice: VoicePrefs;
   corrections: string;
   autoBijoy: boolean;
@@ -315,6 +319,7 @@ export function Workspace(p: Props) {
     if (editor) relayout(editor.view);
   }, [editor, layoutKey]);
   const [pages, setPages] = useState(1);
+  const pageRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
     if (!editor) return;
     const up = () => setPages(pageCount(editor.state));
@@ -346,18 +351,65 @@ export function Workspace(p: Props) {
       (pg.pageNumbers.show ? ` ${box} { content: ${content}; font: 11pt "Noto Sans Bengali", sans-serif; vertical-align: top; padding-top: ${inch(pg.margins.bottom - FOOTER_DIST)}; }` : '') + ' }';
   }, [legal, layoutKey]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const exportDocx = async () => {
+  /** Make a file in one format and save it or share it. Large converters are loaded on first use. */
+  const exportAs = async (fmt: ExportFormat, mode: 'save' | 'share') => {
     if (!editor) return;
     pending.current = true;
     await flush(editor);
+    const json = editor.getJSON();
+    const ansi = { bijoyFont: p.ansiFont || 'SutonnyMJ', englishFont: p.enFont || 'Times New Roman' };
+    const page = legal ? pg : null;
+    const textOpts = { lang: legal ? pg.lang : 'bn', legal } as const;
     try {
-      const { docxBlob, docxFileName } = await import('../docx-export'); // loaded on first use (large)
-      const ok = await saveFile(docxFileName(title), await docxBlob(editor.getJSON(), title, p.format, { kind, page: legal ? pg : null }));
-      if (ok) p.say('Word ফাইল (.docx) তৈরি হয়েছে');
+      const { docxFileName } = await import('../docx-export/name');
+      const name = (ext: string, suffix = '') => docxFileName(title + suffix, ext);
+      let blob: Blob;
+      let filename: string;
+      if (fmt === 'docx' || fmt === 'docx-ansi') {
+        const { docxBlob } = await import('../docx-export');
+        blob = await docxBlob(json, title, p.format, { kind, page, ansi: fmt === 'docx-ansi' ? ansi : null });
+        filename = name('.docx', fmt === 'docx-ansi' ? ' (বিজয়)' : '');
+      } else if (fmt === 'doc' || fmt === 'doc-ansi') {
+        const { toRtf } = await import('../export/rtf');
+        blob = new Blob([toRtf(json, title, p.format, { kind, page, ansi: fmt === 'doc-ansi' ? ansi : null })], { type: MIME.doc });
+        filename = name('.doc', fmt === 'doc-ansi' ? ' (বিজয়)' : '');
+      } else if (fmt === 'txt') {
+        const { toPlainText } = await import('../export/text');
+        blob = new Blob(['\uFEFF' + toPlainText(json, textOpts)], { type: MIME.txt });
+        filename = name('.txt');
+      } else if (fmt === 'md') {
+        const { toMarkdown } = await import('../export/text');
+        blob = new Blob([toMarkdown(json, title, textOpts)], { type: MIME.md });
+        filename = name('.md');
+      } else if (fmt === 'html') {
+        const { toHtmlDocument } = await import('../export/html');
+        blob = new Blob([toHtmlDocument(editor.getHTML(), title, p.format, { kind, page })], { type: MIME.html });
+        filename = name('.html');
+      } else {
+        const el = pageRef.current;
+        if (!el) return;
+        p.say('ছবি তৈরি হচ্ছে…');
+        const { pagesToPng } = await import('../export/png');
+        const pics = await pagesToPng(el, { pageW: legal ? geo.pw : el.offsetWidth, pageH: legal ? geo.ph : el.offsetWidth * 1.414, gap: legal && p.view.layout === 'print' ? 24 : 0, pages });
+        if (pics.length === 1) {
+          blob = pics[0];
+          filename = name('.png');
+        } else {
+          const JSZip = (await import('jszip')).default;
+          const zip = new JSZip();
+          pics.forEach((b, i) => zip.file(`${title || 'ProNotes'} - ${tr('পাতা')} ${i + 1}.png`, b));
+          blob = await zip.generateAsync({ type: 'blob', mimeType: MIME.zip });
+          filename = name('.zip');
+        }
+      }
+      const r = await deliver(blob, filename, mode, title);
+      if (r === 'saved') p.say('{name} তৈরি হয়েছে', { name: filename });
+      else if (r === 'shared') p.say('শেয়ার করা হয়েছে');
     } catch {
-      p.say('Word ফাইল তৈরি করা যায়নি');
+      p.say('ফাইল তৈরি করা যায়নি');
     }
   };
+
   const print = async () => {
     if (!editor) return;
     pending.current = true;
@@ -368,6 +420,31 @@ export function Workspace(p: Props) {
       p.say('এখানে প্রিন্ট করা যায় না');
     }
   };
+
+  // Copy and cut in Bijoy (ANSI) when that output is chosen: plain text in Bijoy, rich text with the fonts
+  useEffect(() => {
+    if (!editor) return;
+    const dom = editor.view.dom as HTMLElement;
+    const onCopy = (e: ClipboardEvent, cut: boolean) => {
+      if (cb.current.output !== 'ansi' || !e.clipboardData) return;
+      const { from, to, empty } = editor.state.selection;
+      if (empty) return;
+      const text = editor.state.doc.textBetween(from, to, '\n', ' ');
+      const r = bijoyRuns(text);
+      e.preventDefault();
+      e.clipboardData.setData('text/plain', r.map((x) => x.text).join(''));
+      e.clipboardData.setData('text/html', runsToClipboardHtml(r, cb.current.ansiFont || 'SutonnyMJ', cb.current.enFont || 'Times New Roman'));
+      if (cut) editor.chain().focus().deleteSelection().run();
+    };
+    const copy = (e: ClipboardEvent) => onCopy(e, false);
+    const cutH = (e: ClipboardEvent) => onCopy(e, true);
+    dom.addEventListener('copy', copy);
+    dom.addEventListener('cut', cutH);
+    return () => {
+      dom.removeEventListener('copy', copy);
+      dom.removeEventListener('cut', cutH);
+    };
+  }, [editor]);
 
   // Bornona typing in the title box too
   const titleRef = useRef<HTMLInputElement>(null);
@@ -381,17 +458,7 @@ export function Workspace(p: Props) {
   const commitTitle = () => {
     if (title.trim() !== p.doc.title) p.onRename(p.doc.id, title);
   };
-  const share = (
-    <Popover label="⤴" title={t('শেয়ার / Export')} testid="share" className="share">
-      {(close) => (
-        <div className="menu">
-          <button type="button" data-testid="export-docx" onClick={() => { close(); exportDocx(); }}>Word (.docx)</button>
-          <button type="button" data-testid="print" onClick={() => { close(); print(); }}>{t('প্রিন্ট / PDF')}</button>
-          <p className="note">{t('আরও ফরম্যাট (.doc, ANSI, .txt, .md, .html) পরের ধাপে।')}</p>
-        </div>
-      )}
-    </Popover>
-  );
+  const share = <ShareMenu output={p.output} setOutput={p.setOutput} onExport={exportAs} onPrint={print} />;
 
   return (
     <>
@@ -417,11 +484,15 @@ export function Workspace(p: Props) {
           <div className="ruler-wrap"><Ruler editor={editor} pageW={geo.pw} ml={geo.ml} mr={geo.mr} zoom={zoom} unit={p.view.rulerUnit} legal={legal} /></div>
         )}
         <div className={'page ' + kind + (legal && p.view.layout === 'print' ? ' print-layout' : '') + (legal && p.view.grid.on && p.view.grid.tables ? ' grid-tables' : '')}
-          data-kind={kind} data-lang={legal ? pg.lang : undefined} data-testid="page">
+          data-kind={kind} data-lang={legal ? pg.lang : undefined} data-testid="page" ref={pageRef}>
           {legal && p.view.grid.on && <GridOverlay g={p.view.grid} geo={geo} lineH={(p.format.size * 4) / 3 * p.format.lineSpacing * 1.3} />}
           <EditorContent editor={editor} />
         </div>
       </main>
+        {p.output === 'ansi' && (
+          <button type="button" className="ansi-badge" data-testid="ansi-badge" title={t('কপি করলে বিজয় (ANSI) যাবে। চাপলে ইউনিকোডে ফিরবে।')}
+            onPointerDown={(e) => e.preventDefault()} onClick={() => p.setOutput('unicode')}>{t('কপি: ANSI')}</button>
+        )}
         <button type="button" className={'mic' + (listening ? ' live' : '') + (deviceKb ? ' device' : '')} data-testid="mic"
           aria-pressed={listening || deviceKb} aria-label={listening ? t('ভয়েস থামান') : t('ভয়েস টাইপিং')} title={listening ? t('ভয়েস থামান') : t('ভয়েস টাইপিং')}
           onPointerDown={(e) => e.preventDefault()} onClick={toggleVoice}>{MIC}</button>

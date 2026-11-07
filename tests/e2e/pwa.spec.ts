@@ -60,7 +60,7 @@ test('works offline after the first visit: open, type, save, Word file, fonts', 
     HTMLAnchorElement.prototype.click = function () { (window as unknown as { __dl: string[] }).__dl.push(this.download); };
   });
   await page.getByTestId('share').click();
-  await page.getByTestId('export-docx').click();
+  await page.getByTestId('save-docx').click();
   await expect.poll(() => page.evaluate(() => (window as unknown as { __dl: string[] }).__dl.length)).toBe(1);
   await page.reload();
   await expect(editor(page).locator('p').first()).toHaveText('কমর');

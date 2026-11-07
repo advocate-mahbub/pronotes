@@ -33,7 +33,9 @@
     "@tiptap/react": "3.32.0",
     "@tiptap/starter-kit": "3.32.0",
     "docx": "9.13.0",
+    "html-to-image": "1.11.13",
     "idb": "8.0.4",
+    "jszip": "3.10.2",
     "react": "19.3.1",
     "react-dom": "19.3.1"
   },

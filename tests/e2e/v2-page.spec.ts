@@ -22,7 +22,7 @@ const PARA = 'বাদী পক্ষ এই মর্মে আরজি ক�
 const LONG = Array.from({ length: 14 }, (_, i) => PARA.repeat(1 + (i % 4))).join('\n');
 async function exportXml(page: Page) {
   await page.getByTestId('share').click();
-  const [dl] = await Promise.all([page.waitForEvent('download'), page.getByTestId('export-docx').click()]);
+  const [dl] = await Promise.all([page.waitForEvent('download'), page.getByTestId('save-docx').click()]);
   const zip = await JSZip.loadAsync(fs.readFileSync(await dl.path()));
   return { doc: await zip.file('word/document.xml')!.async('string'), footer: (await zip.file('word/footer1.xml')?.async('string')) ?? '' };
 }

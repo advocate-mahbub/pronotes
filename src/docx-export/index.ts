@@ -9,6 +9,7 @@ import {
   Tab, Table, TableCell, TableLayoutType, TableRow, TextRun, WidthType, type IParagraphOptions, type IRunOptions, type ParagraphChild,
 } from 'docx';
 import type { JSONContent } from '@tiptap/core';
+import { bijoyRuns, toBijoy } from '../bijoy';
 import { STYLE_TWIPS, type ParagraphStyle } from '../editor/legal-format';
 import { DEFAULT_FORMAT, NOTE_FONT, NOTE_SIZE, type DocFormat } from './format';
 import { DEFAULT_PAGE, FOOTER_DIST, HEADER_DIST, NOTE_PAGE, normalizePage, pageNumberParts, pageSize, paraNumber, type PageSetup } from './page';
@@ -88,11 +89,21 @@ function runOptions(n: JSONContent): IRunOptions {
   return o as IRunOptions;
 }
 
+/** Bijoy (ANSI) output: set while one document is built. */
+let ANSI: { bijoyFont: string; englishFont: string } | null = null;
+const fontObj = (f: string) => ({ ascii: f, hAnsi: f, cs: f, eastAsia: f });
+/** Text written by the app itself (numbers, footer): Bijoy-encoded in ANSI output. */
+const own = (s: string) => (ANSI ? toBijoy(s) : s);
+
 function runs(nodes: JSONContent[] = []): ParagraphChild[] {
   const out: ParagraphChild[] = [];
   for (const n of nodes) {
     if (n.type === 'hardBreak') out.push(new TextRun({ break: 1 }));
-    else if (n.type === 'text' && n.text) out.push(new TextRun(runOptions(n)));
+    else if (n.type === 'text' && n.text) {
+      const o = runOptions(n);
+      if (!ANSI) out.push(new TextRun(o));
+      else for (const r of bijoyRuns(n.text)) out.push(new TextRun({ ...o, text: r.text, font: fontObj(r.en ? ANSI.englishFont : ANSI.bijoyFont) }));
+    }
   }
   return out;
 }
@@ -136,7 +147,7 @@ function paragraph(n: JSONContent, ctx: Ctx, extra: Partial<IParagraphOptions> =
     style = STYLE_ID[ps] ?? STYLE_ID.normal;
     if (ps === 'numbered') {
       ctx.counter.n++;
-      children.unshift(new TextRun({ children: [paraNumber(ctx.counter.n, ctx.lang), new Tab()] }));
+      children.unshift(new TextRun({ children: [own(paraNumber(ctx.counter.n, ctx.lang)), new Tab()] }));
     }
   } else style = 'PNNote';
   return new Paragraph({ style, ...paragraphOptions(a), ...extra, children });
@@ -223,6 +234,8 @@ function blocks(nodes: JSONContent[], ctx: Ctx, body: (Paragraph | Table)[], dep
 export interface ExportOptions {
   kind?: 'note' | 'legal' | 'chart';
   page?: Partial<PageSetup> | null;
+  /** Bijoy (ANSI) Word file: Bangla in `bijoyFont` (SutonnyMJ), English in `englishFont`. */
+  ansi?: { bijoyFont: string; englishFont: string } | null;
 }
 
 /** Build the Word document for an editor JSON document. */
@@ -233,10 +246,15 @@ export function buildDocx(doc: JSONContent, title: string, f: DocFormat = DEFAUL
   const textWidth = w - page.margins.left - page.margins.right;
   const ctx: Ctx = { lang: page.lang, legal, counter: { n: 0 }, listInstance: { n: 0 }, textWidth };
   const body: (Paragraph | Table)[] = [];
-  blocks(doc.content || [], ctx, body);
+  ANSI = opts.ansi ?? null;
+  try {
+    blocks(doc.content || [], ctx, body);
+  } finally {
+    ANSI = null;
+  }
   if (!body.length) body.push(new Paragraph(''));
 
-  const fontName = !legal ? NOTE_FONT : page.lang === 'en' ? f.fontEn || DEFAULT_FORMAT.fontEn : f.font;
+  const fontName = opts.ansi ? opts.ansi.bijoyFont : !legal ? NOTE_FONT : page.lang === 'en' ? f.fontEn || DEFAULT_FORMAT.fontEn : f.font;
   const size = legal ? f.size : NOTE_SIZE;
   const halfPt = Math.round(size * 2);
   const font = { ascii: fontName, hAnsi: fontName, cs: fontName, eastAsia: fontName };
@@ -247,9 +265,10 @@ export function buildDocx(doc: JSONContent, title: string, f: DocFormat = DEFAUL
   const parts = pageNumberParts(page);
   const align = { left: AlignmentType.LEFT, center: AlignmentType.CENTER, right: AlignmentType.RIGHT }[page.pageNumbers.align];
   const footerChildren: ParagraphChild[] = [];
-  if (parts.before) footerChildren.push(new TextRun(parts.before));
+  const lbl = (s: string) => (opts.ansi ? toBijoy(s) : s);
+  if (parts.before) footerChildren.push(new TextRun(lbl(parts.before)));
   footerChildren.push(new TextRun({ children: [PageNumber.CURRENT] }));
-  if (parts.between !== null) footerChildren.push(new TextRun(parts.between), new TextRun({ children: [PageNumber.TOTAL_PAGES] }));
+  if (parts.between !== null) footerChildren.push(new TextRun(lbl(parts.between)), new TextRun({ children: [PageNumber.TOTAL_PAGES] }));
 
   const bullet = (lvl: number) => ({ level: lvl, format: LevelFormat.BULLET, text: ['•', '◦', '▪'][lvl], alignment: AlignmentType.LEFT, style: { paragraph: { indent: { left: 720 * (lvl + 1), hanging: 360 } } } });
   const decimal = (lvl: number) => ({ level: lvl, format: LevelFormat.DECIMAL, text: `%${lvl + 1}.`, alignment: AlignmentType.LEFT, style: { paragraph: { indent: { left: 720 * (lvl + 1), hanging: 360 } } } });
@@ -304,7 +323,4 @@ export function buildDocx(doc: JSONContent, title: string, f: DocFormat = DEFAUL
 export const docxBlob = (doc: JSONContent, title: string, f?: DocFormat, opts?: ExportOptions) => Packer.toBlob(buildDocx(doc, title, f, opts));
 export const docxBuffer = (doc: JSONContent, title: string, f?: DocFormat, opts?: ExportOptions) => Packer.toBuffer(buildDocx(doc, title, f, opts));
 
-/** File name for a draft title (keeps Bangla, removes characters Windows/iOS do not allow). */
-export function docxFileName(title: string): string {
-  return (title.replace(/[\\/:*?"<>|\n\r\t]+/g, ' ').replace(/\s+/g, ' ').trim() || 'ProNotes') + '.docx';
-}
+export { docxFileName } from './name';

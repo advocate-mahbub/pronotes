@@ -10,6 +10,7 @@ import {
 import { MAX_FONT_BYTES, familyFor, registerFont, unregisterFont } from '../fonts';
 import { decideVoice, detectVoiceEnv } from '../voice';
 import { Settings, type FontInfo } from './Settings';
+import type { OutputMode } from './ShareMenu';
 import { DEFAULT_VOICE_PREFS, DEFAULT_VIEW, DEFAULT_GRID, voiceLang, type VoicePrefs, type ViewPrefs } from './prefs-types';
 import { DEFAULT_PAGE, normalizePage, type PageSetup } from '../docx-export/page';
 import type { ToggleKey } from '../bornona-engine';
@@ -84,6 +85,8 @@ export function App() {
   });
   const [pageDefault, setPageDefault] = useState<PageSetup>(() => normalizePage(load<Partial<PageSetup> | null>('pageDefault', null), DEFAULT_PAGE));
   const [fixChandra, setFixChandra] = useState(() => load('fixChandra', true));
+  const [output, setOutput] = useState<OutputMode>(() => load<OutputMode>('output', 'unicode'));
+  useEffect(() => save('output', output), [output]);
   const [toggleKey, setToggleKey] = useState<ToggleKey>(() => load<ToggleKey>('toggleKey', 'ctrl+space'));
   useEffect(() => save('view', viewPrefs), [viewPrefs]);
   useEffect(() => save('pageDefault', pageDefault), [pageDefault]);
@@ -477,6 +480,7 @@ export function App() {
               page={normalizePage(current.page, pageDefault)} onPage={changePage}
               onMakeDefaultPage={(pg) => { setPageDefault(pg); say('নতুন লিগ্যাল ড্রাফট এখন থেকে এই পাতায় খুলবে'); }}
               view={viewPrefs} setView={setViewPrefs} fixChandra={fixChandra} toggleKey={toggleKey}
+              output={output} setOutput={setOutput}
               voice={voice} corrections={corrections} autoBijoy={autoBijoy} ansiFont={ansiFont} enFont={enFont}
               onEditor={(e) => { editorRef.current = e; }}
               toolbarExtra={

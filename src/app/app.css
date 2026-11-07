@@ -361,3 +361,14 @@ button, select, .chip, .key, summary { touch-action: manipulation; }
   .pg-gap, .grid-overlay, .ruler-wrap { display: none !important; }
   .page.print-layout .page-body { padding: 0 !important; }
 }
+
+/* ---------- v2.0 step 3: share / export ---------- */
+.share-menu { display: flex; flex-direction: column; gap: 6px; min-width: min(360px, calc(100vw - 32px)); }
+.share-mode { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 2px 4px 8px; border-bottom: 1px solid var(--line); font-size: 13px; color: var(--muted); }
+.share-menu ul { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 2px; }
+.share-menu li { display: flex; align-items: center; gap: 6px; padding: 4px; border-radius: 8px; }
+.share-menu li:hover { background: var(--accent-soft); }
+.share-menu .fmt { flex: 1; display: flex; flex-direction: column; font-size: 14px; }
+.share-menu .fmt small { color: var(--muted); font-size: 11.5px; }
+.ansi-badge { position: absolute; left: 14px; bottom: 18px; z-index: 5; border: 1px solid #c62828; background: #fff3f3; color: #c62828; font: 600 13px var(--f-sans); border-radius: 999px; padding: 6px 12px; cursor: pointer; }
+@media print { .ansi-badge { display: none !important; } }
