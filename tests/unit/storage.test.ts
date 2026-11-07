@@ -5,6 +5,7 @@ import {
   resetDbForTests, createDoc, listDocs, getDoc, saveContent, renameDoc, duplicateDoc, trashDoc, restoreDoc,
   deleteForever, purgeExpired, daysLeft, saveBank, loadBank, exportAll, restoreAll, parseBackup, TRASH_DAYS,
   listFonts, putFont, removeFont, saveLayouts, loadLayouts, saveCorrections, loadCorrections, mergeCorrections,
+  saveAiKey, loadAiKey, savePrivateWords, loadPrivateWords,
 } from '../../src/storage';
 
 const DAY = 864e5;
@@ -144,5 +145,21 @@ describe('M5 data: fonts, layouts, corrections', () => {
   });
   it('mergeCorrections skips duplicates and blank lines', () => {
     expect(mergeCorrections('ক = খ\n', 'ক = খ\n\nগ = ঘ')).toBe('ক = খ\nগ = ঘ');
+  });
+});
+
+describe('AI assistant data', () => {
+  beforeEach(() => {
+    globalThis.indexedDB = new IDBFactory();
+    resetDbForTests();
+  });
+  it('key and hidden words stay on the device and never go into a backup file', async () => {
+    await saveAiKey(' AIzaSECRET ');
+    await savePrivateWords(['করিম']);
+    expect(await loadAiKey()).toBe('AIzaSECRET');
+    expect(await loadPrivateWords()).toEqual(['করিম']);
+    const json = JSON.stringify(await exportAll({}));
+    expect(json).not.toContain('AIzaSECRET');
+    expect(json).not.toContain('aiPrivateWords');
   });
 });

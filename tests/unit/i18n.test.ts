@@ -8,6 +8,7 @@ import { PASTE_MSG_HTML, PASTE_MSG_TEXT } from '../../src/bijoy';
 import { PARAGRAPH_STYLES } from '../../src/editor';
 import { ANSI_KEYS } from '../../src/bornona-engine';
 import { fixBrokenBangla } from '../../src/convert';
+import { TASKS, KIND_LABEL, AI_ERROR_TEXT } from '../../src/ai';
 
 const BN = /[ঀ-৿]/;
 const root = path.resolve(__dirname, '../../src');
@@ -30,6 +31,7 @@ export function uiKeys(): string[] {
       for (const v of m[1].matchAll(/'((?:[^'\\]|\\.)*)'/g)) if (BN.test(v[1])) keys.add(v[1]);
   }
   for (const s of PARAGRAPH_STYLES) keys.add(s.label);
+  for (const x of [...TASKS.map((x) => x.label), ...Object.values(KIND_LABEL), ...Object.values(AI_ERROR_TEXT)]) keys.add(x);
   for (const k of ANSI_KEYS) if (BN.test(k.label)) keys.add(k.label);
   for (const c of fixBrokenBangla('অামার ​েকাট  |', { pipeAsDari: true }).changes) keys.add(c);
   keys.add(fixBrokenBangla('য\u09BC').changes[0]);

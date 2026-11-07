@@ -54,6 +54,56 @@ interface Props {
   setAnsiTyping: (v: boolean) => void;
   ansiKey: AnsiKey;
   setAnsiKey: (k: AnsiKey) => void;
+  ai: AiSettings;
+}
+
+export interface AiSettings {
+  key: string;
+  setKey: (k: string) => void;
+  model: string;
+  setModel: (m: string) => void;
+  privateWords: string[];
+  setPrivateWords: (w: string[]) => void;
+}
+
+/** Gemini key (hidden), model and a test button. */
+function AiKeyBox({ ai }: { ai: AiSettings }) {
+  const { t } = useT();
+  const [k, setK] = useState('');
+  const [models, setModels] = useState<string[]>([]);
+  const [status, setStatus] = useState('');
+  const fetchModels = async () => {
+    setStatus(t('দেখা হচ্ছে…'));
+    try {
+      const { geminiModels } = await import('../ai/gemini');
+      const list = await geminiModels(ai.key);
+      setModels(list);
+      setStatus(t('key ঠিক আছে; {n}টা মডেল পাওয়া গেল', { n: list.length }));
+    } catch (e) {
+      setStatus((e as { code?: string }).code === 'key' ? t('key ঠিক নেই') : (e as { code?: string }).code === 'network' ? t('ইন্টারনেট নেই') : t('যাচাই করা গেল না'));
+    }
+  };
+  return (
+    <>
+      {ai.key ? (
+        <div className="row">
+          <span data-testid="ai-key-set">{t('key রাখা আছে')} (…{ai.key.slice(-4)})</span>
+          <button type="button" className="btn small" data-testid="ai-key-test" onClick={fetchModels}>{t('key যাচাই ও মডেল তালিকা')}</button>
+          <button type="button" className="btn small" data-testid="ai-key-del" onClick={() => { ai.setKey(''); setStatus(''); setModels([]); }}>{t('key মুছুন')}</button>
+        </div>
+      ) : (
+        <div className="row">
+          <input type="password" autoComplete="off" data-testid="ai-key-in" value={k} onChange={(e) => setK(e.target.value)} placeholder="AIza…" />
+          <button type="button" className="btn small" data-testid="ai-key-save" disabled={!k.trim()} onClick={() => { ai.setKey(k); setK(''); }}>{t('রাখুন')}</button>
+        </div>
+      )}
+      <label>{t('মডেল')}
+        <input data-testid="ai-model" list="ai-models" value={ai.model} onChange={(e) => ai.setModel(e.target.value.trim())} />
+        <datalist id="ai-models">{models.map((m) => <option key={m} value={m} />)}</datalist>
+      </label>
+      {status && <p className="note" data-testid="ai-key-status">{status}</p>}
+    </>
+  );
 }
 
 export interface AppInfo {
@@ -263,8 +313,19 @@ export function Settings(p: Props) {
       </details>
 
       <details>
-        <summary>{t('AI সহকারী (শীঘ্রই)')}</summary>
-        <p className="note" data-testid="ai-note">{t('Claude API দিয়ে খসড়া, ভাষা ঠিক করা, সংক্ষেপ ও অনুবাদ। নিজের API key লাগবে, আর পাঠানোর আগে প্রতিবার অনুমতি চাইবে ও নাম-ঠিকানা গোপন রাখার ব্যবস্থা থাকবে। এটা v2.0-এর শেষ ধাপে চালু হবে; এখন কিছুই বাইরে পাঠানো হয় না।')}</p>
+        <summary>{t('AI সহকারী')}</summary>
+        <p className="note" data-testid="ai-note">{t('দুইভাবে চলে: (১) আপনার Claude সাবস্ক্রিপশন — ProNotes লেখা কপি করে দেয়, আপনি Claude অ্যাপে পেস্ট করে উত্তর এনে দেন; ProNotes নিজে কিছু পাঠায় না। (২) Gemini-র ফ্রি API key দিলে এখান থেকেই চলে, প্রতিবার জিজ্ঞেস করে। দুই ক্ষেত্রেই নাম, দাগ, দলিল নম্বর, ফোন আগে লুকানো হয় আর উত্তরে ফিরে আসে।')}</p>
+        <h3 className="sub-h">{t('Gemini (ফ্রি, ঐচ্ছিক)')}</h3>
+        <p className="note">{t('aistudio.google.com থেকে নিজের Google account দিয়ে ফ্রি API key নিন। ফ্রি key-তে Google পাঠানো লেখা তাদের সেবা উন্নত করতে ব্যবহার করতে পারে, তাই মক্কেলের আসল তথ্য কখনো পাঠাবেন না। key শুধু এই ডিভাইসে থাকে, ব্যাকআপ ফাইলে যায় না।')}</p>
+        <AiKeyBox ai={p.ai} />
+        <h3 className="sub-h">{t('সবসময় লুকানো শব্দ')}</h3>
+        <p className="note">{t('যে নাম/শব্দগুলো AI-তে পাঠানোর আগে সবসময় লুকানো হবে (এই ডিভাইসে থাকে)।')}</p>
+        <ul className="itemlist" data-testid="ai-words">
+          {p.ai.privateWords.map((w) => (
+            <li key={w}><span>{w}</span><button type="button" className="btn small" onClick={() => p.ai.setPrivateWords(p.ai.privateWords.filter((x) => x !== w))}>{t('বাদ দিন')}</button></li>
+          ))}
+        </ul>
+        <p className="note">{t('Claude API (টাকা দিয়ে key) পরে যোগ হবে।')}</p>
       </details>
 
       <details>

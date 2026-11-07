@@ -6,6 +6,7 @@ import { bijoyRuns, convertBijoyPaste, runsToClipboardHtml, isBijoyFont, type Ru
 import { VoiceController, VoiceDeduper, cleanVoice, decideVoice, detectVoiceEnv, voiceInsertText } from '../voice';
 import { voiceLang, type VoicePrefs } from './prefs-types';
 import { BijoyPanel } from './BijoyPanel';
+import { AiPanel } from './AiPanel';
 import { load, save } from './prefs';
 import { registerFlush } from './flush';
 import type { DocFormat } from '../docx-export/format';
@@ -55,6 +56,11 @@ interface Props {
   setView: (v: ViewPrefs) => void;
   fixChandra: boolean;
   toggleKey: import('../bornona-engine').ToggleKey;
+  /** AI assistant */
+  gemini: { key: string; model: string };
+  privateWords: string[];
+  setPrivateWords: (w: string[]) => void;
+  onOpenSettings: () => void;
   /** Experimental Bijoy (ANSI) typing. */
   ansiTyping: boolean;
   ansiKey: import('../bornona-engine').AnsiKey;
@@ -93,6 +99,7 @@ export function Workspace(p: Props) {
   const [listening, setListening] = useState(false);
   const [interim, setInterim] = useState('');
   const [convOpen, setConvOpen] = useState(false);
+  const [aiOpen, setAiOpen] = useState(false);
   /** One-time notice before the first live voice session (audio goes to the browser's speech service). */
   const [consentOpen, setConsentOpen] = useState(false);
   const cfg = useRef<BornonaConfig>({ bangla: p.bangla, map: p.map, vowelForming: p.vowelForming, oldReph: p.oldReph, suspended: false });
@@ -495,6 +502,7 @@ export function Workspace(p: Props) {
         editor={editor} kind={kind} fonts={p.fonts} defaultFont={kind === 'note' ? NOTE_FONT : p.format.font} defaultSize={kind === 'note' ? NOTE_SIZE : p.format.size} bangla={p.bangla}
         start={p.toolbarExtra} end={<>{share}{p.toolbarRight}</>}
         onFind={(replace) => setFind({ replace })} onConverter={() => setConvOpen((v) => !v)} converterOpen={convOpen}
+        onAi={() => setAiOpen((v) => !v)} aiOpen={aiOpen}
         onWordCount={() => setPanel('wc')} onFontPanel={() => setPanel('font')} onParagraphPanel={() => setPanel('para')} />
       {find && <FindBar editor={editor} showReplace={find.replace} getConfig={getConfig} onToggleLanguage={toggleLang}
         onClose={() => { setFind(null); editor.commands.focus(); }} />}
@@ -544,6 +552,7 @@ export function Workspace(p: Props) {
           </div>
         </div>
       )}
+      {aiOpen && <AiPanel editor={editor} say={p.say} gemini={p.gemini} privateWords={p.privateWords} setPrivateWords={p.setPrivateWords} onOpenSettings={p.onOpenSettings} />}
       {convOpen && <BijoyPanel editor={editor} ansiFont={p.ansiFont} enFont={p.enFont} say={p.say} />}
       <footer className="dock">
         {listening ? (

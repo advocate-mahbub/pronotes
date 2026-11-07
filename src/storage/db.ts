@@ -189,3 +189,15 @@ export const saveLayouts = (l: Layout[]) => setMeta('layouts', l);
 /** Voice corrections ("ভুল = ঠিক" lines) travel with the word bank, as in v8. */
 export const loadCorrections = async (): Promise<string> => (await getMeta<string>('corrections')) ?? '';
 export const saveCorrections = (s: string) => setMeta('corrections', s);
+
+/**
+ * AI assistant: the user's Gemini key and the extra words to hide. Device only: not in backups
+ * (a backup file may be shared or kept elsewhere), never sent anywhere except the key to Google.
+ */
+export const loadAiKey = async (): Promise<string> => (await getMeta<string>('geminiKey')) ?? '';
+export const saveAiKey = (k: string) => setMeta('geminiKey', k.trim());
+export const loadPrivateWords = async (): Promise<string[]> => {
+  const v = await getMeta<string[]>('aiPrivateWords');
+  return Array.isArray(v) ? v : [];
+};
+export const savePrivateWords = (w: string[]) => setMeta('aiPrivateWords', w);

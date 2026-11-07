@@ -181,7 +181,6 @@ test('insert tab: page break, symbol, date; tools: word count', async ({ page })
   await page.getByTestId('date-menu').locator('button').first().click();
   await expect(editor(page).locator('p').last()).toHaveText(/^[০-৯]{2}\/[০-৯]{2}\/[০-৯]{4}$/);
   await expect(editor(page).locator('p').first()).toHaveText('কমর কল৳');
-  await expect(page.getByTestId('ai')).toBeDisabled();
   await page.getByTestId('tab-tools').click();
   await page.getByTestId('word-count').click();
   await expect(page.getByTestId('wc-table')).toContainText('৩');

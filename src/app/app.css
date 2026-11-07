@@ -392,3 +392,12 @@ button, select, .chip, .key, summary { touch-action: manipulation; }
 .ansi-badge.typing { left: auto; right: 84px; border-color: #e65100; color: #e65100; background: #fff4e5; }
 @media (max-width: 700px) { .conv-body.two { grid-template-columns: 1fr; } }
 .pop .menu button small { display: block; color: var(--muted); font-size: 12px; line-height: 1.2; padding-bottom: 6px; }
+
+/* AI assistant (v2.0 step 5) */
+.conv.ai { max-height: 46vh; }
+.conv.ai select, .conv.ai input[data-testid] { border: 1px solid var(--line); border-radius: 8px; background: var(--bg); color: var(--fg); font: 15px var(--f-sans); padding: 6px 8px; max-width: 100%; }
+.ai-find { list-style: none; margin: 4px 0; padding: 0; display: flex; flex-wrap: wrap; gap: 4px 12px; max-height: 120px; overflow: auto; }
+.ai-find small { color: var(--muted); }
+.ai-prompt { margin: 0; min-height: 80px; max-height: 180px; overflow: auto; white-space: pre-wrap; overflow-wrap: anywhere; border: 1px solid var(--line); border-radius: 8px; padding: 8px; background: var(--bg); font: 14px var(--f-sans); }
+.conv.ai textarea { min-height: 140px; }
+.settings .row input[type=password] { flex: 1; min-width: 160px; }

@@ -6,6 +6,7 @@
 import { Extension } from '@tiptap/core';
 import { Plugin, PluginKey } from '@tiptap/pm/state';
 import type { EditorView } from '@tiptap/pm/view';
+import { closeHistory } from '@tiptap/pm/history';
 import { resolveKey, resolveTypedChar, planType, fixNukta, isAnsiKey, type LayoutMap, type ToggleKey, type AnsiKey } from '../bornona-engine';
 import { typeAnsi, backspaceAnsi, insertEnglishAnsi, type AnsiConfig } from './ansi-typing';
 
@@ -79,7 +80,8 @@ export function insertPlainText(view: EditorView, text: string): void {
       if (i > 0) tr.split(tr.selection.from);
       if (line) tr.insertText(line);
     });
-  view.dispatch(tr.scrollIntoView());
+  // its own Undo step (paste, voice, converter and AI inserts)
+  view.dispatch(closeHistory(tr).scrollIntoView());
 }
 
 /** Delete one character before the caret (on-screen ⌫). */

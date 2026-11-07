@@ -36,6 +36,8 @@ interface Props {
   onFind: (replace: boolean) => void;
   onConverter: () => void;
   converterOpen: boolean;
+  onAi: () => void;
+  aiOpen: boolean;
   onWordCount: () => void;
   onFontPanel: () => void;
   onParagraphPanel: () => void;
@@ -332,8 +334,6 @@ export function Ribbon(p: Props) {
           </div>
         )}
       </Popover>
-      <span className="sep" />
-      <button type="button" className="tb" disabled title={t('AI সহকারী (শীঘ্রই)')} aria-label={t('AI সহকারী (শীঘ্রই)')} data-testid="ai">✦ AI</button>
     </>
   );
 
@@ -341,6 +341,7 @@ export function Ribbon(p: Props) {
     <>
       {btn(t('খুঁজুন ও বদলান'), t('খুঁজে বদলান (Ctrl+H)'), false, () => p.onFind(true), 'tools-find')}
       {btn('Converter', t('Converter: ইউনিকোড ⇄ বিজয়'), p.converterOpen, p.onConverter, 'bijoy-toggle')}
+      {btn('✦ AI', t('AI সহকারী'), p.aiOpen, p.onAi, 'ai')}
       {btn(t('শব্দ গণনা'), t('শব্দ ও অক্ষর গণনা'), false, p.onWordCount, 'word-count')}
     </>
   );

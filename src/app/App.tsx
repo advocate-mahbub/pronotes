@@ -5,10 +5,11 @@ import { emptyBank, learnText, mergeBankFile, pruneBank, type WordBank, type Wor
 import {
   listDocs, getDoc, createDoc, saveContent, renameDoc, duplicateDoc, trashDoc, restoreDoc, deleteForever, purgeExpired,
   loadBank, saveBank, requestPersistence, exportAll, restoreAll, parseBackup, backupFileName, mergeCorrections,
-  listFonts, putFont, removeFont, loadLayouts, saveLayouts, loadCorrections, saveCorrections, setDocKind, setDocPage, kindOf, type Doc, type DocKind,
+  listFonts, putFont, removeFont, loadLayouts, saveLayouts, loadCorrections, saveCorrections, loadAiKey, saveAiKey, loadPrivateWords, savePrivateWords, setDocKind, setDocPage, kindOf, type Doc, type DocKind,
 } from '../storage';
 import { MAX_FONT_BYTES, familyFor, registerFont, unregisterFont } from '../fonts';
 import { decideVoice, detectVoiceEnv } from '../voice';
+import { DEFAULT_GEMINI_MODEL } from '../ai/gemini';
 import { Settings, type FontInfo } from './Settings';
 import type { OutputMode } from './ShareMenu';
 import { DEFAULT_VOICE_PREFS, DEFAULT_VIEW, DEFAULT_GRID, voiceLang, type VoicePrefs, type ViewPrefs } from './prefs-types';
@@ -106,6 +107,13 @@ export function App() {
   const editorRef = useRef<Editor | null>(null);
   const [wide, setWide] = useState(() => wideQuery?.matches ?? true);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  /** AI assistant: Gemini key (IndexedDB, device only), model, words to hide. */
+  const [geminiKey, setGeminiKeyState] = useState('');
+  const [geminiModel, setGeminiModel] = useState(() => load('geminiModel', DEFAULT_GEMINI_MODEL));
+  useEffect(() => save('geminiModel', geminiModel), [geminiModel]);
+  const [privateWords, setPrivateWordsState] = useState<string[]>([]);
+  const setGeminiKey = (k: string) => { setGeminiKeyState(k.trim()); saveAiKey(k).catch(() => say('key সেভ করা যায়নি')); };
+  const setPrivateWords = (w: string[]) => { setPrivateWordsState(w); savePrivateWords(w).catch(() => {}); };
   const [needRefresh, setNeedRefresh] = useState(false);
   const [offlineReady, setOfflineReady] = useState(() => load('offlineReady', false));
   const [canInstall, setCanInstall] = useState(canPromptInstall);
@@ -227,6 +235,8 @@ export function App() {
       setBankVersion((v) => v + 1);
       setCustomLayouts(await loadLayouts());
       setCorrectionsState(await loadCorrections());
+      setGeminiKeyState(await loadAiKey());
+      setPrivateWordsState(await loadPrivateWords());
       loadStoredFonts();
       let list = await listDocs();
       if (!list.length) list = [await createDoc(tr('নতুন ড্রাফট'))];
@@ -505,6 +515,8 @@ export function App() {
               page={normalizePage(current.page, pageDefault)} onPage={changePage}
               onMakeDefaultPage={(pg) => { setPageDefault(pg); say('নতুন লিগ্যাল ড্রাফট এখন থেকে এই পাতায় খুলবে'); }}
               view={viewPrefs} setView={setViewPrefs} fixChandra={fixChandra} toggleKey={toggleKey}
+              gemini={{ key: geminiKey, model: geminiModel }} privateWords={privateWords} setPrivateWords={setPrivateWords}
+              onOpenSettings={() => setSettingsOpen(true)}
               ansiTyping={ansiTyping} ansiKey={ansiKey} onToggleAnsi={() => setAnsiTyping(!ansiTypingRef.current)}
               output={output} setOutput={setOutput}
               voice={voice} corrections={corrections} autoBijoy={autoBijoy} ansiFont={ansiFont} enFont={enFont}
@@ -536,6 +548,7 @@ export function App() {
           onBackup={backup} onRestore={restore} uiLang={uiLang} setUiLang={setUiLangState}
           fixChandra={fixChandra} setFixChandra={setFixChandra} toggleKey={toggleKey} setToggleKey={setToggleKey}
           ansiTyping={ansiTyping} setAnsiTyping={setAnsiTyping} ansiKey={ansiKey} setAnsiKey={setAnsiKey}
+          ai={{ key: geminiKey, setKey: setGeminiKey, model: geminiModel, setModel: setGeminiModel, privateWords, setPrivateWords }}
           app={{
             supported: pwaSupported(), offlineReady, standalone: isStandalone(), apple: isAppleDevice(), canInstall,
             onInstall: async () => { if (await promptInstall()) say('ProNotes ইনস্টল হয়েছে'); },
