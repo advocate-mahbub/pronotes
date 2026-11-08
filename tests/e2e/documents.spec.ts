@@ -54,10 +54,12 @@ test('duplicate, trash, restore, delete forever (with confirmation)', async ({ p
   await typeKeys(page, ['KeyD', 'KeyL']);
   await page.keyboard.press('Control+s');
   await expect(status(page)).toHaveClass(/saved/);
+  await cur().getByTestId('doc-menu').click();
   await cur().getByTestId('dup').click();
   await expect(rows(page)).toHaveCount(2);
   await expect(page.getByTestId('title')).toHaveValue(/\(কপি\)$/);
   await expect(editor(page)).toHaveText('দল');
+  await cur().getByTestId('doc-menu').click();
   await cur().getByTestId('trash').click();
   await expect(rows(page)).toHaveCount(1);
   await page.getByTestId('view-trash').click();
@@ -67,6 +69,7 @@ test('duplicate, trash, restore, delete forever (with confirmation)', async ({ p
   await expect(rows(page)).toHaveCount(0);
   await page.getByTestId('view-docs').click();
   await expect(rows(page)).toHaveCount(2);
+  await cur().getByTestId('doc-menu').click();
   await cur().getByTestId('trash').click();
   await page.getByTestId('view-trash').click();
   await rows(page).first().getByTestId('delete').click();

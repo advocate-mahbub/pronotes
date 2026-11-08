@@ -1,6 +1,7 @@
 /**
  * Local database (IndexedDB). Everything stays on this device.
- * Stores: docs (drafts, including Trash), meta (word bank, custom layouts, …) and fonts (v2).
+ * Stores: docs (drafts, including Trash), meta (word bank, custom layouts, folders, …), fonts (v2)
+ * and versions (v3: automatic snapshots of drafts, kept on this device only).
  */
 import { openDB, type DBSchema, type IDBPDatabase } from 'idb';
 import type { JSONContent } from '@tiptap/core';
@@ -25,6 +26,28 @@ export interface Doc {
   updatedAt: number;
   /** Set when moved to Trash; null otherwise. */
   deletedAt: number | null;
+  /** Kept at the top of the list. */
+  pinned?: boolean;
+  /** Folder the document is in (missing = no folder). */
+  folderId?: string;
+}
+
+export interface Folder {
+  id: string;
+  name: string;
+  createdAt: number;
+}
+
+/** A saved earlier state of a document. */
+export interface Version {
+  id: string;
+  docId: string;
+  at: number;
+  title: string;
+  content: JSONContent;
+  text: string;
+  /** 'auto' = timed snapshot, 'restore' = taken just before an older version was brought back, 'manual' */
+  reason: 'auto' | 'restore' | 'manual';
 }
 
 /** A font file the user added (kept only in this browser; never put in backups). */
@@ -44,6 +67,7 @@ interface Schema extends DBSchema {
   docs: { key: string; value: Doc; indexes: { updatedAt: number } };
   meta: { key: string; value: unknown };
   fonts: { key: string; value: StoredFont };
+  versions: { key: string; value: Version; indexes: { docId: string } };
 }
 
 export const DB_NAME = 'pronotes';
@@ -53,7 +77,7 @@ const DAY = 24 * 60 * 60 * 1000;
 let dbp: Promise<IDBPDatabase<Schema>> | null = null;
 export function db(): Promise<IDBPDatabase<Schema>> {
   if (!dbp) {
-    dbp = openDB<Schema>(DB_NAME, 2, {
+    dbp = openDB<Schema>(DB_NAME, 3, {
       upgrade(d, oldVersion) {
         if (oldVersion < 1) {
           const docs = d.createObjectStore('docs', { keyPath: 'id' });
@@ -61,6 +85,7 @@ export function db(): Promise<IDBPDatabase<Schema>> {
           d.createObjectStore('meta');
         }
         if (oldVersion < 2) d.createObjectStore('fonts', { keyPath: 'id' });
+        if (oldVersion < 3) d.createObjectStore('versions', { keyPath: 'id' }).createIndex('docId', 'docId');
       },
     });
   }
@@ -108,6 +133,7 @@ async function update(id: string, fn: (d: Doc) => Doc): Promise<boolean> {
 }
 
 export async function saveContent(id: string, content: JSONContent, text: string, now = Date.now()): Promise<void> {
+  await autoSnapshot(id, content, now);
   await update(id, (d) => ({ ...d, content, text, updatedAt: now }));
 }
 
@@ -119,8 +145,11 @@ export async function duplicateDoc(id: string, now = Date.now()): Promise<Doc | 
   const d = await getDoc(id);
   if (!d) return;
   const c = await createDoc(d.title + ' (কপি)', structuredClone(d.content), d.text, now, kindOf(d));
-  if (d.page) await setDocPage(c.id, structuredClone(d.page), now);
-  return d.page ? { ...c, page: d.page } : c;
+  const extra: Partial<Doc> = {};
+  if (d.page) extra.page = structuredClone(d.page);
+  if (d.folderId) extra.folderId = d.folderId;
+  if (Object.keys(extra).length) await update(c.id, (x) => ({ ...x, ...extra }));
+  return { ...c, ...extra };
 }
 
 export async function setDocKind(id: string, kind: DocKind, now = Date.now()): Promise<void> {
@@ -144,6 +173,7 @@ export async function deleteForever(id: string): Promise<boolean> {
   const d = await getDoc(id);
   if (!d || d.deletedAt === null) return false;
   await (await db()).delete('docs', id);
+  await deleteVersions(id);
   return true;
 }
 
@@ -153,6 +183,7 @@ export async function purgeExpired(now = Date.now()): Promise<number> {
   const old = trash.filter((d) => now - (d.deletedAt as number) > TRASH_DAYS * DAY);
   const tx = (await db()).transaction('docs', 'readwrite');
   await Promise.all([...old.map((d) => tx.store.delete(d.id)), tx.done]);
+  for (const d of old) await deleteVersions(d.id);
   return old.length;
 }
 
@@ -201,3 +232,96 @@ export const loadPrivateWords = async (): Promise<string[]> => {
   return Array.isArray(v) ? v : [];
 };
 export const savePrivateWords = (w: string[]) => setMeta('aiPrivateWords', w);
+
+/* ---------- pin and folders ---------- */
+
+export async function setPinned(id: string, pinned: boolean): Promise<void> {
+  // not a content change: updatedAt stays, so the list order by date does not jump
+  await update(id, (d) => ({ ...d, pinned: pinned || undefined }));
+}
+
+/** Move documents into a folder ('' = out of any folder). */
+export async function moveToFolder(ids: string[], folderId: string): Promise<void> {
+  for (const id of ids) await update(id, (d) => ({ ...d, folderId: folderId || undefined }));
+}
+
+export const loadFolders = async (): Promise<Folder[]> => {
+  const v = await getMeta<Folder[]>('folders');
+  return Array.isArray(v) ? v : [];
+};
+const saveFolders = (f: Folder[]) => setMeta('folders', f);
+
+export async function createFolder(name: string, now = Date.now()): Promise<Folder> {
+  const f: Folder = { id: newId(), name: name.trim() || 'নতুন ফোল্ডার', createdAt: now };
+  await saveFolders([...(await loadFolders()), f]);
+  return f;
+}
+export async function renameFolder(id: string, name: string): Promise<void> {
+  await saveFolders((await loadFolders()).map((f) => (f.id === id ? { ...f, name: name.trim() || f.name } : f)));
+}
+/** Delete a folder. Its documents are not deleted: they move out of the folder. */
+export async function deleteFolder(id: string): Promise<number> {
+  await saveFolders((await loadFolders()).filter((f) => f.id !== id));
+  const inside = (await (await db()).getAll('docs')).filter((d) => d.folderId === id);
+  await moveToFolder(inside.map((d) => d.id), '');
+  return inside.length;
+}
+
+/* ---------- versions (automatic snapshots) ---------- */
+
+/** A new snapshot at most this often while typing. */
+export const VERSION_EVERY = 10 * 60 * 1000;
+/** Snapshots kept per document (oldest dropped first). */
+export const VERSIONS_KEPT = 30;
+
+export async function listVersions(docId: string): Promise<Version[]> {
+  const all = await (await db()).getAllFromIndex('versions', 'docId', docId);
+  return all.sort((a, b) => b.at - a.at);
+}
+
+async function deleteVersions(docId: string): Promise<void> {
+  const d = await db();
+  for (const v of await d.getAllFromIndex('versions', 'docId', docId)) await d.delete('versions', v.id);
+}
+
+async function addVersion(doc: Doc, reason: Version['reason'], now: number): Promise<Version> {
+  const d = await db();
+  const v: Version = { id: newId(), docId: doc.id, at: now, title: doc.title, content: structuredClone(doc.content), text: doc.text, reason };
+  await d.put('versions', v);
+  const all = await listVersions(doc.id);
+  for (const old of all.slice(VERSIONS_KEPT)) await d.delete('versions', old.id);
+  return v;
+}
+
+/**
+ * Before a save, keep the state being replaced when the last snapshot is older than VERSION_EVERY
+ * and the content really changes. So a version exists from before every working session.
+ */
+async function autoSnapshot(id: string, next: JSONContent, now: number): Promise<void> {
+  const doc = await getDoc(id);
+  if (!doc || JSON.stringify(doc.content) === JSON.stringify(next)) return;
+  if (!doc.text.trim() && JSON.stringify(doc.content) === JSON.stringify(EMPTY_DOC)) return;
+  const last = (await listVersions(id))[0];
+  if (last && now - last.at < VERSION_EVERY) return;
+  if (last && JSON.stringify(last.content) === JSON.stringify(doc.content)) return;
+  await addVersion(doc, 'auto', now);
+}
+
+/** Keep the current state now (button "এখনই একটা ভার্সন রাখুন"). */
+export async function snapshotNow(id: string, now = Date.now()): Promise<Version | undefined> {
+  const doc = await getDoc(id);
+  if (!doc) return;
+  return addVersion(doc, 'manual', now);
+}
+
+/** Bring an older version back. The current state is kept as a version first, so this can be undone. */
+export async function restoreVersion(versionId: string, now = Date.now()): Promise<Doc | undefined> {
+  const d = await db();
+  const v = await d.get('versions', versionId);
+  if (!v) return;
+  const doc = await getDoc(v.docId);
+  if (!doc) return;
+  await addVersion(doc, 'restore', now);
+  await update(v.docId, (x) => ({ ...x, content: structuredClone(v.content), text: v.text, updatedAt: now }));
+  return getDoc(v.docId);
+}

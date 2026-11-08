@@ -4,7 +4,7 @@
  * comes back as a separate copy.
  * Font files are never included (size, and font licences such as SutonnyMJ's).
  */
-import { db, getMeta, setMeta, type Doc } from './db';
+import { db, getMeta, setMeta, type Doc, type Folder } from './db';
 import { emptyBank, type WordBank } from '../suggest';
 import { fixNukta, type Layout } from '../bornona-engine';
 
@@ -18,6 +18,8 @@ export interface BackupFile {
   /** M5+: custom keyboard layouts and voice corrections (optional, older backups lack them). */
   layouts?: Layout[];
   corrections?: string;
+  /** v2.0+: folders (documents carry folderId). Versions are not in backups (size). */
+  folders?: Folder[];
 }
 
 export async function exportAll(prefs: Record<string, unknown>, now = new Date()): Promise<BackupFile> {
@@ -25,7 +27,8 @@ export async function exportAll(prefs: Record<string, unknown>, now = new Date()
   const wordBank = (await getMeta<WordBank>('wordBank')) ?? emptyBank();
   const layouts = (await getMeta<Layout[]>('layouts')) ?? [];
   const corrections = (await getMeta<string>('corrections')) ?? '';
-  return { app: 'pronotes', version: 1, exportedAt: now.toISOString(), docs, wordBank, prefs, layouts, corrections };
+  const folders = (await getMeta<Folder[]>('folders')) ?? [];
+  return { app: 'pronotes', version: 1, exportedAt: now.toISOString(), docs, wordBank, prefs, layouts, corrections, folders };
 }
 
 export function backupFileName(now = new Date()): string {
@@ -87,6 +90,11 @@ export async function restoreAll(f: BackupFile): Promise<RestoreResult> {
     const have = (await getMeta<Layout[]>('layouts')) ?? [];
     for (const l of f.layouts) if (l && l.id && l.map && !have.some((h) => h.id === l.id)) have.push(l);
     await setMeta('layouts', have);
+  }
+  if (Array.isArray(f.folders) && f.folders.length) {
+    const have = (await getMeta<Folder[]>('folders')) ?? [];
+    for (const x of f.folders) if (x && x.id && !have.some((h) => h.id === x.id)) have.push({ ...x, name: fixNukta(x.name) });
+    await setMeta('folders', have);
   }
   if (f.corrections) await setMeta('corrections', mergeCorrections((await getMeta<string>('corrections')) ?? '', f.corrections));
   return r;

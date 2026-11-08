@@ -23,7 +23,11 @@ export function Popover({ label, title, testid, className, active, children, dis
     if (!open || !btn.current) return;
     const r = btn.current.getBoundingClientRect();
     const w = panel.current?.offsetWidth ?? 240;
-    setPos({ left: Math.max(8, Math.min(r.left, window.innerWidth - w - 8)), top: r.bottom + 4 });
+    const h = panel.current?.offsetHeight ?? 0;
+    // below the button; above it, or as low as fits, when there is no room underneath
+    let top = r.bottom + 4;
+    if (top + h > window.innerHeight - 8) top = r.top - h - 4 >= 8 ? r.top - h - 4 : Math.max(8, window.innerHeight - h - 8);
+    setPos({ left: Math.max(8, Math.min(r.left, window.innerWidth - w - 8)), top });
   }, [open]);
   useEffect(() => {
     if (!open) return;

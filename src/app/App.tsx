@@ -5,12 +5,18 @@ import { emptyBank, learnText, mergeBankFile, pruneBank, type WordBank, type Wor
 import {
   listDocs, getDoc, createDoc, saveContent, renameDoc, duplicateDoc, trashDoc, restoreDoc, deleteForever, purgeExpired,
   loadBank, saveBank, requestPersistence, exportAll, restoreAll, parseBackup, backupFileName, mergeCorrections,
-  listFonts, putFont, removeFont, loadLayouts, saveLayouts, loadCorrections, saveCorrections, loadAiKey, saveAiKey, loadPrivateWords, savePrivateWords, setDocKind, setDocPage, kindOf, type Doc, type DocKind,
+  listFonts, putFont, removeFont, loadLayouts, saveLayouts, loadCorrections, saveCorrections, loadAiKey, saveAiKey, loadPrivateWords, savePrivateWords, setDocKind,
+  setPinned, moveToFolder, loadFolders, createFolder, renameFolder, deleteFolder, snapshotNow, restoreVersion, type Folder, setDocPage, kindOf, type Doc, type DocKind,
 } from '../storage';
 import { MAX_FONT_BYTES, familyFor, registerFont, unregisterFont } from '../fonts';
 import { decideVoice, detectVoiceEnv } from '../voice';
 import { DEFAULT_GEMINI_MODEL } from '../ai/gemini';
 import { Settings, type FontInfo } from './Settings';
+import { InfoSheet, VersionsSheet } from './DocSheets';
+import type { ListPrefs } from './Sidebar';
+import type { ListFormat } from './doc-export';
+import type { BornonaConfig } from '../editor';
+import { canShareFiles } from '../export/deliver';
 import type { OutputMode } from './ShareMenu';
 import { DEFAULT_VOICE_PREFS, DEFAULT_VIEW, DEFAULT_GRID, voiceLang, type VoicePrefs, type ViewPrefs } from './prefs-types';
 import { DEFAULT_PAGE, envelopePage, normalizePage, type PageSetup } from '../docx-export/page';
@@ -122,6 +128,12 @@ export function App() {
   const [trash, setTrash] = useState<Doc[]>([]);
   const [current, setCurrent] = useState<Doc | null>(null);
   const [view, setView] = useState<'docs' | 'trash'>('docs');
+  const [folders, setFolders] = useState<Folder[]>([]);
+  const [listPrefs, setListPrefs] = useState<ListPrefs>(() => ({ sort: 'updated', kind: 'all', folder: 'all', ...load<Partial<ListPrefs>>('listPrefs', {}) }));
+  useEffect(() => save('listPrefs', listPrefs), [listPrefs]);
+  /** Bumped to reload the open document (after an earlier version is brought back). */
+  const [reloadKey, setReloadKey] = useState(0);
+  const [docSheet, setDocSheet] = useState<{ type: 'info' | 'versions'; id: string } | null>(null);
   const [saveState, setSaveState] = useState<SaveState>('saved');
   const [toast, setToast] = useState('');
   const [fatal, setFatal] = useState(false);
@@ -177,6 +189,7 @@ export function App() {
   const refresh = useCallback(async () => {
     setDocs(await listDocs());
     setTrash(await listDocs({ trash: true }));
+    setFolders(await loadFolders());
   }, []);
 
   const open = useCallback(async (id: string) => {
@@ -274,20 +287,96 @@ export function App() {
   };
   const newDoc = async (kind: DocKind = 'legal') => {
     const d = await createDoc(tr(kind === 'note' ? 'নতুন নোট' : 'নতুন ড্রাফট'), undefined, '', Date.now(), kind);
+    // a new document goes into the folder being looked at
+    if (listPrefs.folder && listPrefs.folder !== 'all') await moveToFolder([d.id], listPrefs.folder);
     await refresh();
     await open(d.id);
     setView('docs');
   };
-  const toTrash = async (id: string) => {
-    await trashDoc(id);
+  const toTrash = async (id: string | string[]) => {
+    const ids = Array.isArray(id) ? id : [id];
+    for (const x of ids) await trashDoc(x);
     await refresh();
-    if (current?.id === id) {
+    if (current && ids.includes(current.id)) {
       const rest = await listDocs();
       if (rest.length) await open(rest[0].id);
       else await newDoc();
     }
     say('ট্র্যাশে পাঠানো হয়েছে, ৩০ দিনের মধ্যে ফেরত আনা যাবে');
   };
+
+  // ---------- document list actions ----------
+  const renameAny = async (id: string, title: string) => {
+    await renameDoc(id, title);
+    const d = await getDoc(id);
+    if (d) setCurrent((c) => (c && c.id === id ? { ...c, title: d.title } : c));
+    await refresh();
+  };
+  const copyText = async (id: string) => {
+    const d = await getDoc(id);
+    if (!d) return;
+    try {
+      await navigator.clipboard.writeText(d.text || '');
+      say('লেখা কপি হয়েছে');
+    } catch {
+      say('কপি করা গেল না');
+    }
+  };
+  const pinDoc = async (id: string, v: boolean) => {
+    await setPinned(id, v);
+    if (current?.id === id) setCurrent((c) => (c ? { ...c, pinned: v || undefined } : c));
+    await refresh();
+    say(v ? 'উপরে আটকানো হলো' : 'আটকানো তোলা হলো');
+  };
+  const moveDocs = async (ids: string[], folderId: string) => {
+    await moveToFolder(ids, folderId);
+    await refresh();
+    const f = folders.find((x) => x.id === folderId);
+    say(f ? '{n}টা ডকুমেন্ট “{f}” ফোল্ডারে সরানো হলো' : '{n}টা ডকুমেন্ট ফোল্ডারের বাইরে আনা হলো', { n: ids.length, f: f?.name ?? '' });
+  };
+  const kindOfAny = async (id: string, kind: DocKind) => {
+    if (current?.id === id) return changeKind(kind);
+    await setDocKind(id, kind);
+    await refresh();
+    say('ধরন বদলে {kind} করা হলো', { kind: tr(KIND_LABEL[kind]) });
+  };
+  const exportDocs = async (ids: string[], fmt: ListFormat, mode: 'save' | 'share') => {
+    if (current && ids.includes(current.id)) await flushAll();
+    const list = (await Promise.all(ids.map((id) => getDoc(id)))).filter((d): d is Doc => !!d);
+    if (!list.length) return;
+    try {
+      const { docFile, docsZip } = await import('./doc-export');
+      const { deliver } = await import('../export/deliver');
+      const ctx = { format, pageDefault };
+      let blob: Blob;
+      let name: string;
+      if (list.length === 1) ({ blob, name } = await docFile(list[0], fmt, ctx));
+      else {
+        blob = await docsZip(list, fmt, ctx);
+        name = `ProNotes - ${list.length} ${tr('ডকুমেন্ট')}.zip`;
+      }
+      const r = await deliver(blob, name, mode, list.length === 1 ? list[0].title : name);
+      if (r === 'saved') say('{name} তৈরি হয়েছে', { name });
+      else if (r === 'shared') say('শেয়ার করা হয়েছে');
+    } catch {
+      say('ফাইল তৈরি করা যায়নি');
+    }
+  };
+  const restoreOld = async (versionId: string, docId: string) => {
+    if (current?.id === docId) await flushAll();
+    const d = await restoreVersion(versionId);
+    if (!d) return say('ভার্সনটা পাওয়া গেল না');
+    if (current?.id === docId) {
+      setCurrent(d);
+      setReloadKey((k) => k + 1);
+    }
+    await refresh();
+    say('আগের ভার্সন ফেরত আনা হলো; এখনকার অবস্থাও ভার্সন হিসেবে রাখা আছে');
+  };
+  const sideCfg = useRef<BornonaConfig>({ bangla, map, vowelForming: vf, oldReph, suspended: false });
+  sideCfg.current = { bangla, map, vowelForming: vf, oldReph, suspended: false, fixChandra, toggleKey };
+  const getSideConfig = useCallback(() => sideCfg.current, []);
+  const toggleBangla = useCallback(() => setBangla((b) => !b), []);
 
   const prefs = () => ({ layout: layoutId, bangla, vf, oldReph, kb: kbVisible, format, voice, autoBijoy, ansiFont, enFont });
   const backup = async () => {
@@ -448,12 +537,19 @@ export function App() {
 
   const showSide = sideOpen;
   const sidebar = (
-    <Sidebar docs={docs} trash={trash} currentId={current?.id ?? null} view={view} setView={setView} kindIcon={KIND_ICON} kindLabel={KIND_LABEL}
+    <Sidebar docs={docs} trash={trash} folders={folders} currentId={current?.id ?? null} view={view} setView={setView} kindIcon={KIND_ICON} kindLabel={KIND_LABEL}
+      prefs={listPrefs} setPrefs={setListPrefs} getConfig={getSideConfig} onToggleLanguage={toggleBangla}
       onOpen={open} onNew={newDoc} onNewEnvelope={newEnvelope}
-      onDuplicate={async (id) => { const d = await duplicateDoc(id); await refresh(); if (d) await open(d.id); say('কপি তৈরি হয়েছে'); }}
+      onRename={renameAny} onCopyText={copyText} onPin={pinDoc} onMove={moveDocs} onChangeKind={kindOfAny}
+      onExport={exportDocs} canShare={canShareFiles()}
+      onInfo={(id) => setDocSheet({ type: 'info', id })} onVersions={async (id) => { if (current?.id === id) await flushAll(); setDocSheet({ type: 'versions', id }); }}
+      onDuplicate={async (id) => { if (current?.id === id) await flushAll(); const d = await duplicateDoc(id); await refresh(); if (d) await open(d.id); say('ডুপ্লিকেট তৈরি হয়েছে'); }}
       onTrash={toTrash}
       onRestore={async (id) => { await restoreDoc(id); await refresh(); say('ফেরত আনা হয়েছে'); }}
       onDeleteForever={async (id) => { await deleteForever(id); await refresh(); say('স্থায়ীভাবে মুছে ফেলা হয়েছে'); }}
+      onCreateFolder={async (name) => { await createFolder(name); await refresh(); say('ফোল্ডার তৈরি হয়েছে'); }}
+      onRenameFolder={async (id, name) => { await renameFolder(id, name); await refresh(); }}
+      onDeleteFolder={async (id) => { const n = await deleteFolder(id); await refresh(); say('ফোল্ডার মোছা হলো; ভেতরের {n}টা ডকুমেন্ট আছে, শুধু ফোল্ডারের বাইরে এসেছে', { n }); }}
       onClose={wide ? undefined : () => setSideOpen(false)} />
   );
   const statusText = t({ saved: 'এই ডিভাইসে সেভ হয়েছে', saving: 'সেভ হচ্ছে…', error: 'সেভ করা যায়নি' }[saveState]);
@@ -507,10 +603,10 @@ export function App() {
         {showSide && (wide ? sidebar : <div className="drawer" onClick={(e) => e.target === e.currentTarget && setSideOpen(false)}>{sidebar}</div>)}
         <div className="work">
           {current && (
-            <Workspace key={current.id} doc={current} map={map} bangla={bangla} vowelForming={vf} oldReph={oldReph}
+            <Workspace key={current.id + ':' + reloadKey} doc={current} map={map} bangla={bangla} vowelForming={vf} oldReph={oldReph}
               kbVisible={kbVisible} coarse={coarse} bank={bank.current} bankVersion={bankVersion} onBankChanged={onBankChanged}
               onToggleLanguage={() => setBangla((b) => !b)} onSave={onSave}
-              onRename={async (id, t) => { await renameDoc(id, t); await refresh(); }}
+              onRename={renameAny}
               onSaveState={setSaveState} format={format} say={say} fonts={fontChoices}
               page={normalizePage(current.page, pageDefault)} onPage={changePage}
               onMakeDefaultPage={(pg) => { setPageDefault(pg); say('নতুন লিগ্যাল ড্রাফট এখন থেকে এই পাতায় খুলবে'); }}
@@ -556,6 +652,14 @@ export function App() {
           }} />
       )}
 
+      {docSheet && (() => {
+        const d = [...docs, ...trash].find((x) => x.id === docSheet.id);
+        if (!d) return null;
+        return docSheet.type === 'info'
+          ? <InfoSheet doc={d} folders={folders} kindLabel={KIND_LABEL} onClose={() => setDocSheet(null)} />
+          : <VersionsSheet doc={d} onClose={() => setDocSheet(null)} onRestore={(v) => restoreOld(v.id, d.id)}
+              onSnapshot={async () => { if (current?.id === d.id) await flushAll(); await snapshotNow(d.id); say('এখনকার অবস্থা ভার্সন হিসেবে রাখা হলো'); }} />;
+      })()}
       {needRefresh && (
         <div className="update" role="status" data-testid="update-banner">
           <span>{t('ProNotes-এর নতুন ভার্সন এসেছে। আপনার লেখা সেভ করে আপডেট হবে।')}</span>

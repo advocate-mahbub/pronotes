@@ -94,6 +94,8 @@ export function Workspace(p: Props) {
   const [find, setFind] = useState<{ replace: boolean } | null>(null);
   const [panel, setPanel] = useState<'font' | 'para' | 'wc' | 'page' | null>(null);
   const [title, setTitle] = useState(p.doc.title);
+  // renamed from the list while open
+  useEffect(() => setTitle(p.doc.title), [p.doc.title]);
   /** Voice through the device keyboard's own mic: the engine is suspended and the device keyboard is used. */
   const [deviceKb, setDeviceKb] = useState(false);
   const [listening, setListening] = useState(false);

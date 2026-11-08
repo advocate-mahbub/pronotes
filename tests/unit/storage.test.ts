@@ -6,6 +6,7 @@ import {
   deleteForever, purgeExpired, daysLeft, saveBank, loadBank, exportAll, restoreAll, parseBackup, TRASH_DAYS,
   listFonts, putFont, removeFont, saveLayouts, loadLayouts, saveCorrections, loadCorrections, mergeCorrections,
   saveAiKey, loadAiKey, savePrivateWords, loadPrivateWords,
+  setPinned, moveToFolder, loadFolders, createFolder, renameFolder, deleteFolder, listVersions, snapshotNow, restoreVersion, VERSION_EVERY, VERSIONS_KEPT,
 } from '../../src/storage';
 
 const DAY = 864e5;
@@ -161,5 +162,65 @@ describe('AI assistant data', () => {
     const json = JSON.stringify(await exportAll({}));
     expect(json).not.toContain('AIzaSECRET');
     expect(json).not.toContain('aiPrivateWords');
+  });
+});
+
+describe('pin, folders and versions', () => {
+  beforeEach(() => {
+    globalThis.indexedDB = new IDBFactory();
+    resetDbForTests();
+  });
+  it('pin does not change the date; folders hold documents; deleting a folder keeps its documents', async () => {
+    const d = await createDoc('ক', para('এক'), 'এক', 1000);
+    await setPinned(d.id, true);
+    expect(await getDoc(d.id)).toMatchObject({ pinned: true, updatedAt: 1000 });
+    const f = await createFolder(' মামলা ১২/২০২৪ ');
+    expect((await loadFolders()).map((x) => x.name)).toEqual(['মামলা ১২/২০২৪']);
+    await moveToFolder([d.id], f.id);
+    expect((await getDoc(d.id))!.folderId).toBe(f.id);
+    const copy = await duplicateDoc(d.id);
+    expect(copy!.folderId).toBe(f.id);
+    await renameFolder(f.id, 'দেওয়ানি');
+    expect((await loadFolders())[0].name).toBe('দেওয়ানি');
+    expect(await deleteFolder(f.id)).toBe(2);
+    expect(await loadFolders()).toEqual([]);
+    expect((await getDoc(d.id))!.folderId).toBeUndefined();
+    expect(await listDocs()).toHaveLength(2);
+  });
+  it('folders and pins travel in the backup', async () => {
+    const d = await createDoc('ক', para('এক'), 'এক');
+    const f = await createFolder('ফোল্ডার');
+    await moveToFolder([d.id], f.id);
+    const file = await exportAll({});
+    expect(file.folders).toEqual([f]);
+    globalThis.indexedDB = new IDBFactory();
+    resetDbForTests();
+    await restoreAll(file);
+    expect(await loadFolders()).toEqual([f]);
+    expect((await getDoc(d.id))!.folderId).toBe(f.id);
+  });
+  it('a snapshot of the old state before saves, at most every 10 minutes; restore keeps the current one first', async () => {
+    const d = await createDoc('ক', para('এক'), 'এক', 0);
+    await saveContent(d.id, para('দুই'), 'দুই', 1000);
+    let v = await listVersions(d.id);
+    expect(v.map((x) => x.text)).toEqual(['এক']);
+    await saveContent(d.id, para('তিন'), 'তিন', 2000); // too soon
+    expect(await listVersions(d.id)).toHaveLength(1);
+    await saveContent(d.id, para('চার'), 'চার', 2000 + VERSION_EVERY);
+    v = await listVersions(d.id);
+    expect(v.map((x) => x.text)).toEqual(['তিন', 'এক']);
+    const back = await restoreVersion(v[1].id, 5e6);
+    expect(back!.text).toBe('এক');
+    expect((await listVersions(d.id))[0]).toMatchObject({ text: 'চার', reason: 'restore' });
+  });
+  it('keeps the newest versions only; deleted with the document', async () => {
+    const d = await createDoc('ক', para('এক'), 'এক');
+    for (let i = 0; i < VERSIONS_KEPT + 3; i++) await snapshotNow(d.id, i);
+    const v = await listVersions(d.id);
+    expect(v).toHaveLength(VERSIONS_KEPT);
+    expect(v[0].at).toBe(VERSIONS_KEPT + 2);
+    await trashDoc(d.id);
+    await deleteForever(d.id);
+    expect(await listVersions(d.id)).toEqual([]);
   });
 });
