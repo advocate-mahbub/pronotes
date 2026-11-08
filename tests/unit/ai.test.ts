@@ -98,3 +98,41 @@ describe('Gemini', () => {
     expect(await geminiModels('K', f as never)).toEqual(['gemini-flash-latest']);
   });
 });
+
+describe('Gemini: model not available', () => {
+  it('ranks flash first, stable before preview, newest first', async () => {
+    const { rankModels } = await import('../../src/ai/gemini');
+    expect(rankModels(['gemini-2.5-pro', 'gemini-3.1-flash-lite', 'gemini-3-flash-preview', 'gemini-3.8-flash', 'gemini-flash-latest'])).toEqual([
+      'gemini-flash-latest', 'gemini-3.8-flash', 'gemini-3.1-flash-lite', 'gemini-3-flash-preview', 'gemini-2.5-pro',
+    ]);
+  });
+  it('falls back to a model the key can use, tells the app, and shows Google’s reason when nothing works', async () => {
+    const { geminiGenerate, aiErrorMessage, AiError } = await import('../../src/ai/gemini');
+    const calls: string[] = [];
+    const ok = (async (url: string) => {
+      calls.push(url);
+      if (url.includes('/models?')) return new Response(JSON.stringify({ models: [{ name: 'models/gemini-3.8-flash', supportedGenerationMethods: ['generateContent'] }] }), { status: 200 });
+      if (url.includes('gemini-old')) return new Response(JSON.stringify({ error: { message: 'models/gemini-old is not found for API version v1beta' } }), { status: 404 });
+      return new Response(JSON.stringify({ candidates: [{ content: { parts: [{ text: 'উত্তর' }] } }] }), { status: 200 });
+    }) as unknown as typeof fetch;
+    let changed = '';
+    expect(await geminiGenerate('প্রশ্ন', { key: 'K', model: 'gemini-old', fetchImpl: ok, onModelChange: (m) => { changed = m; } })).toBe('উত্তর');
+    expect(changed).toBe('gemini-3.8-flash');
+    const bad = (async () => new Response(JSON.stringify({ error: { message: 'Request contains an invalid argument.' } }), { status: 400 })) as unknown as typeof fetch;
+    const e = await geminiGenerate('প্রশ্ন', { key: 'K', fetchImpl: bad }).catch((x) => x);
+    expect(e).toBeInstanceOf(AiError);
+    expect(aiErrorMessage(e).detail).toContain('400: Request contains an invalid argument.');
+  });
+});
+
+describe('Gemini: overloaded', () => {
+  it('retries once after a 503', async () => {
+    const { geminiGenerate } = await import('../../src/ai/gemini');
+    let n = 0;
+    const f = (async () => (++n === 1
+      ? new Response(JSON.stringify({ error: { message: 'The model is overloaded. Please try again later.' } }), { status: 503 })
+      : new Response(JSON.stringify({ candidates: [{ content: { parts: [{ text: 'ঠিক আছে' }] } }] }), { status: 200 }))) as unknown as typeof fetch;
+    expect(await geminiGenerate('প্রশ্ন', { key: 'K', fetchImpl: f, retryDelayMs: 0 })).toBe('ঠিক আছে');
+    expect(n).toBe(2);
+  });
+});

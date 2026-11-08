@@ -235,6 +235,9 @@ test('app language English ⇄ Bangla; document text and typing are not affected
   await expect(page.locator('html')).toHaveAttribute('lang', 'en');
   await page.getByTestId('settings').click();
   await editor(page).click();
+  await expect(editor(page).locator('p').first()).toHaveText('ক');
+  // caret after the text, wherever the click landed
+  await editor(page).evaluate((el) => (el as unknown as { editor: { commands: { focus: (p: string) => void } } }).editor.commands.focus('end'));
   await typeKeys(page, ['KeyM']);
   await expect(editor(page).locator('p').first()).toHaveText('কম');
   await page.reload();

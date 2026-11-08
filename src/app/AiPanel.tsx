@@ -7,7 +7,7 @@
  */
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { Editor } from '@tiptap/react';
-import { findPrivate, mask, unmask, buildPrompt, cleanAnswer, geminiGenerate, AiError, AI_ERROR_TEXT, KIND_LABEL, TASKS, type Finding, type Task } from '../ai';
+import { findPrivate, mask, unmask, buildPrompt, cleanAnswer, geminiGenerate, aiErrorMessage, KIND_LABEL, TASKS, type Finding, type Task } from '../ai';
 import { insertPlainText, selectedOrAll } from '../editor';
 import { useT } from '../i18n';
 import { PanelControls } from './ui';
@@ -16,7 +16,7 @@ interface Props {
   editor: Editor;
   say: (m: string, vars?: Record<string, string | number>) => void;
   /** Gemini key and model; key '' = not set up */
-  gemini: { key: string; model: string };
+  gemini: { key: string; model: string; setModel?: (m: string) => void };
   privateWords: string[];
   setPrivateWords: (w: string[]) => void;
   onOpenSettings: () => void;
@@ -83,11 +83,11 @@ export function AiPanel(p: Props) {
     setStep('answer');
     abort.current = new AbortController();
     try {
-      setAnswer(await geminiGenerate(prompt, { key: p.gemini.key, model: p.gemini.model, signal: abort.current.signal }));
+      setAnswer(await geminiGenerate(prompt, { key: p.gemini.key, model: p.gemini.model, signal: abort.current.signal, onModelChange: p.gemini.setModel }));
     } catch (e) {
       if ((e as Error).name === 'AbortError') return;
-      const code = e instanceof AiError ? e.code : 'other';
-      say(AI_ERROR_TEXT[code]);
+      const m = aiErrorMessage(e);
+      say(m.detail ? t(m.text) + ' (Google: ' + m.detail + ')' : m.text);
     } finally {
       setBusy(false);
     }

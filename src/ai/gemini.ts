@@ -8,7 +8,7 @@ const BASE = 'https://generativelanguage.googleapis.com/v1beta';
 export const DEFAULT_GEMINI_MODEL = 'gemini-flash-latest';
 
 export class AiError extends Error {
-  constructor(public code: 'key' | 'quota' | 'blocked' | 'network' | 'other', message: string) {
+  constructor(public code: 'key' | 'quota' | 'blocked' | 'network' | 'model' | 'other', message: string) {
     super(message);
   }
 }
@@ -21,6 +21,10 @@ export interface GeminiOptions {
   /** Audio sent with the prompt (voice typing): base64 data and its type. */
   audio?: { mime: string; data: string };
   temperature?: number;
+  /** Called when the chosen model was not available and another one worked (the app remembers it). */
+  onModelChange?: (model: string) => void;
+  /** Wait before retrying an overloaded answer (tests use 0). */
+  retryDelayMs?: number;
 }
 
 const fail = async (r: Response): Promise<never> => {
@@ -31,12 +35,53 @@ const fail = async (r: Response): Promise<never> => {
     /* not JSON */
   }
   if (r.status === 400 && /api key/i.test(msg)) throw new AiError('key', msg);
+  // the model name does not exist, is retired, or this key may not use it
+  if (r.status === 404 || ((r.status === 400 || r.status === 403) && /model/i.test(msg))) throw new AiError('model', msg);
   if (r.status === 401 || r.status === 403) throw new AiError('key', msg);
   if (r.status === 429) throw new AiError('quota', msg);
   throw new AiError('other', `${r.status}: ${msg}`);
 };
 
+/** Text (and audio) generation. If the model is not available to this key, the next usable model is tried. */
 export async function geminiGenerate(prompt: string, o: GeminiOptions): Promise<string> {
+  try {
+    return await generateOnceRetry(prompt, o);
+  } catch (e) {
+    if (!(e instanceof AiError) || e.code !== 'model') throw e;
+    const list = await geminiModels(o.key, o.fetchImpl).catch(() => [] as string[]);
+    const tried = o.model || DEFAULT_GEMINI_MODEL;
+    for (const m of rankModels(list).filter((x) => x !== tried).slice(0, 3)) {
+      try {
+        const text = await generateOnce(prompt, { ...o, model: m });
+        o.onModelChange?.(m);
+        return text;
+      } catch (e2) {
+        if (!(e2 instanceof AiError) || e2.code !== 'model') throw e2;
+      }
+    }
+    throw e;
+  }
+}
+
+/** Fast general models first: "flash" before "pro", stable before preview, newest version first. */
+export function rankModels(list: string[]): string[] {
+  const ver = (m: string) => parseFloat((m.match(/gemini-(\d+(?:\.\d+)?)/) || [])[1] || '0');
+  const score = (m: string) => (/flash/.test(m) ? 0 : 10) + (/lite/.test(m) ? 1 : 0) + (/preview|exp/.test(m) ? 5 : 0) + (/latest/.test(m) ? -0.5 : 0);
+  return [...list].sort((a, b) => score(a) - score(b) || ver(b) - ver(a));
+}
+
+/** Google sometimes answers "overloaded" (500/503) at busy times: wait a moment and try once more. */
+async function generateOnceRetry(prompt: string, o: GeminiOptions): Promise<string> {
+  try {
+    return await generateOnce(prompt, o);
+  } catch (e) {
+    if (!(e instanceof AiError) || e.code !== 'other' || !/^5\d\d:/.test(e.message) || o.signal?.aborted) throw e;
+    await new Promise((r) => setTimeout(r, o.retryDelayMs ?? 1500));
+    return generateOnce(prompt, o);
+  }
+}
+
+async function generateOnce(prompt: string, o: GeminiOptions): Promise<string> {
   const f = o.fetchImpl ?? fetch;
   let r: Response;
   try {
@@ -85,5 +130,14 @@ export const AI_ERROR_TEXT: Record<AiError['code'], string> = {
   quota: 'Gemini-র ফ্রি সীমা আপাতত শেষ। কিছুক্ষণ পরে চেষ্টা করুন, বা Claude-এ কপি করে নিন।',
   blocked: 'Gemini এই লেখার উত্তর দেয়নি। Claude-এ কপি করে চেষ্টা করুন।',
   network: 'ইন্টারনেট নেই বা Gemini-তে পৌঁছানো গেল না।',
+  model: 'বাছাই করা Gemini মডেল আপনার key-তে চলছে না। Settings → AI সহকারী → "key যাচাই ও মডেল তালিকা" চেপে অন্য মডেল বাছুন।',
   other: 'Gemini থেকে উত্তর আনা গেল না।',
 };
+
+/** The message for an error, with Google's own reason (short) so a problem can be reported exactly. */
+export function aiErrorMessage(e: unknown): { text: string; detail: string } {
+  const code = e instanceof AiError ? e.code : 'other';
+  const raw = e instanceof Error ? e.message : String(e);
+  const detail = code === 'network' ? '' : raw.replace(/\s+/g, ' ').trim().slice(0, 160);
+  return { text: AI_ERROR_TEXT[code], detail };
+}

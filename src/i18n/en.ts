@@ -800,4 +800,6 @@ export const EN: Record<string, string> = {
   "অভিধান: {n}টা শব্দ (উৎস: bangla-spellcheck-dict)। আপনার নিজের শব্দ সবসময় আগে আসে; দুই অক্ষর লেখার পর অভিধানের শব্দ আসে।": "Dictionary: {n} words (source: bangla-spellcheck-dict). Your own words always come first; dictionary words appear after two letters.",
   "অভিধান লোড হচ্ছে…": "Loading the dictionary…",
   "অভিধান বন্ধ: শুধু আপনার শেখা শব্দ ও আইনি শব্দ।": "Dictionary off: only your learned words and legal words.",
+  "Gemini মডেল বদলে {m} বাছা হলো": "Gemini model changed to {m}",
+  "বাছাই করা Gemini মডেল আপনার key-তে চলছে না। Settings → AI সহকারী → \"key যাচাই ও মডেল তালিকা\" চেপে অন্য মডেল বাছুন।": "The chosen Gemini model does not work with your key. In Settings → AI assistant press \"Check key and model list\" and pick another model.",
 };

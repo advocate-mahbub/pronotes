@@ -4,14 +4,14 @@
  */
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import type { Editor } from '@tiptap/react';
-import { AiError, AI_ERROR_TEXT, VOICE_MAX_SECONDS, VoiceRecorder, toMono16k, transcribe } from '../ai';
+import { AiError, aiErrorMessage, VOICE_MAX_SECONDS, VoiceRecorder, toMono16k, transcribe } from '../ai';
 import { insertPlainText, textBeforeCaret } from '../editor';
 import { useT } from '../i18n';
 import { load, save } from './prefs';
 
 interface Props {
   editor: Editor;
-  gemini: { key: string; model: string };
+  gemini: { key: string; model: string; setModel?: (m: string) => void };
   say: (msg: string) => void;
   onOpenSettings: () => void;
   disabled?: boolean;
@@ -61,7 +61,7 @@ export function AiVoiceKey({ editor, gemini, say, onOpenSettings, disabled, icon
     try {
       const samples = await toMono16k(await r.stop());
       abort.current = new AbortController();
-      const text = await transcribe(samples, { key: gemini.key, model: gemini.model, signal: abort.current.signal });
+      const text = await transcribe(samples, { key: gemini.key, model: gemini.model, signal: abort.current.signal, onModelChange: gemini.setModel });
       if (!text) return say('কোনো কথা শোনা যায়নি');
       const before = textBeforeCaret(editor.view);
       const lead = before && !/\s$/.test(before) && !/^[\s।,;:?!]/.test(text) ? ' ' : '';
@@ -69,7 +69,9 @@ export function AiVoiceKey({ editor, gemini, say, onOpenSettings, disabled, icon
       insertPlainText(editor.view, lead + text);
     } catch (e) {
       if ((e as Error).name === 'AbortError') return;
-      say(e instanceof AiError ? AI_ERROR_TEXT[e.code] : 'রেকর্ড করা কথা পড়া গেল না');
+      if (!(e instanceof AiError)) return say('রেকর্ড করা কথা পড়া গেল না');
+      const m = aiErrorMessage(e);
+      say(m.detail ? t(m.text) + ' (Google: ' + m.detail + ')' : m.text);
     } finally {
       abort.current = null;
       setState('idle');

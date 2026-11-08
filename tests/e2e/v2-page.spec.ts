@@ -39,7 +39,7 @@ test('page tab: paper, orientation, margins, document language, page numbers rea
   await page.getByTestId('portrait').click();
   await page.getByTestId('margins').click();
   await page.getByTestId('margin-narrow').click();
-  expect(await cssVar(page, '--mt')).toBe('48px');
+  await expect.poll(() => cssVar(page, '--mt')).toBe('48px');
   await page.getByTestId('doc-lang').selectOption('en');
   const num = await editor(page).locator('p').first().evaluate((e) => getComputedStyle(e, '::before').content);
   expect(num).toContain('counter(pn)');
@@ -69,12 +69,12 @@ test('page setup sheet: custom size in inches; default for new drafts', async ({
   await page.getByTestId('ps-h').fill('12');
   await page.getByTestId('ps-m-top').fill('2');
   await page.getByTestId('page-default').click();
-  expect(await cssVar(page, '--pw')).toBe('768px');
-  expect(await cssVar(page, '--ph')).toBe('1152px');
-  expect(await cssVar(page, '--mt')).toBe('192px');
+  await expect.poll(() => cssVar(page, '--pw')).toBe('768px');
+  await expect.poll(() => cssVar(page, '--ph')).toBe('1152px');
+  await expect.poll(() => cssVar(page, '--mt')).toBe('192px');
   await page.getByTestId('new-doc').click();
   await page.getByTestId('new-legal').click();
-  expect(await cssVar(page, '--pw')).toBe('768px');
+  await expect.poll(() => cssVar(page, '--pw')).toBe('768px');
 });
 
 test('Print Layout shows separate pages with page numbers; Web Layout is one sheet; a page break starts a new page', async ({ page }) => {
@@ -144,7 +144,7 @@ test('zoom: 100%, whole page, page width', async ({ page }) => {
   await start(page);
   await page.getByTestId('tab-view').click();
   await page.getByTestId('zoom-100').click();
-  expect(await cssVar(page, '--z')).toBe('1');
+  await expect.poll(() => cssVar(page, '--z')).toBe('1');
   await page.getByTestId('zoom').selectOption('page');
   expect(parseFloat(await cssVar(page, '--z'))).toBeLessThan(0.6);
   await page.getByTestId('zoom-in').click();

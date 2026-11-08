@@ -63,7 +63,7 @@ interface Props {
   fixChandra: boolean;
   toggleKey: import('../bornona-engine').ToggleKey;
   /** AI assistant */
-  gemini: { key: string; model: string };
+  gemini: { key: string; model: string; setModel?: (m: string) => void };
   privateWords: string[];
   setPrivateWords: (w: string[]) => void;
   onOpenSettings: () => void;

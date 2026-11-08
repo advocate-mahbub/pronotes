@@ -662,7 +662,7 @@ export function App() {
               page={normalizePage(current.page, pageDefault)} onPage={changePage}
               onMakeDefaultPage={(pg) => { setPageDefault(pg); say('নতুন লিগ্যাল ড্রাফট এখন থেকে এই পাতায় খুলবে'); }}
               view={viewPrefs} setView={setViewPrefs} fixChandra={fixChandra} toggleKey={toggleKey}
-              gemini={{ key: geminiKey, model: geminiModel }} privateWords={privateWords} setPrivateWords={setPrivateWords}
+              gemini={{ key: geminiKey, model: geminiModel, setModel: (m: string) => { setGeminiModel(m); say('Gemini মডেল বদলে {m} বাছা হলো', { m }); } }} privateWords={privateWords} setPrivateWords={setPrivateWords}
               onOpenSettings={() => setSettingsOpen(true)}
               ansiTyping={ansiTyping} ansiKey={ansiKey} onToggleAnsi={() => setAnsiTyping(!ansiTypingRef.current)}
               output={output} setOutput={setOutput}
