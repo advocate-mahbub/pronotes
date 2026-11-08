@@ -1,9 +1,9 @@
-# ProNotes সাইটে বসানো: GitHub Pages, `pronotes.mahbuburrahman.bd`
+# ProNotes সাইটে বসানো: GitHub Pages, `notes.mahbuburrahman.bd`
 
 মালিকের সিদ্ধান্ত (decision 46):
 
 - আলাদা **public** repo (`advocate-mahbub/pronotes`), তার নিজের GitHub Pages
-- ঠিকানা: `https://pronotes.mahbuburrahman.bd`
+- ঠিকানা: `https://notes.mahbuburrahman.bd`
 - লাইসেন্স: সর্বস্বত্ব সংরক্ষিত (`LICENSE`)। কোড সবাই দেখতে পাবে, কিন্তু অনুমতি ছাড়া কপি, বদল বা অন্য কোথাও চালানো যাবে না।
 
 ProNotes একটা স্থির (static) PWA। সার্ভার বা ডেটাবেস লাগে না; সব লেখা ব্যবহারকারীর নিজের ডিভাইসে থাকে। GitHub নিজেই build করে `dist/` সাইটে বসায় (`.github/workflows/deploy.yml`)।
@@ -31,13 +31,13 @@ ProNotes একটা স্থির (static) PWA। সার্ভার ব�
    - ৩–৫ মিনিটে সবুজ ✓ হলে `https://advocate-mahbub.github.io/pronotes/` ঠিকানায় অ্যাপ খোলে।
    - প্রথমবার লাল ✗ হলে workflow-টা আবার চালান: Actions → Deploy → **Re-run jobs**। ধাপ ২-এর Source ঠিক না থাকলে প্রথম চালানো ব্যর্থ হতে পারে।
 
-## ধাপ ৩. নিজের ঠিকানা `pronotes.mahbuburrahman.bd`
+## ধাপ ৩. নিজের ঠিকানা `notes.mahbuburrahman.bd`
 
 **ক. DNS-এ একটা record যোগ** (যেখানে `mahbuburrahman.bd`-এর DNS চালান, যেমন ডোমেইনের প্যানেল):
 
 | Type | Name / Host | Value / Target | TTL |
 |---|---|---|---|
-| CNAME | `pronotes` | `advocate-mahbub.github.io` | Auto / 3600 |
+| CNAME | `notes` | `advocate-mahbub.github.io.` (প্যানেল ডট চাইলে শেষে ডটসহ) | Auto / 3600 |
 
 - Value-তে শুধু `advocate-mahbub.github.io` লিখবেন, শেষে `/pronotes` নয়।
 - আপনার মূল সাইটের `www` আর `@` record যেমন আছে তেমন থাকবে; শুধু নতুন একটা নাম যোগ হচ্ছে।
@@ -45,7 +45,7 @@ ProNotes একটা স্থির (static) PWA। সার্ভার ব�
 
 **খ. GitHub-এ ঠিকানা বসানো**
 
-1. repo → **Settings → Pages → Custom domain** → `pronotes.mahbuburrahman.bd` → **Save**
+1. repo → **Settings → Pages → Custom domain** → `notes.mahbuburrahman.bd` → **Save**
 2. "DNS check successful" এলে **Enforce HTTPS** টিক দিন। সার্টিফিকেট আসতে কয়েক মিনিট থেকে কয়েক ঘণ্টা লাগতে পারে; ততক্ষণ টিক বক্স ধূসর থাকতে পারে।
 
 **গ. (সুপারিশ) ডোমেইন যাচাই**
@@ -54,7 +54,7 @@ GitHub-এর account বা organization → **Settings → Pages → Add a dom
 
 এতে অন্য কেউ আপনার ডোমেইনের নামে GitHub Pages বসাতে পারবে না। আপনার মূল সাইটের জন্য এটা আগে করা থাকলে আর লাগবে না।
 
-> **ঠিকানা একবারই ঠিক করুন।** ব্রাউজার প্রতিটা ঠিকানার লেখা আলাদা জায়গায় রাখে। `advocate-mahbub.github.io/pronotes/`-এ লেখা ড্রাফট `pronotes.mahbuburrahman.bd`-এ দেখা যাবে না। তাই নিজের ঠিকানা চালু হওয়ার পর থেকেই ব্যবহার শুরু করুন।
+> **ঠিকানা একবারই ঠিক করুন।** ব্রাউজার প্রতিটা ঠিকানার লেখা আলাদা জায়গায় রাখে। `advocate-mahbub.github.io/pronotes/`-এ লেখা ড্রাফট `notes.mahbuburrahman.bd`-এ দেখা যাবে না। তাই নিজের ঠিকানা চালু হওয়ার পর থেকেই ব্যবহার শুরু করুন।
 > claude.ai-এর প্রিভিউতে কিছু লিখে থাকলে সেখান থেকে **Settings → ব্যাকআপ** নিন, তারপর নতুন সাইটে **ব্যাকআপ → ফেরত আনুন**।
 
 ## ধাপ ৪. ওয়েবসাইটে লিংক দেওয়া
@@ -63,8 +63,8 @@ GitHub-এর account বা organization → **Settings → Pages → Add a dom
 
 | কোথায় | কী দেবেন |
 |---|---|
-| Tools পাতা (বা যেখানে ProNotes-এর পরিচয় দেবেন) | `ProNotes খুলুন` → `https://pronotes.mahbuburrahman.bd` |
-| সাইটের footer | `ProNotes লাইসেন্স` → `https://pronotes.mahbuburrahman.bd/license.html` |
+| Tools পাতা (বা যেখানে ProNotes-এর পরিচয় দেবেন) | `ProNotes খুলুন` → `https://notes.mahbuburrahman.bd` |
+| সাইটের footer | `ProNotes লাইসেন্স` → `https://notes.mahbuburrahman.bd/license.html` |
 
 লাইসেন্সের পাতা (`license.html`) ProNotes-এর সাথেই প্রকাশ হয়: বাংলা পাঠ, আর নিচে ইংরেজি (বাধ্যতামূলক) পাঠ। অ্যাপের ভেতরে **Settings → অ্যাপ: অফলাইন ও ইনস্টল**-এও এর লিংক আছে।
 
@@ -85,7 +85,7 @@ git push
 
 ## বসানোর পর পরীক্ষা
 
-- [ ] `https://pronotes.mahbuburrahman.bd` খোলে, তালার চিহ্ন আছে
+- [ ] `https://notes.mahbuburrahman.bd` খোলে, তালার চিহ্ন আছে
 - [ ] Settings → **অ্যাপ: অফলাইন ও ইনস্টল**-এ "অফলাইন: চালু"
 - [ ] iPad Safari → Share → **Add to Home Screen** → হোম স্ক্রিন থেকে পুরো পর্দায় খোলে
 - [ ] Airplane mode-এ অ্যাপ খোলে, লেখা সেভ হয়

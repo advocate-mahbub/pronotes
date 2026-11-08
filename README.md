@@ -22,7 +22,7 @@ npm run test:e2e     # ব্রাউজার test (প্রথমবার: 
 ## GitHub ও সাইটে বসানো
 
 - GitHub-এ private repo বানিয়ে তোলা: [`docs/GITHUB.md`](docs/GITHUB.md)
-- সাইটে বসানো (GitHub Pages → `pronotes.mahbuburrahman.bd`): [`docs/DEPLOY.md`](docs/DEPLOY.md)
+- সাইটে বসানো (GitHub Pages → `notes.mahbuburrahman.bd`): [`docs/DEPLOY.md`](docs/DEPLOY.md)
 - বসানোর পর iPad-এ পরীক্ষা: [`docs/ipad-checklist.md`](docs/ipad-checklist.md)
 - প্রতিটা push-এ GitHub টাইপ, unit test ও build পরীক্ষা করে: `.github/workflows/ci.yml`
 - `main`-এ push হলে test পাস করলে GitHub Pages-এ বসে: `.github/workflows/deploy.yml`
