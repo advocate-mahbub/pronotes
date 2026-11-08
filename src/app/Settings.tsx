@@ -330,6 +330,7 @@ export function Settings(p: Props) {
 
       <details>
         <summary>{t('অ্যাপ: অফলাইন ও ইনস্টল')}</summary>
+        <p className="note"><a href="./license.html" target="_blank" rel="noopener" data-testid="license-link">{t('লাইসেন্স ও ব্যবহারের শর্ত')}</a> · © ২০২৬ মাহবুবুর রহমান</p>
         {!p.app.supported ? (
           <p className="note" data-testid="app-status">{t('এই প্রিভিউতে অফলাইন ও ইনস্টল চলে না। নিজের https সাইটে বসানোর পর চলবে।')}</p>
         ) : (

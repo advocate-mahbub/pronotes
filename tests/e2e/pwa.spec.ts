@@ -140,3 +140,16 @@ test('new version: notice appears, the open draft is saved, then the app reloads
     await s.close();
   }
 });
+
+test('licence page: linked from Settings, works offline-cached, CSP meta in the build', async ({ page }) => {
+  await page.goto('./');
+  const csp = await page.locator('meta[http-equiv="Content-Security-Policy"]').getAttribute('content');
+  expect(csp).toContain("connect-src 'self' data: blob: https://generativelanguage.googleapis.com");
+  await page.getByTestId('settings').click();
+  const d = page.locator('details', { has: page.locator('summary', { hasText: 'অ্যাপ: অফলাইন ও ইনস্টল' }) });
+  if (!(await d.evaluate((e) => (e as HTMLDetailsElement).open))) await d.locator('summary').click();
+  const [lic] = await Promise.all([page.waitForEvent('popup'), page.getByTestId('license-link').click()]);
+  await expect(lic.locator('h1')).toContainText('লাইসেন্স');
+  await expect(lic.locator('body')).toContainText('সর্বস্বত্ব সংরক্ষিত');
+  await expect(lic.locator('summary')).toContainText('English');
+});

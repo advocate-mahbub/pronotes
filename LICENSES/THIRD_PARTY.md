@@ -9,7 +9,11 @@
 | Probhat, Munir Optima (uni) layouts (Shabab Mustafa) | same | **Not verified** |
 | Avro Easy layout (OmicronLab) | same | **Not verified** |
 
-Until the layout permissions are verified, keep this repository **private**.
+The owner decided on 2026-11-08 to publish the app on GitHub Pages from a public repository
+(decision 46), knowing the layout permissions above are not yet verified. ProNotes' own code is
+under `LICENSE` (all rights reserved); that licence does not cover these layouts.
+Recommended: ask the layout authors for written permission, or publish a build without the
+unverified layouts (users can still add their own `.avrolayout` files).
 
 SutonnyMJ / SutonnyOMJ are commercial fonts (Ananda Computers). They are **not** included;
 users upload their own licensed copy in the app.

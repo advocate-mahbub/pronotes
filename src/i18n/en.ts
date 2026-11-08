@@ -640,4 +640,5 @@ export const EN: Record<string, string> = {
   "তথ্য": "Info",
   "আগের ভার্সন…": "Earlier versions…",
   "তৈরি করুন": "Create",
+  "লাইসেন্স ও ব্যবহারের শর্ত": "Licence and terms of use",
 };

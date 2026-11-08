@@ -1,0 +1,59 @@
+ProNotes — Licence and Terms of Use
+Copyright (c) 2026 Mahbubur Rahman. All rights reserved.
+
+This licence covers ProNotes: its source code, design, interface text and documentation
+("the Software"), except the third-party components listed in LICENSES/THIRD_PARTY.md.
+
+1. Ownership
+   The Software is owned by Mahbubur Rahman ("the Owner"). Making the source code visible
+   does not transfer any right in it, except the rights given in this licence.
+
+2. What you may do
+   a) Use the app at its official address (https://pronotes.mahbuburrahman.bd, or another
+      address the Owner publishes) for your own personal or professional work, free of charge.
+   b) Install it on your own devices from that address ("Add to Home Screen").
+   c) Read the source code in the public repository, for example to check how it treats
+      your data. Viewing and forking within GitHub is allowed to the extent GitHub's Terms
+      of Service require.
+
+3. What you may not do without the Owner's written permission
+   a) Copy, modify, adapt, translate or make works based on the Software or any part of it.
+   b) Publish, host, distribute, sublicense, sell, rent or lend the Software or a copy of it,
+      including running it under another name or at another address.
+   c) Remove or change copyright, licence or attribution notices.
+   d) Use the name "ProNotes", or the Owner's name, to suggest endorsement of another product.
+
+4. Your documents and data
+   Everything you write in ProNotes is yours. It is stored only on your own device (in the
+   browser's storage). The Owner has no access to it, keeps no copy and runs no analytics or
+   tracking. Backups are files you save and keep yourself.
+   Optional AI features send text only when you choose to, only to the service you choose
+   (for example Google Gemini with your own key), and are subject to that service's terms.
+   You are responsible for not sending confidential client information.
+
+5. Third-party components
+   Libraries, fonts and keyboard layouts included in the Software belong to their authors and
+   are used under their own licences (see LICENSES/THIRD_PARTY.md). Nothing in this licence
+   limits any right you have under those licences. Fonts you add yourself (for example
+   SutonnyMJ) are not part of the Software; you must hold your own licence for them.
+
+6. No warranty
+   The Software is provided "as is", without warranty of any kind. It is a writing and
+   formatting tool; it does not give legal advice. Check every document, including Word files,
+   Bijoy conversions, amounts in words and anything produced with AI help, before you use it.
+
+7. Limitation of liability
+   To the extent the law allows, the Owner is not liable for any loss or damage arising from
+   the use of, or inability to use, the Software, including loss of data. Keep regular backups.
+
+8. Ending of rights
+   If you break this licence, your rights under it end automatically.
+
+9. Law and courts
+   This licence is governed by the laws of Bangladesh. The courts at Dhaka have jurisdiction.
+
+10. Permission and contact
+    For any use not allowed above, ask through the contact page at https://www.mahbuburrahman.bd.
+
+A Bangla version is published with the app (license.html). If the two differ, this English
+text prevails.

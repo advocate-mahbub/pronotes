@@ -2,6 +2,8 @@
   "name": "pronotes",
   "private": true,
   "version": "0.1.0",
+  "license": "SEE LICENSE IN LICENSE",
+  "author": "Mahbubur Rahman",
   "type": "module",
   "description": "ProNotes: iPad-first offline Bangla legal drafting PWA",
   "scripts": {

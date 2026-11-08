@@ -22,10 +22,11 @@ npm run test:e2e     # ব্রাউজার test (প্রথমবার: 
 ## GitHub ও সাইটে বসানো
 
 - GitHub-এ private repo বানিয়ে তোলা: [`docs/GITHUB.md`](docs/GITHUB.md)
-- সাইটে বসানো (Cloudflare Pages বা আপনার ওয়েবসাইটের `/pronotes/`): [`docs/DEPLOY.md`](docs/DEPLOY.md)
+- সাইটে বসানো (GitHub Pages → `pronotes.mahbuburrahman.bd`): [`docs/DEPLOY.md`](docs/DEPLOY.md)
 - বসানোর পর iPad-এ পরীক্ষা: [`docs/ipad-checklist.md`](docs/ipad-checklist.md)
 - প্রতিটা push-এ GitHub টাইপ, unit test ও build পরীক্ষা করে: `.github/workflows/ci.yml`
-- নিরাপত্তা ও cache-এর header: `public/_headers` (Cloudflare Pages/Netlify মানে)
+- `main`-এ push হলে test পাস করলে GitHub Pages-এ বসে: `.github/workflows/deploy.yml`
+- নিরাপত্তা: production build-এর `index.html`-এ CSP `<meta>`; `public/_headers` শুধু Cloudflare/Netlify-তে কাজে লাগে
 
 
 ## ফোল্ডার
@@ -53,3 +54,7 @@ npm run test:e2e     # ব্রাউজার test (প্রথমবার: 
 - সোর্স ফাইলে কোনো "Unicode normalise" টুল চালাবেন না: `src/bornona-engine/normalize.ts`-এর ভেতরে ইচ্ছাকৃতভাবে ভাঙা রূপ লেখা আছে।
 - মক্কেলের আসল তথ্য repo-তে বা test-এ রাখবেন না।
 - লাইসেন্স: `LICENSES/THIRD_PARTY.md` দেখুন। লেআউটের অনুমতি যাচাই না হওয়া পর্যন্ত repo private।
+
+## লাইসেন্স
+
+© ২০২৬ মাহবুবুর রহমান। সর্বস্বত্ব সংরক্ষিত। শর্ত: [`LICENSE`](LICENSE) (বাংলা পাঠ: `public/license.html`)। ভেতরের অন্যদের অংশের লাইসেন্স: [`LICENSES/THIRD_PARTY.md`](LICENSES/THIRD_PARTY.md)।

@@ -1,12 +1,27 @@
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import { VitePWA } from 'vite-plugin-pwa';
+import type { Plugin } from 'vite';
+
+/**
+ * Content-Security-Policy as a <meta> tag in the production build, for hosts that cannot send
+ * headers (GitHub Pages). Same rules as public/_headers, minus frame-ancestors (not allowed in
+ * <meta>). Not added to the single-file claude.ai preview, which inlines its script.
+ */
+const CSP = "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data: blob:; " +
+  "connect-src 'self' data: blob: https://generativelanguage.googleapis.com; worker-src 'self'; manifest-src 'self'; base-uri 'self'; form-action 'none'; object-src 'none'";
+const cspMeta = (): Plugin => ({
+  name: 'pronotes-csp-meta',
+  apply: 'build',
+  transformIndexHtml: (html) => (process.env.PRONOTES_PREVIEW ? html : html.replace('<meta charset="utf-8" />', `<meta charset="utf-8" />\n    <meta http-equiv="Content-Security-Policy" content="${CSP}" />`)),
+});
 
 // base './' so the build also works from a sub-folder (e.g. GitHub Pages project site).
 export default defineConfig({
   base: './',
   plugins: [
     react(),
+    cspMeta(),
     VitePWA({
       // The app asks before updating (a reload must never cut off an unsaved draft).
       registerType: 'prompt',

@@ -1,128 +1,117 @@
-# ProNotes সাইটে বসানো (deploy)
+# ProNotes সাইটে বসানো: GitHub Pages, `pronotes.mahbuburrahman.bd`
 
-ProNotes একটা স্থির (static) PWA:
+মালিকের সিদ্ধান্ত (decision 46):
 
-- কোনো সার্ভার বা ডেটাবেস লাগে না। সব লেখা ব্যবহারকারীর নিজের ডিভাইসে (IndexedDB) থাকে।
-- সাইটে শুধু `npm run build`-এর তৈরি `dist/` ফোল্ডারটা রাখতে হয়।
-- অফলাইন আর "হোম স্ক্রিনে যোগ" চালু হতে **https** লাগে।
+- আলাদা **public** repo (`advocate-mahbub/pronotes`), তার নিজের GitHub Pages
+- ঠিকানা: `https://pronotes.mahbuburrahman.bd`
+- লাইসেন্স: সর্বস্বত্ব সংরক্ষিত (`LICENSE`)। কোড সবাই দেখতে পাবে, কিন্তু অনুমতি ছাড়া কপি, বদল বা অন্য কোথাও চালানো যাবে না।
 
-> **বসানোর আগে লাইসেন্স।** সাইটে তুললে অ্যাপের ফাইল যে কেউ ডাউনলোড করতে পারে, তাই ভেতরের কিবোর্ড লেআউটগুলোও বিলি হয়ে যায়।
-> Bornona, National, Probhat, Munir Optima, Avro Easy — কোনোটার অনুমতি এখনো যাচাই হয়নি (`LICENSES/THIRD_PARTY.md`)।
-> যতক্ষণ যাচাই না হয়, দুটো পথ আছে:
-> 1. সাইটের ঠিকানা কাউকে দেবেন না। `noindex` দেওয়া আছে, তাই Google-এ আসবে না। তবে ঠিকানা জানলে যে কেউ খুলতে পারবে।
-> 2. Claude-কে বলুন, যাচাই না হওয়া লেআউট বাদ দিয়ে build করে দেবে। আপনার নিজের `.avrolayout` ফাইল অ্যাপে আগের মতো যোগ করা যাবে।
+ProNotes একটা স্থির (static) PWA। সার্ভার বা ডেটাবেস লাগে না; সব লেখা ব্যবহারকারীর নিজের ডিভাইসে থাকে। GitHub নিজেই build করে `dist/` সাইটে বসায় (`.github/workflows/deploy.yml`)।
 
----
-
-## কোন পথে
-
-| | **ক. Cloudflare Pages (সুপারিশ)** | খ. আপনার ওয়েবসাইটের GitHub Pages-এ |
-|---|---|---|
-| ঠিকানা | `https://pronotes.mahbuburrahman.bd` | `https://www.mahbuburrahman.bd/pronotes/` |
-| খরচ | ফ্রি | ফ্রি |
-| নতুন account | Cloudflare (ফ্রি) | লাগে না |
-| Private repo থেকে | চলে | চলে না। GitHub-এর ফ্রি প্ল্যানে Pages শুধু public repo থেকে চলে, তাই হাতে build করে ওয়েবসাইটের repo-তে কপি করতে হয় |
-| আপডেট | `git push` করলেই নিজে থেকে | প্রতিবার build → কপি → ওয়েবসাইটের repo-তে push |
-| নিরাপত্তা header (`public/_headers`) | কাজ করে | কাজ করে না (GitHub Pages header বদলাতে দেয় না) |
-| ওয়েবসাইটের ওপর প্রভাব | নেই; শুধু একটা DNS record যোগ | ওয়েবসাইটের repo-তে ProNotes-এর build ফাইল ঢোকে |
-
-**আমার মত:** পথ ক। কারণ repo private থাকে, আপডেট নিজে থেকে হয়, নিরাপত্তা header কাজ করে, আর আপনার Astro সাইটের repo পরিষ্কার থাকে।
-
-> **একবার ঠিকানা বেছে নিলে আর বদলাবেন না।**
-> ব্রাউজার প্রতিটা ঠিকানার (domain) লেখা আলাদা জায়গায় রাখে। ঠিকানা বদলালে আগের ঠিকানার ড্রাফট নতুনটায় দেখা যাবে না।
-> সরাতে হলে পুরোনো জায়গা থেকে **Settings → ব্যাকআপ** নিয়ে নতুনটায় ফেরত আনতে হবে।
-> claude.ai-এর প্রিভিউতে লেখা কিছু থাকলে সেটাও এভাবেই আনতে হবে।
+> ⚠️ **Public করার আগে একটা কথা।** repo বা সাইট public হলে ভেতরের কিবোর্ড লেআউটও (Bornona, National, Probhat, Munir Optima, Avro Easy) সবার কাছে চলে যায়। এগুলো বিলি করার অনুমতি এখনো যাচাই হয়নি (`LICENSES/THIRD_PARTY.md`)।
+> আপনার "সর্বস্বত্ব সংরক্ষিত" লাইসেন্স শুধু আপনার নিজের কোডে খাটে, এই লেআউটগুলোতে নয়। সিদ্ধান্ত আপনার। সম্ভাব্য পথ:
+> 1. নির্মাতাদের কাছে লিখিত অনুমতি চাওয়া।
+> 2. যাচাই না হওয়া লেআউট বাদ দিয়ে প্রকাশ। ব্যবহারকারী নিজের `.avrolayout` ফাইল যোগ করে নেবেন। বললে Claude এই সংস্করণ করে দেবে।
+> 3. জেনে-বুঝে এখনই প্রকাশ, পরে অনুমতি নেওয়া।
 
 ---
 
-## পথ ক: Cloudflare Pages
+## ধাপ ১. repo বানানো ও কোড তোলা
 
-### ১. Cloudflare-এ project
+`docs/GITHUB.md` অনুযায়ী করুন, শুধু repo বানানোর সময় **Public** বাছবেন। আগেই Private বানিয়ে থাকলে:
 
-1. https://dash.cloudflare.com/sign-up — ফ্রি account খুলুন। (account খোলা আপনার নিজের কাজ; Claude খুলবে না।)
-2. বাম মেনু **Workers & Pages → Create → Pages → Connect to Git**।
-3. **GitHub** বাছুন। অনুমতি দেওয়ার সময় **"Only select repositories" → `pronotes`** দিন, সব repo নয়।
-4. Repo `pronotes` → **Begin setup**, তারপর ঘরগুলো এভাবে পূরণ করুন:
+**Settings → General → (একদম নিচে) Danger Zone → Change repository visibility → Make public**
 
-| ঘর | মান |
-|---|---|
-| Project name | `pronotes` |
-| Production branch | `main` |
-| Framework preset | `None` (বা `Vite`) |
-| Build command | `npm run build` |
-| Build output directory | `dist` |
-| Environment variables | `NODE_VERSION` = `22` |
+## ধাপ ২. GitHub Pages চালু
 
-5. **Save and Deploy** চাপুন। ২–৩ মিনিটে `https://pronotes.pages.dev` (বা এর মতো একটা ঠিকানা) চালু হবে।
-6. সেই ঠিকানা খুলে দেখুন অ্যাপ চলছে কি না। নিচের "বসানোর পর পরীক্ষা" অংশ মিলিয়ে নিন।
+1. repo → **Settings → Pages**
+2. **Build and deployment → Source: GitHub Actions** বেছে নিন।
+   "Deploy from a branch" নয়; আমাদের `deploy.yml` নিজেই build করে।
+3. **Actions** ট্যাবে দেখুন "Deploy to GitHub Pages" চলছে।
+   - ৩–৫ মিনিটে সবুজ ✓ হলে `https://advocate-mahbub.github.io/pronotes/` ঠিকানায় অ্যাপ খোলে।
+   - প্রথমবার লাল ✗ হলে workflow-টা আবার চালান: Actions → Deploy → **Re-run jobs**। ধাপ ২-এর Source ঠিক না থাকলে প্রথম চালানো ব্যর্থ হতে পারে।
 
-### ২. নিজের ঠিকানা: `pronotes.mahbuburrahman.bd`
+## ধাপ ৩. নিজের ঠিকানা `pronotes.mahbuburrahman.bd`
 
-1. Cloudflare-এ project → **Custom domains → Set up a custom domain** → `pronotes.mahbuburrahman.bd` লিখুন।
-2. Cloudflare একটা **CNAME** record দেখাবে।
-3. `mahbuburrahman.bd`-এর DNS যেখানে চালান (ডোমেইন যেখান থেকে কিনেছেন তাদের প্যানেল, বা অন্য DNS সেবা), সেখানে এই record যোগ করুন:
+**ক. DNS-এ একটা record যোগ** (যেখানে `mahbuburrahman.bd`-এর DNS চালান, যেমন ডোমেইনের প্যানেল):
 
 | Type | Name / Host | Value / Target | TTL |
 |---|---|---|---|
-| CNAME | `pronotes` | `pronotes.pages.dev` (Cloudflare যা দেখায়) | Auto / 3600 |
+| CNAME | `pronotes` | `advocate-mahbub.github.io` | Auto / 3600 |
 
-   - এতে আপনার মূল সাইট (`www` আর `@` record, যা GitHub Pages-এ যায়) একটুও বদলায় না। শুধু নতুন একটা নাম যোগ হয়।
-   - ⚠️ DNS-এ বদল আপনি নিজে করবেন; Claude DNS-এ হাত দেবে না।
-4. কয়েক মিনিট থেকে কয়েক ঘণ্টায় Cloudflare-এ **Active** দেখাবে, https সার্টিফিকেট নিজে থেকে আসবে।
+- Value-তে শুধু `advocate-mahbub.github.io` লিখবেন, শেষে `/pronotes` নয়।
+- আপনার মূল সাইটের `www` আর `@` record যেমন আছে তেমন থাকবে; শুধু নতুন একটা নাম যোগ হচ্ছে।
+- DNS-এ বদল আপনি নিজে করবেন।
 
-### ৩. আপডেট
+**খ. GitHub-এ ঠিকানা বসানো**
 
-`git push` করলে Cloudflare নিজে থেকে নতুন build করে বসায়। iPad-এ খোলা অ্যাপের নিচে "নতুন ভার্সন আছে" বার্তা আসে। "এখন আপডেট করুন" চাপলে খোলা ড্রাফট সেভ করে তারপর নতুন ভার্সনে যায়।
+1. repo → **Settings → Pages → Custom domain** → `pronotes.mahbuburrahman.bd` → **Save**
+2. "DNS check successful" এলে **Enforce HTTPS** টিক দিন। সার্টিফিকেট আসতে কয়েক মিনিট থেকে কয়েক ঘণ্টা লাগতে পারে; ততক্ষণ টিক বক্স ধূসর থাকতে পারে।
 
-ভুল ভার্সন চলে গেলে: Cloudflare → project → **Deployments** → আগের সফল deployment → **Rollback**।
+**গ. (সুপারিশ) ডোমেইন যাচাই**
 
----
+GitHub-এর account বা organization → **Settings → Pages → Add a domain** → `mahbuburrahman.bd`। GitHub একটা TXT record দেবে, সেটা DNS-এ যোগ করে **Verify** চাপুন।
 
-## পথ খ: ওয়েবসাইটের GitHub Pages-এ (`/pronotes/`)
+এতে অন্য কেউ আপনার ডোমেইনের নামে GitHub Pages বসাতে পারবে না। আপনার মূল সাইটের জন্য এটা আগে করা থাকলে আর লাগবে না।
 
-ProNotes `base: './'` দিয়ে build হয়, তাই উপ-ফোল্ডার থেকেও চলে।
+> **ঠিকানা একবারই ঠিক করুন।** ব্রাউজার প্রতিটা ঠিকানার লেখা আলাদা জায়গায় রাখে। `advocate-mahbub.github.io/pronotes/`-এ লেখা ড্রাফট `pronotes.mahbuburrahman.bd`-এ দেখা যাবে না। তাই নিজের ঠিকানা চালু হওয়ার পর থেকেই ব্যবহার শুরু করুন।
+> claude.ai-এর প্রিভিউতে কিছু লিখে থাকলে সেখান থেকে **Settings → ব্যাকআপ** নিন, তারপর নতুন সাইটে **ব্যাকআপ → ফেরত আনুন**।
 
-1. ProNotes ফোল্ডারে:
+## ধাপ ৪. ওয়েবসাইটে লিংক দেওয়া
 
-   ```bash
-   npm ci
-   npm run build
-   ```
+আপনার Astro সাইট (`advocate-mahbub-website`) আলাদা repo; সেখানে শুধু লিংক দিতে হবে:
 
-2. তৈরি হওয়া `dist/`-এর **ভেতরের সব কিছু** ওয়েবসাইটের repo-র `public/pronotes/` ফোল্ডারে কপি করুন। আগের ফাইল থাকলে আগে সেগুলো মুছে দিন, যাতে পুরোনো ফাইল না থেকে যায়।
-3. ওয়েবসাইটের repo-তে:
+| কোথায় | কী দেবেন |
+|---|---|
+| Tools পাতা (বা যেখানে ProNotes-এর পরিচয় দেবেন) | `ProNotes খুলুন` → `https://pronotes.mahbuburrahman.bd` |
+| সাইটের footer | `ProNotes লাইসেন্স` → `https://pronotes.mahbuburrahman.bd/license.html` |
 
-   ```bash
-   git add public/pronotes
-   git commit -m "ProNotes আপডেট"
-   git push
-   ```
+লাইসেন্সের পাতা (`license.html`) ProNotes-এর সাথেই প্রকাশ হয়: বাংলা পাঠ, আর নিচে ইংরেজি (বাধ্যতামূলক) পাঠ। অ্যাপের ভেতরে **Settings → অ্যাপ: অফলাইন ও ইনস্টল**-এও এর লিংক আছে।
 
-4. GitHub Pages-এ সাইট নতুন হলে খুলুন: `https://www.mahbuburrahman.bd/pronotes/`
+## ধাপ ৫. আপডেট
 
-সীমা:
+`git push` করলেই কাজ শুরু হয়:
 
-- ওয়েবসাইটের repo public, তাই ProNotes-এর build করা ফাইলও সেখানে সবার দেখার মতো থাকবে।
-- `_headers` কাজ করবে না।
-- প্রতিটা আপডেট হাতে করতে হবে।
+1. GitHub টাইপ পরীক্ষা, unit test আর build চালায়।
+2. সব পাস করলে নতুন ভার্সন সাইটে বসে। কোনো test ভাঙলে বসে না; পুরোনো ভার্সন চলতে থাকে।
+3. খোলা অ্যাপে "নতুন ভার্সন আছে" বার্তা আসে। "এখন আপডেট করুন" চাপলে খোলা ড্রাফট সেভ করে তবেই নতুন ভার্সনে যায়।
 
----
+ভুল ভার্সন চলে গেলে আগের commit ফিরিয়ে push করুন:
 
-## বসানোর পর পরীক্ষা (দুই পথেই)
+```bash
+git revert HEAD
+git push
+```
 
-- [ ] ঠিকানা `https://` দিয়ে খোলে, তালার চিহ্ন আছে
-- [ ] Settings → **অ্যাপ: অফলাইন ও ইনস্টল**-এ "অফলাইন: চালু" দেখায়
+## বসানোর পর পরীক্ষা
+
+- [ ] `https://pronotes.mahbuburrahman.bd` খোলে, তালার চিহ্ন আছে
+- [ ] Settings → **অ্যাপ: অফলাইন ও ইনস্টল**-এ "অফলাইন: চালু"
 - [ ] iPad Safari → Share → **Add to Home Screen** → হোম স্ক্রিন থেকে পুরো পর্দায় খোলে
 - [ ] Airplane mode-এ অ্যাপ খোলে, লেখা সেভ হয়
 - [ ] Word (.docx) সেভ হয়, Files-এ যায়
-- [ ] (Gemini key দিলে) AI → Gemini উত্তর দেয়। claude.ai প্রিভিউতে এটা চলত না, সাইটে চলা উচিত।
+- [ ] লাইসেন্সের লিংক খোলে
+- [ ] (Gemini key দিলে) AI → Gemini উত্তর দেয়
 - [ ] তারপর `docs/ipad-checklist.md`-এর পুরো তালিকা
 
-## যা সাইটে যায়, যা যায় না
+## GitHub Pages-এর সীমা (জেনে রাখুন)
 
-| যায় | যায় না |
-|---|---|
-| অ্যাপের কোড, অ্যাপের ফন্ট (Noto/Hind Siliguri, OFL), আইকন, কিবোর্ড লেআউট | কোনো ড্রাফট, শব্দভান্ডার, ব্যাকআপ, Gemini key, নিজের যোগ করা ফন্ট (সব ডিভাইসেই থাকে) |
-| `_headers` (নিরাপত্তা ও cache নিয়ম) | analytics বা ট্র্যাকিং (নেই) |
+- GitHub Pages নিজের মতো header পাঠাতে দেয় না। তাই নিরাপত্তার নিয়ম (CSP) `index.html`-এর ভেতরে `<meta>` হিসেবে দেওয়া আছে: অ্যাপ শুধু নিজের সাইট আর Google Gemini-র ঠিকানায় যোগাযোগ করতে পারে। এই নিয়ম চালু রেখে সব browser test (৭৮টা) পাস করেছে।
+- `public/_headers` GitHub Pages-এ কাজ করে না। পরে কখনো Cloudflare Pages বা Netlify-তে নিলে কাজে লাগবে।
+- GitHub Pages ফাইল ১০ মিনিট cache করে। তাই push-এর পর নতুন ভার্সন দেখাতে ১০ মিনিট পর্যন্ত লাগতে পারে।
 
-`public/_headers`-এর Content-Security-Policy অ্যাপকে শুধু নিজের সাইট আর Google-এর Gemini ঠিকানার সাথে যোগাযোগ করতে দেয়। এই header দিয়ে সব browser test (৭৭টা) চালিয়ে দেখা হয়েছে।
+## বিকল্প (দরকার হলে): Cloudflare Pages
+
+repo আবার private করতে চাইলে Cloudflare Pages ফ্রিতে private repo থেকেও চলে।
+
+**সেটিং:**
+- Build command: `npm run build`
+- Output: `dist`
+- `NODE_VERSION=22`
+- `_headers` সেখানে কাজ করে।
+
+**কীভাবে:**
+1. Cloudflare-এ project বানিয়ে GitHub repo জুড়ুন।
+2. DNS-এর CNAME `pronotes` → Cloudflare যে ঠিকানা দেয় (যেমন `pronotes.pages.dev`) সেখানে বদলান।
+3. GitHub-এ Pages বন্ধ করুন।
+4. `.github/workflows/deploy.yml` মুছে দিন বা নিষ্ক্রিয় করুন।

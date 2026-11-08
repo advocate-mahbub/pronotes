@@ -2,11 +2,12 @@
 
 এই ফাইলে তিনটা কাজ ধাপে ধাপে আছে:
 
-- GitHub-এ একটা **Private** repo বানানো
+- GitHub-এ repo বানানো (মালিকের সিদ্ধান্ত: **Public**, GitHub Pages-এ বসানোর জন্য; decision 46)
 - কাজের পুরো ইতিহাস (সব commit) সহ কোড সেখানে তোলা
 - পরে নতুন বদল কীভাবে পাঠাবেন
 
-> **Private রাখুন।** কিবোর্ড লেআউটগুলো (Bornona, National, Probhat, Munir Optima, Avro Easy) আবার বিলি করার অনুমতি এখনো যাচাই হয়নি (`LICENSES/THIRD_PARTY.md` দেখুন)।
+> **Public করার আগে** `docs/DEPLOY.md`-এর শুরুর সতর্কতাটা পড়ুন। কিবোর্ড লেআউটগুলো (Bornona, National, Probhat, Munir Optima, Avro Easy) আবার বিলি করার অনুমতি এখনো যাচাই হয়নি (`LICENSES/THIRD_PARTY.md`)।
+> আপনার নিজের কোড `LICENSE` (সর্বস্বত্ব সংরক্ষিত) দিয়ে সুরক্ষিত।
 > SutonnyMJ/SutonnyOMJ ফন্ট ফাইল কখনো repo-তে রাখবেন না।
 
 ---
@@ -27,7 +28,7 @@
 1. https://github.com/new খুলুন।
 2. **Owner:** `advocate-mahbub` (বা আপনার নিজের account)
 3. **Repository name:** `pronotes`
-4. **Private** বেছে নিন। ⚠️ Public নয়।
+4. **Public** বেছে নিন। GitHub-এর ফ্রি প্ল্যানে Pages শুধু public repo থেকে চলে। লেআউটের সিদ্ধান্ত না নেওয়া পর্যন্ত Private রেখে পরে বদলাতে পারেন: Settings → Danger Zone → Change visibility।
 5. "Add a README", ".gitignore", "license" — **কোনোটাই টিক দেবেন না।** এগুলো আমাদের কোডে আগে থেকেই আছে; টিক দিলে প্রথমবার পাঠানোর সময় আটকে যাবে।
 6. **Create repository** চাপুন।
 
@@ -67,7 +68,7 @@ git config user.email "mahbub2bd@gmail.com"
 ## ৩খ. পথ খ: GitHub Desktop দিয়ে
 
 1. GitHub Desktop → **File → Add local repository** → `pronotes` ফোল্ডার বাছুন।
-2. **Publish repository** চাপুন। **"Keep this code private"** টিক দেওয়া আছে কিনা দেখে নিন।
+2. **Publish repository** চাপুন। Public করতে চাইলে **"Keep this code private"**-এর টিক তুলে দিন।
    - এই পথে ধাপ ১-এর খালি repo বানাতে হয় না; GitHub Desktop নিজেই বানায়।
    - আগেই খালি repo বানিয়ে থাকলে Terminal-এর পথ (৩ক) ব্যবহার করুন, নয়তো নাম মিলবে না।
 
@@ -94,18 +95,23 @@ git commit -m "কী বদলালেন এক লাইনে"
 git push
 ```
 
-Cloudflare Pages-এর সাথে জোড়া থাকলে (`docs/DEPLOY.md`) প্রতিটা `git push`-এর কয়েক মিনিট পরে সাইট নিজে থেকে নতুন হয়ে যায়। খোলা অ্যাপে "নতুন ভার্সন আছে" বার্তা আসে।
+GitHub Pages চালু থাকলে (`docs/DEPLOY.md`) প্রতিটা `git push`-এর কয়েক মিনিট পরে সাইট নিজে থেকে নতুন হয়ে যায়। খোলা অ্যাপে "নতুন ভার্সন আছে" বার্তা আসে।
 
 ## ৫. GitHub নিজে যা পরীক্ষা করে
 
-`.github/workflows/ci.yml` প্রতিটা push-এ এগুলো চালায়:
+দুটো workflow চলে:
+
+- **`ci.yml`:** প্রতিটা push-এ পরীক্ষা চালায় (নিচের তালিকা)।
+- **`deploy.yml`:** `main`-এ push হলে আবার পরীক্ষা করে, সব পাস করলে GitHub Pages-এ বসায়।
+
+`ci.yml` যা চালায়:
 
 - টাইপ পরীক্ষা
 - unit test
 - build
 - Chromium-এ ব্রাউজার test
 
-GitHub-এ repo → **Actions** ট্যাবে সবুজ ✓ মানে সব ঠিক, লাল ✗ মানে কিছু ভেঙেছে। Private repo-তে প্রতি মাসে ২,০০০ মিনিট ফ্রি; এক বারে আনুমানিক ৫–৮ মিনিট লাগে। GitHub-এ এটা এখনো একবারও চলেনি, তাই প্রথমবার Actions ট্যাবটা একবার দেখে নিন।
+GitHub-এ repo → **Actions** ট্যাবে সবুজ ✓ মানে সব ঠিক, লাল ✗ মানে কিছু ভেঙেছে। Public repo-তে GitHub-এর সাধারণ runner ফ্রি; এক বারে আনুমানিক ৫–৮ মিনিট লাগে। GitHub-এ এটা এখনো একবারও চলেনি, তাই প্রথমবার Actions ট্যাবটা একবার দেখে নিন।
 
 নিজের কম্পিউটারে একই test:
 
