@@ -6,8 +6,9 @@
  */
 import {
   AlignmentType, BorderStyle, Document, Footer, LevelFormat, LineRuleType, Packer, PageBreak, PageNumber, PageOrientation, Paragraph,
-  Tab, Table, TableCell, TableLayoutType, TableRow, TextRun, WidthType, type IParagraphOptions, type IRunOptions, type ParagraphChild,
+  Tab, Table, TableCell, TableLayoutType, TableRow, TextRun, WidthType, HeightRule, ShadingType, VerticalAlignTable, type IParagraphOptions, type IRunOptions, type ParagraphChild,
 } from 'docx';
+import { tableModel, boldContent, type Side } from '../export/table-model';
 import type { JSONContent } from '@tiptap/core';
 import { bijoyRuns, toBijoy, isBijoyFont, nodeFont } from '../bijoy';
 import { STYLE_TWIPS, type ParagraphStyle } from '../editor/legal-format';
@@ -162,30 +163,41 @@ function heading(n: JSONContent): Paragraph {
   return new Paragraph({ style: 'Heading' + level, ...paragraphOptions(n.attrs), children: runs(n.content) });
 }
 
+const DOCX_LINE = { none: BorderStyle.NONE, single: BorderStyle.SINGLE, double: BorderStyle.DOUBLE, dashed: BorderStyle.DASHED } as const;
+const docxSide = (sd: Side) => (sd.style === 'none' ? { style: BorderStyle.NONE, size: 0, color: 'auto' } : { style: DOCX_LINE[sd.style], size: Math.max(2, Math.round(sd.width * 8)), color: sd.color });
+
 function table(n: JSONContent, ctx: Ctx): Table {
-  const rows = (n.content || []).filter((r) => r.type === 'tableRow');
-  const cols = Math.max(1, ...rows.map((r) => (r.content || []).reduce((s, c) => s + Number(c.attrs?.colspan ?? 1), 0)));
-  const total = Math.min(ctx.textWidth, 8600);
-  const widths = cols === 4 ? SCHEDULE_COLUMNS.map((w) => Math.round((w * total) / 8600)) : Array.from({ length: cols }, () => Math.floor(total / cols));
-  const border = { style: BorderStyle.SINGLE, size: 4, color: '000000' };
+  const m = tableModel(n, ctx.textWidth);
   return new Table({
-    layout: TableLayoutType.FIXED,
-    width: { size: widths.reduce((x, y) => x + y, 0), type: WidthType.DXA },
-    columnWidths: widths,
-    borders: { top: border, bottom: border, left: border, right: border, insideHorizontal: border, insideVertical: border },
-    rows: rows.map(
+    layout: m.fit === 'auto' ? TableLayoutType.AUTOFIT : TableLayoutType.FIXED,
+    width: m.fit === 'auto' ? { size: 0, type: WidthType.AUTO } : { size: m.total, type: WidthType.DXA },
+    columnWidths: m.widths,
+    alignment: m.align === 'center' ? AlignmentType.CENTER : m.align === 'right' ? AlignmentType.RIGHT : undefined,
+    margins: m.pad != null ? { left: m.pad, right: m.pad, marginUnitType: WidthType.DXA } : undefined,
+    // table borders from the preset; cells only carry the sides they change (so rows added in Word match)
+    borders: { top: docxSide(m.borders.top), bottom: docxSide(m.borders.bottom), left: docxSide(m.borders.left), right: docxSide(m.borders.right), insideHorizontal: docxSide(m.borders.insideH), insideVertical: docxSide(m.borders.insideV) },
+    rows: m.rows.map(
       (r) =>
         new TableRow({
-          tableHeader: (r.content || []).every((c) => c.type === 'tableHeader') || undefined,
-          children: (r.content || []).map(
-            (c, i) =>
-              new TableCell({
-                columnSpan: Number(c.attrs?.colspan ?? 1) > 1 ? Number(c.attrs?.colspan) : undefined,
-                rowSpan: Number(c.attrs?.rowspan ?? 1) > 1 ? Number(c.attrs?.rowspan) : undefined,
-                width: { size: widths[i] ?? widths[widths.length - 1], type: WidthType.DXA },
-                children: (c.content?.length ? c.content : [{ type: 'paragraph' }]).map((p) => cellParagraph(p, ctx, c.type === 'tableHeader')),
-              }),
-          ),
+          tableHeader: r.repeat || undefined,
+          cantSplit: r.keep || undefined,
+          height: r.height ? { value: r.height, rule: HeightRule.ATLEAST } : undefined,
+          children: r.cells
+            .filter((c) => !c.cont)
+            .map(
+              (c) =>
+                new TableCell({
+                  columnSpan: c.span > 1 ? c.span : undefined,
+                  rowSpan: c.rowspan > 1 ? c.rowspan : undefined,
+                  width: m.fit === 'auto' ? undefined : { size: c.width, type: WidthType.DXA },
+                  shading: c.bg ? { type: ShadingType.CLEAR, color: 'auto', fill: c.bg } : undefined,
+                  verticalAlign: c.valign ? { top: VerticalAlignTable.TOP, middle: VerticalAlignTable.CENTER, bottom: VerticalAlignTable.BOTTOM }[c.valign] : undefined,
+                  borders: Object.keys(c.own).length ? Object.fromEntries(Object.entries(c.own).map(([k, v]) => [k, docxSide(v)])) : undefined,
+                  children: (c.node.content?.length ? c.node.content : [{ type: 'paragraph' }]).map((p) =>
+                    cellParagraph(c.bold ? { ...p, content: boldContent(p.content) } : p, ctx, c.header),
+                  ),
+                }),
+            ),
         }),
     ),
   });

@@ -12,6 +12,7 @@ import { LegalParagraph } from './legal-format';
 import { CharFormatting, FormattingMarks, PageBreak, ParagraphFormatting } from './formatting';
 import { FindReplace } from './find-replace';
 import { Pagination, type PageLayout } from './pagination';
+import { TableTools, SyncTableView } from './table-tools';
 
 /** Markdown-like shortcuts ("- ", "1. ", "# ", "[ ] ") must never reshape a legal draft while typing. */
 const noInput = { addInputRules: () => [] };
@@ -38,7 +39,8 @@ export function editorExtensions(bornona: Partial<BornonaOptions> & Pick<Bornona
     TextAlign.configure({ types: ['heading', 'paragraph'], alignments: ['left', 'center', 'right', 'justify'] }),
     Subscript,
     Superscript,
-    TableKit.configure({ table: { resizable: false } }),
+    TableKit.configure({ table: { resizable: false, View: SyncTableView } }),
+    TableTools,
     LegalParagraph,
     ParagraphFormatting,
     CharFormatting,

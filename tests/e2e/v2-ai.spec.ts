@@ -65,7 +65,7 @@ test('Gemini: needs a key, asks every time, sends masked text only', async ({ pa
   await start(page);
   await page.getByTestId('ai-gemini-setup').click();
   const d = page.locator('details', { has: page.locator('summary', { hasText: 'AI সহকারী' }) });
-  if (!(await d.evaluate((e) => (e as HTMLDetailsElement).open))) await d.locator('summary').click();
+  if (!(await d.evaluate((e) => (e as HTMLDetailsElement).open))) await d.locator(':scope > summary').click();
   await page.getByTestId('ai-key-in').fill('AIzaTEST1234');
   await page.getByTestId('ai-key-save').click();
   await expect(page.getByTestId('ai-key-set')).toContainText('1234');

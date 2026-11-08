@@ -32,7 +32,7 @@ test('Ctrl+Space switches language; English types Latin', async ({ page }) => {
   await open(page);
   await page.keyboard.press('KeyK');
   await page.keyboard.press('Control+Space');
-  await expect(page.getByTestId('mode-en')).toHaveAttribute('aria-pressed', 'true');
+  await expect(page.getByTestId('lang-toggle')).toHaveAttribute('data-lang', 'en');
   await page.keyboard.press('KeyK');
   expect(await text(page)).toBe('কk');
 });
@@ -64,6 +64,9 @@ test.describe('touch screen (iPad-like)', () => {
   test.use({ viewport: { width: 1180, height: 820 }, hasTouch: true, isMobile: true });
   test('on-screen keyboard types and keeps the system keyboard closed', async ({ page }) => {
     await page.goto('./');
+    // touch devices start with their own keyboard; ⌨ turns on the Bornona on-screen keyboard
+    await expect(page.getByTestId('osk')).toHaveCount(0);
+    await page.getByTestId('kb-toggle').tap();
     await expect(page.getByTestId('osk')).toBeVisible();
     await expect(editor(page)).toHaveAttribute('inputmode', 'none');
     await editor(page).tap();

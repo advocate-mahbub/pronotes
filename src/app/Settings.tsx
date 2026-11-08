@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { DEFAULT_FORMAT, type DocFormat } from '../docx-export/format';
 import { ENGLISH_FONTS, LOCAL_ANSI, LOCAL_UNI, WEB_FONTS, isFontAvailable } from '../fonts';
 import { TOGGLE_KEYS, ANSI_KEYS, type Layout, type ToggleKey, type AnsiKey } from '../bornona-engine';
@@ -41,7 +41,7 @@ interface Props {
   onExportWords: () => void;
   onImportWords: (f: File) => void;
   onResetWords: () => void;
-  onBackup: () => void;
+  onBackup: (withKey: boolean) => void;
   onRestore: (f: File) => void;
   app: AppInfo;
   uiLang: UiLang;
@@ -55,6 +55,8 @@ interface Props {
   ansiKey: AnsiKey;
   setAnsiKey: (k: AnsiKey) => void;
   ai: AiSettings;
+  voiceEngine: 'auto' | 'ai' | 'device';
+  setVoiceEngine: (v: 'auto' | 'ai' | 'device') => void;
 }
 
 export interface AiSettings {
@@ -92,10 +94,24 @@ function AiKeyBox({ ai }: { ai: AiSettings }) {
           <button type="button" className="btn small" data-testid="ai-key-del" onClick={() => { ai.setKey(''); setStatus(''); setModels([]); }}>{t('key মুছুন')}</button>
         </div>
       ) : (
+        <>
+        <details className="key-guide" data-testid="ai-key-guide" open>
+          <summary>{t('Gemini key কোথায় পাব? (ধাপে ধাপে)')}</summary>
+          <ol>
+            <li>{t('নিচের বাটনে Google AI Studio খুলুন, নিজের Google (Gmail) অ্যাকাউন্টে ঢুকুন।')}</li>
+            <li>{t('প্রথমবার শর্তে রাজি হলে Google নিজেই একটা প্রজেক্ট আর key বানিয়ে দেয়; না দিলে "Create API key" চাপুন।')}</li>
+            <li>{t('key-এর পাশে "Unrestricted" লেখা থাকলে "Add restrictions" → "Restrict to Gemini API only" → "Restrict key" চাপুন। Google এখন বাধাহীন key নেয় না।')}</li>
+            <li>{t('key কপি করে নিচের ঘরে পেস্ট করুন, "রাখুন" চাপুন, তারপর "key যাচাই"।')}</li>
+          </ol>
+          <a className="btn small" href="https://aistudio.google.com/apikey" target="_blank" rel="noopener noreferrer" data-testid="ai-key-studio">{t('Google AI Studio খুলুন ↗')}</a>
+          <p className="note">{t('Billing চালু করবেন না — তাহলে খরচ হয় না, শুধু দিনের সীমা থাকে। key পাসওয়ার্ডের মতো: কাউকে দেবেন না; ফাঁস হলে AI Studio-তে নতুন key বানিয়ে পুরোনোটা মুছে দিন।')}</p>
+          <p className="note">{t('key শুধু এই ডিভাইসে থাকে, ব্যাকআপে যায় না। অন্য ডিভাইসে আলাদা করে দিতে হবে।')}</p>
+        </details>
         <div className="row">
           <input type="password" autoComplete="off" data-testid="ai-key-in" value={k} onChange={(e) => setK(e.target.value)} placeholder="AIza…" />
           <button type="button" className="btn small" data-testid="ai-key-save" disabled={!k.trim()} onClick={() => { ai.setKey(k); setK(''); }}>{t('রাখুন')}</button>
         </div>
+        </>
       )}
       <label>{t('মডেল')}
         <input data-testid="ai-model" list="ai-models" value={ai.model} onChange={(e) => ai.setModel(e.target.value.trim())} />
@@ -115,6 +131,9 @@ export interface AppInfo {
   canInstall: boolean;
   onInstall: () => void;
   onCheckUpdate: () => void;
+  /** The browser promised to keep this site's data (null: not known yet / not supported). */
+  persisted: boolean | null;
+  onPersist: () => void;
 }
 
 /** Hidden file input + button. */
@@ -160,17 +179,11 @@ export function Settings(p: Props) {
   const pageFonts = [...new Set([...LOCAL_UNI, ...WEB_FONTS, ...uniFonts.map((f) => f.family), p.format.font])];
   const ansiChoices = [...new Set([...LOCAL_ANSI, ...ansiFonts.map((f) => f.family)])];
   const sv = (patch: Partial<VoicePrefs>) => p.setVoice({ ...p.voice, ...patch });
+  const [withKey, setWithKey] = useState(false);
 
   return (
     <section className="settings" aria-label={t('সেটিংস')} data-testid="settings-panel">
-      <div className="ui-lang">
-        <span>{t('অ্যাপের ভাষা')} / App language</span>
-        <div className="seg small" role="group" aria-label="App language">
-          <button type="button" aria-pressed={p.uiLang === 'bn'} data-testid="ui-bn" onClick={() => p.setUiLang('bn')}>বাংলা</button>
-          <button type="button" aria-pressed={p.uiLang === 'en'} data-testid="ui-en" onClick={() => p.setUiLang('en')}>English</button>
-        </div>
-      </div>
-      <p className="note">{t('শুধু মেনু ও বাটনের ভাষা বদলায়। টাইপিং-এর ভাষা (উপরের বাংলা | English) আর ডকুমেন্টের ভাষা আলাদা।')}</p>
+      <SavedLine />
       <details open>
         <summary>{t('কিবোর্ড ও টাইপিং')}</summary>
         <h3 className="sub-h">{t('কিবোর্ড লেআউট')}</h3>
@@ -215,6 +228,14 @@ export function Settings(p: Props) {
 
       <details>
         <summary>{t('ভয়েস টাইপিং')}</summary>
+        <label>{t('মাইক বোতাম কোন ভয়েসে চলবে')}
+          <select data-testid="voice-engine" value={p.voiceEngine} onChange={(e) => p.setVoiceEngine(e.target.value as 'auto' | 'ai' | 'device')}>
+            <option value="auto">{t('নিজে থেকে: Gemini key থাকলে AI, না থাকলে ডিভাইসের')}</option>
+            <option value="ai">{t('AI ভয়েস (Gemini) — বাংলায় ভালো, key লাগে')}</option>
+            <option value="device">{t('ডিভাইস/ব্রাউজারের ভয়েস')}</option>
+          </select>
+        </label>
+        <p className="note">{t('key ছাড়া বিকল্প (পরখ করে দেখুন): Google-এর ফ্রি Gboard কিবোর্ড অ্যাপ বসিয়ে বাংলা যোগ করুন, ProNotes-এ লেখার সময় সেই কিবোর্ডের মাইক চাপুন। ফোনের নিজের কিবোর্ডে যা আসে, ProNotes-এ সরাসরি বসে। Apple-এর নিজের ডিকটেশনে বাংলা আছে বলে নিশ্চিত হওয়া যায়নি।')}</p>
         <div className="grid2">
           <label>{t('ভাষা')}
             <select data-testid="vlang" value={p.voice.lang} onChange={(e) => sv({ lang: e.target.value })}>
@@ -316,6 +337,7 @@ export function Settings(p: Props) {
         <summary>{t('AI সহকারী')}</summary>
         <p className="note" data-testid="ai-note">{t('দুইভাবে চলে: (১) আপনার Claude সাবস্ক্রিপশন — ProNotes লেখা কপি করে দেয়, আপনি Claude অ্যাপে পেস্ট করে উত্তর এনে দেন; ProNotes নিজে কিছু পাঠায় না। (২) Gemini-র ফ্রি API key দিলে এখান থেকেই চলে, প্রতিবার জিজ্ঞেস করে। দুই ক্ষেত্রেই নাম, দাগ, দলিল নম্বর, ফোন আগে লুকানো হয় আর উত্তরে ফিরে আসে।')}</p>
         <h3 className="sub-h">{t('Gemini (ফ্রি, ঐচ্ছিক)')}</h3>
+        <p className="note" data-testid="ai-voice-note">{t('এই key দিয়ে ✦ AI ভয়েস টাইপিংও চলে: লেখার পাতার ডান-নিচে ✦ চাপুন, বলুন, আবার ✦ চাপুন। বাংলার জন্য ডিভাইসের নিজের ভয়েসের চেয়ে ভালো লেখে; অডিও Google-এ যায় (প্রথমবার জিজ্ঞেস করে)।')}</p>
         <p className="note">{t('aistudio.google.com থেকে নিজের Google account দিয়ে ফ্রি API key নিন। ফ্রি key-তে Google পাঠানো লেখা তাদের সেবা উন্নত করতে ব্যবহার করতে পারে, তাই মক্কেলের আসল তথ্য কখনো পাঠাবেন না। key শুধু এই ডিভাইসে থাকে, ব্যাকআপ ফাইলে যায় না।')}</p>
         <AiKeyBox ai={p.ai} />
         <h3 className="sub-h">{t('সবসময় লুকানো শব্দ')}</h3>
@@ -329,7 +351,19 @@ export function Settings(p: Props) {
       </details>
 
       <details>
-        <summary>{t('অ্যাপ: অফলাইন ও ইনস্টল')}</summary>
+        <summary>{t('অ্যাপ: মেনুর ভাষা, অফলাইন, ইনস্টল')}</summary>
+        <div className="ui-lang">
+          <span>{t('মেনুর ভাষা')}</span>
+          <div className="seg small" role="group" aria-label={t('মেনুর ভাষা')}>
+            <button type="button" aria-pressed={p.uiLang === 'bn'} data-testid="ui-bn" onClick={() => p.setUiLang('bn')}>বাংলা</button>
+            <button type="button" aria-pressed={p.uiLang === 'en'} data-testid="ui-en" onClick={() => p.setUiLang('en')}>English</button>
+          </div>
+        </div>
+        <p className="note">{t('শুধু মেনু ও বাটনের লেখা বদলায়। টাইপিং-এর ভাষা (উপরের বা/e বোতাম) আর ডকুমেন্ট আলাদা।')}</p>
+        <p className="note" data-testid="persist-status">
+          {p.app.persisted ? t('স্থায়ী স্টোরেজ: চালু — ব্রাউজার নিজে থেকে এই সাইটের লেখা ও সেটিং মুছবে না।') : t('স্থায়ী স্টোরেজ: চালু নয় — জায়গা কমলে বা অনেকদিন না খুললে ব্রাউজার লেখা ও সেটিং মুছে দিতে পারে। নিয়মিত ব্যাকআপ নিন।')}
+          {!p.app.persisted && <> <button type="button" className="btn small" data-testid="persist" onClick={p.app.onPersist}>{t('স্থায়ী করার অনুমতি চান')}</button></>}
+        </p>
         <p className="note"><a href="./license.html" target="_blank" rel="noopener" data-testid="license-link">{t('লাইসেন্স ও ব্যবহারের শর্ত')}</a> · © ২০২৬ মাহবুবুর রহমান</p>
         {!p.app.supported ? (
           <p className="note" data-testid="app-status">{t('এই প্রিভিউতে অফলাইন ও ইনস্টল চলে না। নিজের https সাইটে বসানোর পর চলবে।')}</p>
@@ -355,12 +389,36 @@ export function Settings(p: Props) {
 
       <details>
         <summary>{t('ব্যাকআপ')}</summary>
+        {p.ai.key && (
+          <label className="chk"><input type="checkbox" data-testid="backup-key" checked={withKey} onChange={(e) => setWithKey(e.target.checked)} /> {t('Gemini key-ও ব্যাকআপে রাখুন (ফাইলটা তখন পাসওয়ার্ডের মতো গোপনে রাখবেন)')}</label>
+        )}
         <p className="note">{t('সব ড্রাফট (ট্র্যাশসহ), শেখা শব্দ, নিজের লেআউট, ভয়েসের সংশোধন আর সেটিংস একটা ফাইলে (ফন্ট ফাইল বাদে)। iPad-এ ফাইলটা Files বা iCloud Drive-এ রাখুন। ফেরত আনলে আগের কিছু মুছবে না; বদলে যাওয়া ড্রাফট আলাদা কপি হয়ে আসবে।')}</p>
         <div className="row">
-          <button type="button" className="btn primary" data-testid="backup" onClick={p.onBackup}>{t('সব কিছুর ব্যাকআপ নিন')}</button>
+          <button type="button" className="btn primary" data-testid="backup" onClick={() => p.onBackup(withKey)}>{t('সব কিছুর ব্যাকআপ নিন')}</button>
           <FileButton label={t('ব্যাকআপ থেকে ফেরত আনুন')} accept=".json,application/json" testid="restore" onFile={p.onRestore} />
         </div>
       </details>
     </section>
+  );
+}
+
+/** "✓ সংরক্ষিত" for a moment after any setting is saved (settings save at once; this makes it visible). */
+function SavedLine() {
+  const { t } = useT();
+  const [flash, setFlash] = useState(false);
+  useEffect(() => {
+    let tm = 0;
+    const on = () => {
+      setFlash(true);
+      clearTimeout(tm);
+      tm = window.setTimeout(() => setFlash(false), 1800);
+    };
+    window.addEventListener('pronotes-saved', on);
+    return () => { window.removeEventListener('pronotes-saved', on); clearTimeout(tm); };
+  }, []);
+  return (
+    <p className={'saved-line' + (flash ? ' on' : '')} data-testid="settings-saved" role="status">
+      {flash ? t('✓ সংরক্ষিত') : t('কিছু বদলালে সাথে সাথে এই ডিভাইসে সংরক্ষিত হয় — আলাদা Save লাগে না।')}
+    </p>
   );
 }

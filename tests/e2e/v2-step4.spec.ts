@@ -105,19 +105,18 @@ test('Converter: amount in words, digits, broken text, word count', async ({ pag
   await expect(page.getByTestId('cc-words')).toHaveText('৭');
 });
 
-test('envelope: new from the menu, DL landscape, text direction, Word file turned', async ({ page }) => {
+test('envelope: খাম #10 from the পাতা tab, landscape, text direction, Word file turned', async ({ page }) => {
   await page.addInitScript(() => {
     const w = window as unknown as { __files: { name: string; url: string }[] };
     w.__files = [];
     HTMLAnchorElement.prototype.click = function () { w.__files.push({ name: this.download, url: this.href }); };
   });
   await start(page);
-  await page.getByTestId('new-doc').click();
-  await page.getByTestId('new-envelope').click();
-  await expect(editor(page)).toContainText('প্রাপক:');
-  await expect(page.getByTestId('title')).toHaveValue('খাম');
   await page.getByTestId('tab-page').click();
-  await expect(page.getByTestId('paper')).toHaveValue('env-dl');
+  // one envelope in the menu (#10); DL and C5 are no longer offered
+  await expect(page.getByTestId('paper').locator('option')).toHaveText(['Legal (8.5 × 14")', 'Folio (210 × 330 mm)', 'A4 (210 × 297 mm)', 'খাম #10 (4⅛ × 9½")', 'নিজের মাপ…']);
+  await page.getByTestId('paper').selectOption('env-10');
+  await expect(page.getByTestId('paper')).toHaveValue('env-10');
   await expect(page.getByTestId('landscape')).toHaveAttribute('aria-pressed', 'true');
   // the page on screen is wider than tall
   const box = await page.getByTestId('page').boundingBox();
@@ -126,7 +125,7 @@ test('envelope: new from the menu, DL landscape, text direction, Word file turne
   await page.getByTestId('dir-tb').click();
   const css = await page.evaluate(() => document.getElementById('pn-page-style')!.textContent);
   expect(css).toContain('rotate(90deg)');
-  expect(css).toMatch(/@page \{ size: 4\.33\d*in 8\.66\d*in; margin: 0; \}/);
+  expect(css).toMatch(/@page \{ size: 4\.125in 9\.500in; margin: 0; \}/);
   await page.getByTestId('share').click();
   await page.getByTestId('save-docx').click();
   await expect.poll(() => page.evaluate(() => (window as unknown as { __files: unknown[] }).__files.length)).toBeGreaterThan(0);

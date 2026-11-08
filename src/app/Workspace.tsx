@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { EditorContent, useEditor, type Editor } from '@tiptap/react';
 import { fixNukta, type LayoutMap } from '../bornona-engine';
 import { editorExtensions, insertPlainText, textBeforeCaret, type BornonaConfig } from '../editor';
@@ -24,6 +25,7 @@ import { deliver, MIME } from '../export/deliver';
 import { tr } from '../i18n';
 import { attachBornona } from './bornona-input';
 import { OnScreenKeyboard } from './OnScreenKeyboard';
+import { AiVoiceKey } from './AiVoiceKey';
 import { SuggestionBar } from './SuggestionBar';
 
 export type SaveState = 'saved' | 'saving' | 'error';
@@ -36,6 +38,10 @@ interface Props {
   oldReph: boolean;
   kbVisible: boolean;
   coarse: boolean;
+  /** Phone-size screen: the page reflows to the screen width (no paper view). */
+  phone: boolean;
+  /** Which voice the one microphone key uses. */
+  voiceEngine: 'ai' | 'device';
   bank: WordBank;
   bankVersion: number;
   onBankChanged: () => void;
@@ -116,6 +122,8 @@ export function Workspace(p: Props) {
   const { w: pwTw, h: phTw } = pageSize(pg);
   const geo = { pw: pwTw / 15, ph: phTw / 15, mt: pg.margins.top / 15, mr: pg.margins.right / 15, mb: pg.margins.bottom / 15, ml: pg.margins.left / 15 };
   const deskRef = useRef<HTMLDivElement>(null);
+  /** On-screen keyboard put down for reading (not saved; a tap on the page brings it back). */
+  const [kbDown, setKbDown] = useState(false);
   const [desk, setDesk] = useState({ w: 900, h: 700 });
   useEffect(() => {
     const el = deskRef.current;
@@ -125,7 +133,9 @@ export function Workspace(p: Props) {
     return () => ro.disconnect();
   }, []);
   const fitW = Math.min(1.25, Math.max(0.3, (desk.w - 24) / geo.pw));
-  const zoom = !legal ? 1 : p.view.zoom === 'width' ? fitW : p.view.zoom === 'page' ? Math.max(0.2, Math.min(fitW, (desk.h - 60) / geo.ph)) : p.view.zoom / 100;
+  // phones: the text reflows to the screen at its real size (like Word's Mobile View); the paper comes back in files and print
+  const reflow = legal && p.phone;
+  const zoom = !legal || reflow ? 1 : p.view.zoom === 'width' ? fitW : p.view.zoom === 'page' ? Math.max(0.2, Math.min(fitW, (desk.h - 60) / geo.ph)) : p.view.zoom / 100;
   const footerText = (n: number, total: number) => {
     if (!pg.pageNumbers.show) return '';
     const parts = pageNumberParts(pg);
@@ -133,7 +143,7 @@ export function Workspace(p: Props) {
   };
   const layoutRef = useRef<PageLayout>({ on: false } as PageLayout);
   layoutRef.current = {
-    on: legal && p.view.layout === 'print', zoom, pageW: geo.pw, pageH: geo.ph, mt: geo.mt, mb: geo.mb, ml: geo.ml, mr: geo.mr,
+    on: legal && !reflow && p.view.layout === 'print', zoom, pageW: geo.pw, pageH: geo.ph, mt: geo.mt, mb: geo.mb, ml: geo.ml, mr: geo.mr,
     footerDist: FOOTER_DIST / 15, gap: 24, footer: footerText, footerAlign: pg.pageNumbers.align,
   };
   const cb = useRef(p);
@@ -329,7 +339,7 @@ export function Workspace(p: Props) {
   }, [langNow]);
 
   // measure pages again when the page, zoom, layout or fonts change
-  const layoutKey = JSON.stringify([pg, zoom, p.view.layout, p.format, legal]);
+  const layoutKey = JSON.stringify([pg, zoom, p.view.layout, p.format, legal, reflow]);
   useEffect(() => {
     if (editor) relayout(editor.view);
   }, [editor, layoutKey]);
@@ -489,10 +499,13 @@ export function Workspace(p: Props) {
 
   // Bornona typing in the title box too
   const titleRef = useRef<HTMLInputElement>(null);
+  /** The draft's name sits in the app's top bar (one line less above the page). */
+  const [titleSlot, setTitleSlot] = useState<HTMLElement | null>(null);
+  useLayoutEffect(() => setTitleSlot(document.getElementById('title-slot')), []);
   useEffect(() => {
     if (!titleRef.current) return;
     return attachBornona(titleRef.current, getConfig, () => cb.current.onToggleLanguage());
-  }, [editor, getConfig]);
+  }, [editor, getConfig, titleSlot]);
   const toggleLang = useCallback(() => cb.current.onToggleLanguage(), []);
 
   if (!editor) return null;
@@ -507,7 +520,7 @@ export function Workspace(p: Props) {
         editor={editor} kind={kind} fonts={p.fonts} defaultFont={kind === 'note' ? NOTE_FONT : p.format.font} defaultSize={kind === 'note' ? NOTE_SIZE : p.format.size} bangla={p.bangla}
         start={p.toolbarExtra} end={<>{share}{p.toolbarRight}</>}
         onFind={(replace) => setFind({ replace })} onConverter={() => setConvOpen((v) => !v)} converterOpen={convOpen}
-        onAi={() => setAiOpen((v) => !v)} aiOpen={aiOpen}
+        onAi={() => setAiOpen((v) => !v)} aiOpen={aiOpen} say={(m) => p.say(m)}
         onWordCount={() => setPanel('wc')} onFontPanel={() => setPanel('font')} onParagraphPanel={() => setPanel('para')} />
       {find && <FindBar editor={editor} showReplace={find.replace} getConfig={getConfig} onToggleLanguage={toggleLang}
         onClose={() => { setFind(null); editor.commands.focus(); }} />}
@@ -516,18 +529,23 @@ export function Workspace(p: Props) {
       {panel === 'wc' && <WordCount editor={editor} onClose={() => setPanel(null)} />}
       {panel === 'page' && <PageSetupSheet page={pg} onApply={p.onPage} onMakeDefault={p.onMakeDefaultPage} onClose={() => setPanel(null)} />}
       <div className="deskwrap">
-      <main className="desk" ref={deskRef}
+      <main className="desk" ref={deskRef} onClick={() => kbDown && setKbDown(false)}
         style={{ ['--z' as string]: zoom, ['--pw' as string]: geo.pw + 'px', ['--ph' as string]: geo.ph + 'px', ['--mt' as string]: geo.mt + 'px', ['--mr' as string]: geo.mr + 'px', ['--mb' as string]: geo.mb + 'px', ['--ml' as string]: geo.ml + 'px',
           ['--doc-font' as string]: `"${pg.lang === 'en' && legal ? p.format.fontEn : p.format.font}"`, ['--doc-size' as string]: p.format.size + 'pt', ['--doc-title' as string]: p.format.titleSize + 'pt', ['--doc-line' as string]: p.format.lineSpacing } as React.CSSProperties}>
-        <input ref={titleRef} className="title" data-testid="title" aria-label={t('ড্রাফটের নাম')} value={title}
-          onChange={(e) => setTitle(e.target.value)} onBlur={commitTitle}
-          onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); commitTitle(); editor.commands.focus(); } }} />
-        {legal && p.view.ruler && (
+        {(() => {
+          const input = (
+            <input ref={titleRef} className="title" data-testid="title" aria-label={t('ড্রাফটের নাম')} title={t('ড্রাফটের নাম (চাপলে বদলানো যায়)')} value={title}
+              onChange={(e) => setTitle(e.target.value)} onBlur={commitTitle}
+              onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); commitTitle(); editor.commands.focus(); } }} />
+          );
+          return titleSlot ? createPortal(input, titleSlot) : input;
+        })()}
+        {legal && !reflow && p.view.ruler && (
           <div className="ruler-wrap"><Ruler editor={editor} pageW={geo.pw} ml={geo.ml} mr={geo.mr} zoom={zoom} unit={p.view.rulerUnit} legal={legal} /></div>
         )}
-        <div className={'page ' + kind + (legal && p.view.layout === 'print' ? ' print-layout' : '') + (legal && p.view.grid.on && p.view.grid.tables ? ' grid-tables' : '')}
+        <div className={'page ' + kind + (reflow ? ' phone' : '') + (legal && !reflow && p.view.layout === 'print' ? ' print-layout' : '') + (legal && p.view.grid.on && p.view.grid.tables ? ' grid-tables' : '')}
           data-kind={kind} data-lang={legal ? pg.lang : undefined} data-testid="page" ref={pageRef}>
-          {legal && p.view.grid.on && <GridOverlay g={p.view.grid} geo={geo} lineH={(p.format.size * 4) / 3 * p.format.lineSpacing * 1.3} />}
+          {legal && !reflow && p.view.grid.on && <GridOverlay g={p.view.grid} geo={geo} lineH={(p.format.size * 4) / 3 * p.format.lineSpacing * 1.3} />}
           <EditorContent editor={editor} />
         </div>
       </main>
@@ -539,10 +557,15 @@ export function Workspace(p: Props) {
           <button type="button" className="ansi-badge" data-testid="ansi-badge" title={t('কপি করলে বিজয় (ANSI) যাবে। চাপলে ইউনিকোডে ফিরবে।')}
             onPointerDown={(e) => e.preventDefault()} onClick={() => p.setOutput('unicode')}>{t('কপি: ANSI')}</button>
         )}
-        <button type="button" className={'mic' + (listening ? ' live' : '') + (deviceKb ? ' device' : '')} data-testid="mic"
+        {p.voiceEngine === 'device' && <button type="button" className={'mic' + (listening ? ' live' : '') + (deviceKb ? ' device' : '')} data-testid="mic"
           aria-pressed={listening || deviceKb} aria-label={listening ? t('ভয়েস থামান') : t('ভয়েস টাইপিং')} title={listening ? t('ভয়েস থামান') : t('ভয়েস টাইপিং')}
           disabled={p.ansiTyping}
-          onPointerDown={(e) => e.preventDefault()} onClick={toggleVoice}>{MIC}</button>
+          onPointerDown={(e) => e.preventDefault()} onClick={toggleVoice}>{MIC}</button>}
+        {p.voiceEngine === 'ai' && <AiVoiceKey editor={editor} gemini={p.gemini} say={p.say} onOpenSettings={p.onOpenSettings} disabled={p.ansiTyping} icon={MIC} />}
+        {kbDown && p.kbVisible && !deviceKb && (
+          <button type="button" className="kb-up" data-testid="kb-show" aria-label={t('কিবোর্ড দেখান')} title={t('কিবোর্ড দেখান')}
+            onPointerDown={(e) => e.preventDefault()} onClick={() => setKbDown(false)}>⌨</button>
+        )}
       </div>
       {consentOpen && (
         <div className="modal" role="dialog" aria-modal="true" aria-labelledby="vc-title" data-testid="voice-consent">
@@ -572,10 +595,10 @@ export function Workspace(p: Props) {
             <button type="button" className="btn primary" data-testid="voice-back" onPointerDown={(e) => e.preventDefault()} onClick={exitDeviceKb}>{t('বর্ণনা কিবোর্ডে ফিরুন')}</button>
           </div>
         ) : (
-          p.ansiTyping ? null : <SuggestionBar editor={editor} bank={p.bank} version={p.bankVersion} />
+          p.ansiTyping || kbDown ? null : <SuggestionBar editor={editor} bank={p.bank} version={p.bankVersion} />
         )}
-        {p.kbVisible && !deviceKb && (
-          <OnScreenKeyboard editor={editor} map={p.map} bangla={p.bangla} getConfig={getConfig} onToggleLanguage={p.onToggleLanguage}
+        {p.kbVisible && !deviceKb && !kbDown && (
+          <OnScreenKeyboard onHide={() => setKbDown(true)} editor={editor} map={p.map} bangla={p.bangla} getConfig={getConfig} onToggleLanguage={p.onToggleLanguage}
             onWordDone={(before) => { if (learnTail(p.bank, before)) p.onBankChanged(); }} flash={flash} />
         )}
       </footer>

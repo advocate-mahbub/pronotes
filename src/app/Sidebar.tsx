@@ -2,7 +2,7 @@
  * Document list (and Trash): search, folders, sort and filter, pin, rename in place,
  * a ⋯ menu per document, and choosing several documents at once.
  */
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import type { Doc, DocKind, Folder } from '../storage';
 import { daysLeft, kindOf, TRASH_DAYS } from '../storage';
 import { fixNukta } from '../bornona-engine';
@@ -24,6 +24,8 @@ export interface ListPrefs {
 }
 
 interface Props {
+  /** Shown above the list (phones: the keyboard layout picker). */
+  top?: ReactNode;
   docs: Doc[];
   trash: Doc[];
   folders: Folder[];
@@ -39,7 +41,6 @@ interface Props {
   onToggleLanguage: () => void;
   onOpen: (id: string) => void;
   onNew: (kind: DocKind) => void;
-  onNewEnvelope: () => void;
   onRename: (id: string, title: string) => void;
   onCopyText: (id: string) => void;
   onDuplicate: (id: string) => void;
@@ -147,6 +148,7 @@ export function Sidebar(p: Props) {
 
   return (
     <aside className="side" aria-label={t('ডকুমেন্টের তালিকা')} data-testid="sidebar" data-view={p.view === 'trash' ? 'trash' : undefined}>
+      {p.top}
       <div className="side-head">
         <Popover label={'+ ' + t('নতুন')} title={t('নতুন ডকুমেন্ট')} testid="new-doc" className="btn primary newdoc">
           {(close) => (
@@ -156,7 +158,6 @@ export function Sidebar(p: Props) {
                   {p.kindIcon[k]} {t(p.kindLabel[k])}
                 </button>
               ))}
-              <button type="button" data-testid="new-envelope" onClick={() => { close(); p.onNewEnvelope(); }}>✉ {t('খাম')}</button>
               <button type="button" disabled>{p.kindIcon.chart} {t(p.kindLabel.chart)} ({t('শীঘ্রই')})</button>
             </div>
           )}

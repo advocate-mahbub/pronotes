@@ -257,7 +257,7 @@ export function WordCount({ editor, onClose }: { editor: Editor; onClose: () => 
 }
 
 /* ---------- Page setup (Word's Page Setup dialog) ---------- */
-import { PAPERS, normalizePage, type PageSetup, type PaperId } from '../docx-export/page';
+import { PAPERS, paperChoices, normalizePage, type PageSetup, type PaperId } from '../docx-export/page';
 
 export function PageSetupSheet({ page, onApply, onClose, onMakeDefault }: { page: PageSetup; onApply: (p: PageSetup) => void; onClose: () => void; onMakeDefault: (p: PageSetup) => void }) {
   const { t } = useT();
@@ -302,7 +302,7 @@ export function PageSetupSheet({ page, onApply, onClose, onMakeDefault }: { page
       <div className="form">
         <label>{t('মাপ')}
           <select data-testid="ps-paper" value={paper} onChange={(e) => pick(e.target.value as PaperId)}>
-            {Object.entries(PAPERS).map(([id, p]) => <option key={id} value={id}>{p.label}</option>)}
+            {paperChoices(paper).map((id) => <option key={id} value={id}>{PAPERS[id].label}</option>)}
             <option value="custom">{t('নিজের মাপ')}</option>
           </select>
         </label>

@@ -1,0 +1,146 @@
+From 6994f6eb89fc785dc7545aa154d03c9b3174801b Mon Sep 17 00:00:00 2001
+From: Mahbubur Rahman <mahbub2bd@gmail.com>
+Date: Sun, 8 Nov 2026 11:11:00 +0600
+Subject: [PATCH] Address: notes.mahbuburrahman.bd instead of
+ pronotes.mahbuburrahman.bd
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01T69dVfGaJdAiyo6XuiuZqy
+---
+ LICENSE             |  2 +-
+ README.md           |  2 +-
+ docs/DEPLOY.md      | 18 +++++++++---------
+ docs/decisions.md   |  1 +
+ public/license.html |  4 ++--
+ 5 files changed, 14 insertions(+), 13 deletions(-)
+
+diff --git a/LICENSE b/LICENSE
+index ba8bef1..b5bbc51 100644
+--- a/LICENSE
++++ b/LICENSE
+@@ -9,7 +9,7 @@ This licence covers ProNotes: its source code, design, interface text and docume
+    does not transfer any right in it, except the rights given in this licence.
+ 
+ 2. What you may do
+-   a) Use the app at its official address (https://pronotes.mahbuburrahman.bd, or another
++   a) Use the app at its official address (https://notes.mahbuburrahman.bd, or another
+       address the Owner publishes) for your own personal or professional work, free of charge.
+    b) Install it on your own devices from that address ("Add to Home Screen").
+    c) Read the source code in the public repository, for example to check how it treats
+diff --git a/README.md b/README.md
+index f677352..37ddd05 100644
+--- a/README.md
++++ b/README.md
+@@ -22,7 +22,7 @@ npm run test:e2e     # ব্রাউজার test (প্রথমবার:
+ ## GitHub ও সাইটে বসানো
+ 
+ - GitHub-এ private repo বানিয়ে তোলা: [`docs/GITHUB.md`](docs/GITHUB.md)
+-- সাইটে বসানো (GitHub Pages → `pronotes.mahbuburrahman.bd`): [`docs/DEPLOY.md`](docs/DEPLOY.md)
++- সাইটে বসানো (GitHub Pages → `notes.mahbuburrahman.bd`): [`docs/DEPLOY.md`](docs/DEPLOY.md)
+ - বসানোর পর iPad-এ পরীক্ষা: [`docs/ipad-checklist.md`](docs/ipad-checklist.md)
+ - প্রতিটা push-এ GitHub টাইপ, unit test ও build পরীক্ষা করে: `.github/workflows/ci.yml`
+ - `main`-এ push হলে test পাস করলে GitHub Pages-এ বসে: `.github/workflows/deploy.yml`
+diff --git a/docs/DEPLOY.md b/docs/DEPLOY.md
+index c372f93..9418709 100644
+--- a/docs/DEPLOY.md
++++ b/docs/DEPLOY.md
+@@ -1,9 +1,9 @@
+-# ProNotes সাইটে বসানো: GitHub Pages, `pronotes.mahbuburrahman.bd`
++# ProNotes সাইটে বসানো: GitHub Pages, `notes.mahbuburrahman.bd`
+ 
+ মালিকের সিদ্ধান্ত (decision 46):
+ 
+ - আলাদা **public** repo (`advocate-mahbub/pronotes`), তার নিজের GitHub Pages
+-- ঠিকানা: `https://pronotes.mahbuburrahman.bd`
++- ঠিকানা: `https://notes.mahbuburrahman.bd`
+ - লাইসেন্স: সর্বস্বত্ব সংরক্ষিত (`LICENSE`)। কোড সবাই দেখতে পাবে, কিন্তু অনুমতি ছাড়া কপি, বদল বা অন্য কোথাও চালানো যাবে না।
+ 
+ ProNotes একটা স্থির (static) PWA। সার্ভার বা ডেটাবেস লাগে না; সব লেখা ব্যবহারকারীর নিজের ডিভাইসে থাকে। GitHub নিজেই build করে `dist/` সাইটে বসায় (`.github/workflows/deploy.yml`)।
+@@ -31,13 +31,13 @@ ProNotes একটা স্থির (static) PWA। সার্ভার ব
+    - ৩–৫ মিনিটে সবুজ ✓ হলে `https://advocate-mahbub.github.io/pronotes/` ঠিকানায় অ্যাপ খোলে।
+    - প্রথমবার লাল ✗ হলে workflow-টা আবার চালান: Actions → Deploy → **Re-run jobs**। ধাপ ২-এর Source ঠিক না থাকলে প্রথম চালানো ব্যর্থ হতে পারে।
+ 
+-## ধাপ ৩. নিজের ঠিকানা `pronotes.mahbuburrahman.bd`
++## ধাপ ৩. নিজের ঠিকানা `notes.mahbuburrahman.bd`
+ 
+ **ক. DNS-এ একটা record যোগ** (যেখানে `mahbuburrahman.bd`-এর DNS চালান, যেমন ডোমেইনের প্যানেল):
+ 
+ | Type | Name / Host | Value / Target | TTL |
+ |---|---|---|---|
+-| CNAME | `pronotes` | `advocate-mahbub.github.io` | Auto / 3600 |
++| CNAME | `notes` | `advocate-mahbub.github.io.` (প্যানেল ডট চাইলে শেষে ডটসহ) | Auto / 3600 |
+ 
+ - Value-তে শুধু `advocate-mahbub.github.io` লিখবেন, শেষে `/pronotes` নয়।
+ - আপনার মূল সাইটের `www` আর `@` record যেমন আছে তেমন থাকবে; শুধু নতুন একটা নাম যোগ হচ্ছে।
+@@ -45,7 +45,7 @@ ProNotes একটা স্থির (static) PWA। সার্ভার ব
+ 
+ **খ. GitHub-এ ঠিকানা বসানো**
+ 
+-1. repo → **Settings → Pages → Custom domain** → `pronotes.mahbuburrahman.bd` → **Save**
++1. repo → **Settings → Pages → Custom domain** → `notes.mahbuburrahman.bd` → **Save**
+ 2. "DNS check successful" এলে **Enforce HTTPS** টিক দিন। সার্টিফিকেট আসতে কয়েক মিনিট থেকে কয়েক ঘণ্টা লাগতে পারে; ততক্ষণ টিক বক্স ধূসর থাকতে পারে।
+ 
+ **গ. (সুপারিশ) ডোমেইন যাচাই**
+@@ -54,7 +54,7 @@ GitHub-এর account বা organization → **Settings → Pages → Add a dom
+ 
+ এতে অন্য কেউ আপনার ডোমেইনের নামে GitHub Pages বসাতে পারবে না। আপনার মূল সাইটের জন্য এটা আগে করা থাকলে আর লাগবে না।
+ 
+-> **ঠিকানা একবারই ঠিক করুন।** ব্রাউজার প্রতিটা ঠিকানার লেখা আলাদা জায়গায় রাখে। `advocate-mahbub.github.io/pronotes/`-এ লেখা ড্রাফট `pronotes.mahbuburrahman.bd`-এ দেখা যাবে না। তাই নিজের ঠিকানা চালু হওয়ার পর থেকেই ব্যবহার শুরু করুন।
++> **ঠিকানা একবারই ঠিক করুন।** ব্রাউজার প্রতিটা ঠিকানার লেখা আলাদা জায়গায় রাখে। `advocate-mahbub.github.io/pronotes/`-এ লেখা ড্রাফট `notes.mahbuburrahman.bd`-এ দেখা যাবে না। তাই নিজের ঠিকানা চালু হওয়ার পর থেকেই ব্যবহার শুরু করুন।
+ > claude.ai-এর প্রিভিউতে কিছু লিখে থাকলে সেখান থেকে **Settings → ব্যাকআপ** নিন, তারপর নতুন সাইটে **ব্যাকআপ → ফেরত আনুন**।
+ 
+ ## ধাপ ৪. ওয়েবসাইটে লিংক দেওয়া
+@@ -63,8 +63,8 @@ GitHub-এর account বা organization → **Settings → Pages → Add a dom
+ 
+ | কোথায় | কী দেবেন |
+ |---|---|
+-| Tools পাতা (বা যেখানে ProNotes-এর পরিচয় দেবেন) | `ProNotes খুলুন` → `https://pronotes.mahbuburrahman.bd` |
+-| সাইটের footer | `ProNotes লাইসেন্স` → `https://pronotes.mahbuburrahman.bd/license.html` |
++| Tools পাতা (বা যেখানে ProNotes-এর পরিচয় দেবেন) | `ProNotes খুলুন` → `https://notes.mahbuburrahman.bd` |
++| সাইটের footer | `ProNotes লাইসেন্স` → `https://notes.mahbuburrahman.bd/license.html` |
+ 
+ লাইসেন্সের পাতা (`license.html`) ProNotes-এর সাথেই প্রকাশ হয়: বাংলা পাঠ, আর নিচে ইংরেজি (বাধ্যতামূলক) পাঠ। অ্যাপের ভেতরে **Settings → অ্যাপ: অফলাইন ও ইনস্টল**-এও এর লিংক আছে।
+ 
+@@ -85,7 +85,7 @@ git push
+ 
+ ## বসানোর পর পরীক্ষা
+ 
+-- [ ] `https://pronotes.mahbuburrahman.bd` খোলে, তালার চিহ্ন আছে
++- [ ] `https://notes.mahbuburrahman.bd` খোলে, তালার চিহ্ন আছে
+ - [ ] Settings → **অ্যাপ: অফলাইন ও ইনস্টল**-এ "অফলাইন: চালু"
+ - [ ] iPad Safari → Share → **Add to Home Screen** → হোম স্ক্রিন থেকে পুরো পর্দায় খোলে
+ - [ ] Airplane mode-এ অ্যাপ খোলে, লেখা সেভ হয়
+diff --git a/docs/decisions.md b/docs/decisions.md
+index 4dc3f46..a3fa1ff 100644
+--- a/docs/decisions.md
++++ b/docs/decisions.md
+@@ -48,3 +48,4 @@
+ | 44 | আগের ভার্সন | লেখা সেভের সময়, শেষ ভার্সনের ১০ মিনিট পরে, বদলে যাওয়া আগের অবস্থা নিজে থেকে রাখা হয়; প্রতি ডকুমেন্টে শেষ ৩০টা; "এখনই একটা ভার্সন রাখুন" বাটন; ফেরত আনার আগে এখনকার অবস্থাও ভার্সন হয় (তাই ফেরত আনাও ফেরানো যায়)। শুধু এই ডিভাইসে (IndexedDB v3 'versions'), ব্যাকআপে নয় (আকার); স্থায়ীভাবে মুছলে ভার্সনও মোছে | v2.0+ |
+ | 45 | কোথায় ও কীভাবে বসানো | সুপারিশ: private GitHub repo + Cloudflare Pages (ফ্রি, private repo থেকে চলে, push করলে নিজে থেকে আপডেট), ঠিকানা `pronotes.mahbuburrahman.bd` (একটা CNAME)। বিকল্প: ওয়েবসাইটের GitHub Pages-এ `/pronotes/` (GitHub Free-তে Pages শুধু public repo থেকে)। account খোলা, DNS বদল, deploy — মালিক নিজে করবেন। `public/_headers`: CSP (শুধু নিজের সাইট + Gemini API), app shell ও sw.js-এ no-cache, assets এক বছর। ঠিকানা একবার বেছে নিলে বদলানো হবে না (ডেটা ঠিকানা-ভিত্তিক)। লেআউটের লাইসেন্স যাচাই না হলে সাইট প্রকাশ্যে জানানো হবে না | v2.0+ |
+ | 46 | লাইসেন্স ও প্রকাশ | মালিকের সিদ্ধান্ত: নিজের কোড "সর্বস্বত্ব সংরক্ষিত" (`LICENSE`, ইংরেজি পাঠ বাধ্যতামূলক; বাংলা পাঠ `license.html`-এ, অ্যাপের Settings → অ্যাপ থেকে লিংক)। অনুমতি: অফিসিয়াল ঠিকানা থেকে বিনামূল্যে ব্যবহার, ইনস্টল, কোড পড়া; নিষেধ: কপি, বদল, অন্যত্র চালানো, বিক্রি। বাংলাদেশের আইন, ঢাকার আদালত। প্রকাশ: আলাদা public repo `advocate-mahbub/pronotes` + GitHub Pages (Actions, `deploy.yml`, test পাস হলে তবেই) + `pronotes.mahbuburrahman.bd` (CNAME → advocate-mahbub.github.io)। GitHub Pages header দেয় না, তাই CSP `<meta>` হিসেবে production build-এ (preview-এ নয়)। লেআউটের অনুমতি যাচাই না হওয়ার ঝুঁকি মালিককে জানানো হয়েছে; decision 45-এর private/Cloudflare সুপারিশ বিকল্প হিসেবে DEPLOY.md-এ রইল | v2.0+ |
++| 47 | ঠিকানা বদল | মালিকের সিদ্ধান্তে অ্যাপের ঠিকানা `pronotes.mahbuburrahman.bd`-এর বদলে `notes.mahbuburrahman.bd` (DNS: BTCL প্যানেলে CNAME `notes` → `advocate-mahbub.github.io.`; GitHub Pages Custom domain)। LICENSE, license.html, DEPLOY.md, README-তে ঠিকানা বদলানো হলো; অ্যাপের কোডে কোনো ঠিকানা লেখা নেই | v2.0+ |
+diff --git a/public/license.html b/public/license.html
+index 17ac2c0..b28c28b 100644
+--- a/public/license.html
++++ b/public/license.html
+@@ -40,7 +40,7 @@
+ 
+     <h2>২. আপনি যা করতে পারেন</h2>
+     <ol>
+-      <li>অফিসিয়াল ঠিকানা (<a href="https://pronotes.mahbuburrahman.bd">pronotes.mahbuburrahman.bd</a>, বা মালিকের প্রকাশিত অন্য ঠিকানা) থেকে নিজের ব্যক্তিগত বা পেশাগত কাজে বিনামূল্যে অ্যাপ ব্যবহার।</li>
++      <li>অফিসিয়াল ঠিকানা (<a href="https://notes.mahbuburrahman.bd">notes.mahbuburrahman.bd</a>, বা মালিকের প্রকাশিত অন্য ঠিকানা) থেকে নিজের ব্যক্তিগত বা পেশাগত কাজে বিনামূল্যে অ্যাপ ব্যবহার।</li>
+       <li>সেই ঠিকানা থেকে নিজের ডিভাইসে ইনস্টল ("Add to Home Screen")।</li>
+       <li>পাবলিক repository-তে সোর্স কোড পড়া, যেমন অ্যাপ আপনার তথ্য কীভাবে রাখে তা যাচাই করতে। GitHub-এর শর্ত অনুযায়ী GitHub-এর ভেতরে দেখা ও fork করার সুযোগ থাকবে।</li>
+     </ol>
+@@ -90,7 +90,7 @@ This licence covers ProNotes: its source code, design, interface text and docume
+    does not transfer any right in it, except the rights given in this licence.
+ 
+ 2. What you may do
+-   a) Use the app at its official address (https://pronotes.mahbuburrahman.bd, or another
++   a) Use the app at its official address (https://notes.mahbuburrahman.bd, or another
+       address the Owner publishes) for your own personal or professional work, free of charge.
+    b) Install it on your own devices from that address ("Add to Home Screen").
+    c) Read the source code in the public repository, for example to check how it treats
+-- 
+2.43.0
+

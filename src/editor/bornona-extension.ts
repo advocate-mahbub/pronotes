@@ -117,6 +117,8 @@ export const BornonaExtension = Extension.create<BornonaOptions>({
 
   addProseMirrorPlugins() {
     const opts = this.options;
+    /** Where an IME composition started (−1: none). */
+    let composeFrom = -1;
     return [
       new Plugin({
         key: new PluginKey('bornona'),
@@ -158,6 +160,14 @@ export const BornonaExtension = Extension.create<BornonaOptions>({
           },
           handleTextInput(view, _from, _to, text) {
             const cfg = opts.getConfig();
+            // several letters at once (a phone keyboard's suggestion or autocorrect): type each through the layout
+            if (composeFrom < 0 && !view.composing && text.length > 1 && text.length <= 64 && cfg.bangla && !cfg.suspended && !cfg.ansi?.on && /^[\x20-\x7e]+$/.test(text)) {
+              const out = [...text].map((ch) => (ch === ' ' ? ' ' : resolveTypedChar(ch, { bangla: true, map: cfg.map, suspended: false })));
+              if (out.every((x) => x !== null)) {
+                for (const x of out) typeText(view, x as string, cfg);
+                return true;
+              }
+            }
             const r = resolveTypedChar(text, { bangla: cfg.bangla, map: cfg.map, suspended: cfg.suspended });
             if (!r) {
               if (cfg.ansi?.on && !cfg.suspended && !cfg.bangla) {
@@ -179,6 +189,36 @@ export const BornonaExtension = Extension.create<BornonaOptions>({
             insertPlainText(view, lead + r.text);
             opts.onNotice(r.message);
             return true;
+          },
+          // Android keyboards with word prediction (Gboard, Samsung) "compose" a whole Latin word and
+          // skip the per-letter path. When the composition ends, its Latin letters are typed again
+          // through the layout. Turning off the keyboard's suggestion strip avoids the wait.
+          handleDOMEvents: {
+            compositionstart(view) {
+              composeFrom = view.state.selection.from;
+              return false;
+            },
+            compositionend(view) {
+              const from = composeFrom;
+              const cfg = opts.getConfig();
+              if (from < 0 || !cfg.bangla || cfg.suspended || cfg.ansi?.on) {
+                composeFrom = -1;
+                return false;
+              }
+              // after ProseMirror has applied the committed text
+              setTimeout(() => {
+                composeFrom = -1;
+                const to = view.state.selection.from;
+                if (to <= from || to - from > 64) return;
+                const latin = view.state.doc.textBetween(from, to, '');
+                if (!/^[\x21-\x7e]+$/.test(latin)) return;
+                const out = [...latin].map((ch) => resolveTypedChar(ch, { bangla: true, map: cfg.map, suspended: false }));
+                if (out.some((x) => x === null)) return;
+                view.dispatch(view.state.tr.delete(from, to));
+                for (const x of out) typeText(view, x as string, cfg);
+              }, 30);
+              return false;
+            },
           },
           transformPastedText: (text) => fixNukta(text),
           transformPastedHTML: (html) => fixNukta(html),

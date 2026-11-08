@@ -33,6 +33,10 @@ export const PAPERS: Record<Exclude<PaperId, 'custom'>, { label: string; width: 
   'env-c5': { label: 'খাম C5 (162 × 229 mm)', width: mm(162), height: mm(229) },
 };
 export const isEnvelope = (id: PaperId) => id.startsWith('env-');
+/** Papers offered in the menus (owner's choice: one envelope, #10). DL and C5 stay readable for drafts that already use them. */
+export const PAPER_MENU: Exclude<PaperId, 'custom'>[] = ['legal', 'folio', 'a4', 'env-10'];
+export const paperChoices = (current: PaperId): Exclude<PaperId, 'custom'>[] =>
+  current !== 'custom' && !PAPER_MENU.includes(current) ? [...PAPER_MENU, current] : PAPER_MENU;
 
 /** An envelope: landscape, small margins, no page numbers. */
 export function envelopePage(paper: 'env-dl' | 'env-10' | 'env-c5' = 'env-dl'): PageSetup {

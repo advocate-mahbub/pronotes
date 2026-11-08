@@ -70,6 +70,7 @@ test('iPad-like device: mic opens the device keyboard instead (engine suspended)
   const page = await ctx.newPage();
   await page.goto('http://localhost:4173/');
   await expect(editor(page)).toBeVisible();
+  await page.getByTestId('kb-toggle').click(); // touch devices start with their own keyboard
   await expect(page.getByTestId('osk')).toBeVisible();
   await expect(editor(page)).toHaveAttribute('inputmode', 'none');
   await page.getByTestId('mic').click();

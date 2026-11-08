@@ -18,6 +18,9 @@ export interface GeminiOptions {
   model?: string;
   signal?: AbortSignal;
   fetchImpl?: typeof fetch;
+  /** Audio sent with the prompt (voice typing): base64 data and its type. */
+  audio?: { mime: string; data: string };
+  temperature?: number;
 }
 
 const fail = async (r: Response): Promise<never> => {
@@ -40,7 +43,10 @@ export async function geminiGenerate(prompt: string, o: GeminiOptions): Promise<
     r = await f(`${BASE}/models/${encodeURIComponent(o.model || DEFAULT_GEMINI_MODEL)}:generateContent`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'x-goog-api-key': o.key },
-      body: JSON.stringify({ contents: [{ role: 'user', parts: [{ text: prompt }] }], generationConfig: { temperature: 0.3 } }),
+      body: JSON.stringify({
+        contents: [{ role: 'user', parts: [{ text: prompt }, ...(o.audio ? [{ inline_data: { mime_type: o.audio.mime, data: o.audio.data } }] : [])] }],
+        generationConfig: { temperature: o.temperature ?? 0.3 },
+      }),
       signal: o.signal,
     });
   } catch (e) {

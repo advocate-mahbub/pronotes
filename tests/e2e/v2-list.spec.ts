@@ -26,8 +26,14 @@ async function start(page: Page) {
   await typeKeys(page, ['KeyK', 'KeyL', 'KeyM']); // কলম
   await page.getByTestId('title').fill('নোট');
   await page.getByTestId('title').press('Enter');
+  // an envelope is a legal draft on খাম #10 paper (পাতা tab)
   await page.getByTestId('new-doc').click();
-  await page.getByTestId('new-envelope').click();
+  await page.getByTestId('new-legal').click();
+  await expect(page.getByTestId('title')).toHaveValue('নতুন ড্রাফট'); // the new draft is open
+  await page.getByTestId('title').fill('খাম');
+  await page.getByTestId('title').press('Enter');
+  await page.getByTestId('tab-page').click();
+  await page.getByTestId('paper').selectOption('env-10');
   await expect(rows(page)).toHaveCount(3);
 }
 

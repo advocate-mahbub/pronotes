@@ -173,9 +173,9 @@ test('settings: switch key (F12) and the Chandrabindu fix', async ({ page }) => 
   await typeKeys(page, ['KeyK', 'Shift+Digit2', 'KeyA']);
   await expect(editor(page).locator('p').first()).toHaveText('কাঁ');
   await page.keyboard.press('F12');
-  await expect(page.getByTestId('mode-en')).toHaveAttribute('aria-pressed', 'true');
+  await expect(page.getByTestId('lang-toggle')).toHaveAttribute('data-lang', 'en');
   await page.keyboard.press('Control+Space'); // no longer the switch key
-  await expect(page.getByTestId('mode-en')).toHaveAttribute('aria-pressed', 'true');
+  await expect(page.getByTestId('lang-toggle')).toHaveAttribute('data-lang', 'en');
   await page.keyboard.press('F12');
-  await expect(page.getByTestId('mode-bn')).toHaveAttribute('aria-pressed', 'true');
+  await expect(page.getByTestId('lang-toggle')).toHaveAttribute('data-lang', 'bn');
 });

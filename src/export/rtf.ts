@@ -9,6 +9,7 @@ import { bijoyRuns, toBijoy, isBijoyFont } from '../bijoy';
 import { DEFAULT_FORMAT, NOTE_FONT, NOTE_SIZE, type DocFormat } from '../docx-export/format';
 import { DEFAULT_PAGE, FOOTER_DIST, HEADER_DIST, NOTE_PAGE, normalizePage, pageNumberParts, pageSize, paraNumber, physicalPage, type PageSetup } from '../docx-export/page';
 import { STYLE_TWIPS } from '../editor/legal-format';
+import { tableModel, boldContent, type Side } from './table-model';
 
 export interface RtfOptions {
   kind?: 'note' | 'legal' | 'chart';
@@ -165,30 +166,48 @@ function paragraph(n: JSONContent, c: Ctx, inTable = false): string {
 }
 let titleSize = DEFAULT_FORMAT.titleSize;
 
+const RTF_LINE = { single: '\\brdrs', double: '\\brdrdb', dashed: '\\brdrdash' } as const;
+function rtfSide(k: 't' | 'b' | 'l' | 'r', sd: Side, c: Ctx): string {
+  if (sd.style === 'none') return `\\clbrdr${k}\\brdrnone`;
+  // \brdrw is in twips (max 75); double lines in Word are drawn from the width of one stroke
+  return `\\clbrdr${k}${RTF_LINE[sd.style]}\\brdrw${Math.min(75, Math.max(5, Math.round(sd.width * 20)))}\\brdrcf${colorIdx(c, sd.color)}`;
+}
+
 function table(n: JSONContent, c: Ctx): string {
-  const rows = (n.content || []).filter((r) => r.type === 'tableRow');
-  const cols = Math.max(1, ...rows.map((r) => (r.content || []).reduce((s, x) => s + Number(x.attrs?.colspan ?? 1), 0)));
-  const total = Math.min(c.textWidth, 8600);
-  const sched = [700, 1700, 1900, 4300];
-  const widths = cols === 4 ? sched.map((w) => Math.round((w * total) / 8600)) : Array.from({ length: cols }, () => Math.floor(total / cols));
-  const brd = '\\clbrdrt\\brdrs\\brdrw10\\clbrdrl\\brdrs\\brdrw10\\clbrdrb\\brdrs\\brdrw10\\clbrdrr\\brdrs\\brdrw10';
+  const m = tableModel(n, c.textWidth);
+  const gaph = m.pad ?? 108;
+  // where the table starts: centred / right tables are moved with \trq*, left tables keep the old 0 indent
   let out = '';
-  for (const r of rows) {
+  for (const r of m.rows) {
+    let def = '\\trowd\\trgaph' + gaph + '\\trleft0' + (m.align === 'center' ? '\\trqc' : m.align === 'right' ? '\\trqr' : '');
+    if (m.pad != null) def += `\\trpaddl${m.pad}\\trpaddr${m.pad}\\trpaddfl3\\trpaddfr3`;
+    if (r.repeat) def += '\\trhdr';
+    if (r.keep) def += '\\trkeep';
+    if (r.height) def += '\\trrh' + r.height;
+    if (m.fit === 'auto') def += '\\trautofit1';
     let x = 0;
-    let def = '\\trowd\\trgaph108\\trleft0' + ((r.content || []).every((cl) => cl.type === 'tableHeader') ? '\\trhdr' : '');
-    let col = 0;
-    for (const cell of r.content || []) {
-      const span = Number(cell.attrs?.colspan ?? 1);
-      for (let k = 0; k < span; k++) x += widths[col++] ?? widths[widths.length - 1];
-      def += brd + '\\cellx' + x;
+    for (const cell of r.cells) {
+      x += cell.width;
+      if (cell.rowspan > 1 && !cell.cont) def += '\\clvmgf';
+      else if (cell.cont) def += '\\clvmrg';
+      if (cell.valign) def += { top: '\\clvertalt', middle: '\\clvertalc', bottom: '\\clvertalb' }[cell.valign];
+      // shading before the borders: LibreOffice drops it in centred rows otherwise (Word reads either order)
+      if (cell.bg) def += '\\clcbpat' + colorIdx(c, cell.bg);
+      def += rtfSide('t', cell.top, c) + rtfSide('l', cell.left, c) + rtfSide('b', cell.bottom, c) + rtfSide('r', cell.right, c);
+      def += '\\cellx' + x;
     }
     out += def + '\n';
-    for (const cell of r.content || []) {
-      const paras = cell.content?.length ? cell.content : [{ type: 'paragraph' }];
+    for (const cell of r.cells) {
+      if (cell.cont) {
+        out += '\\pard\\intbl\\cell\n';
+        continue;
+      }
+      const paras = cell.node.content?.length ? cell.node.content : [{ type: 'paragraph' }];
       out += paras
         .map((p, i) => {
-          const ph = cell.type === 'tableHeader' ? { ...(p.attrs || {}), textAlign: (p.attrs?.textAlign as string) || 'center' } : p.attrs;
-          return paragraph({ ...p, attrs: ph }, c, true) + (i < paras.length - 1 ? '\\par ' : '');
+          const ph = cell.header ? { ...(p.attrs || {}), textAlign: (p.attrs?.textAlign as string) || 'center' } : p.attrs;
+          const content = cell.bold ? boldContent(p.content) : p.content;
+          return paragraph({ ...p, attrs: ph, content }, c, true) + (i < paras.length - 1 ? '\\par ' : '');
         })
         .join('') + '\\cell\n';
     }

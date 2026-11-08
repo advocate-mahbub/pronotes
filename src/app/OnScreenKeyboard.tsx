@@ -17,10 +17,12 @@ interface Props {
   onToggleLanguage: () => void;
   onWordDone: (before: string) => void;
   flash: string | null;
+  /** Puts the keyboard down (it comes back when the page is tapped). */
+  onHide?: () => void;
 }
 
 /** Bornona on-screen keyboard. Keys never take focus, so the iPad's own keyboard stays closed. */
-export function OnScreenKeyboard({ editor, map, bangla, getConfig, onToggleLanguage, onWordDone, flash }: Props) {
+export function OnScreenKeyboard({ editor, map, bangla, getConfig, onToggleLanguage, onWordDone, flash, onHide }: Props) {
   const { t } = useT();
   const [shift, setShift] = useState(0); // 0 off, 1 next key, 2 locked
   const [alt, setAlt] = useState(false);
@@ -117,6 +119,12 @@ export function OnScreenKeyboard({ editor, map, bangla, getConfig, onToggleLangu
               </button>
             );
           })}
+          {onHide && ri === ROWS.length - 1 && (
+            <button type="button" tabIndex={-1} className="k fn hide" data-testid="kb-hide" aria-label={t('কিবোর্ড নামান')} title={t('কিবোর্ড নামান')}
+              onPointerDown={(e) => e.preventDefault()} onClick={onHide}>
+              <span className="m">⌄</span>
+            </button>
+          )}
         </div>
       ))}
     </div>

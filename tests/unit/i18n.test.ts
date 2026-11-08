@@ -5,7 +5,7 @@ import { EN } from '../../src/i18n/en';
 import { translate } from '../../src/i18n';
 import { ERRORS_FOR_I18N, decideVoice } from '../../src/voice';
 import { PASTE_MSG_HTML, PASTE_MSG_TEXT } from '../../src/bijoy';
-import { PARAGRAPH_STYLES } from '../../src/editor';
+import { PARAGRAPH_STYLES, TABLE_STYLES, QUICK_TABLES } from '../../src/editor';
 import { ANSI_KEYS } from '../../src/bornona-engine';
 import { fixBrokenBangla } from '../../src/convert';
 import { TASKS, KIND_LABEL, AI_ERROR_TEXT } from '../../src/ai';
@@ -26,11 +26,14 @@ export function uiKeys(): string[] {
     for (const m of src.matchAll(/\b(?:label|note):\s*'((?:[^'\\]|\\.)*)'/g)) if (BN.test(m[1])) keys.add(m[1]);
     for (const line of src.split('\n').filter((l) => /\b(?:say|t)\(/.test(l)))
       for (const m of line.matchAll(/[?:]\s*'((?:[^'\\]|\\.)*)'/g)) if (BN.test(m[1])) keys.add(m[1]);
+    // [id, 'লেবেল'] tuples rendered as t(l)
+    for (const m of src.matchAll(/\['[\w-]+', '((?:[^'\\]|\\.)*)'\]/g)) if (BN.test(m[1])) keys.add(m[1]);
     // object maps whose values are passed through t() (labels, status texts)
     for (const m of src.matchAll(/(?:LABEL|Label|statusText|themeLabel|LANG_NAMES)[^=]*=\s*(?:t\()?\{([^}]*)\}/g))
       for (const v of m[1].matchAll(/'((?:[^'\\]|\\.)*)'/g)) if (BN.test(v[1])) keys.add(v[1]);
   }
   for (const s of PARAGRAPH_STYLES) keys.add(s.label);
+  for (const s of [...TABLE_STYLES, ...QUICK_TABLES]) keys.add(s.label);
   for (const x of [...TASKS.map((x) => x.label), ...Object.values(KIND_LABEL), ...Object.values(AI_ERROR_TEXT)]) keys.add(x);
   for (const k of ANSI_KEYS) if (BN.test(k.label)) keys.add(k.label);
   for (const c of fixBrokenBangla('অামার ​েকাট  |', { pipeAsDari: true }).changes) keys.add(c);

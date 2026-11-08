@@ -19,16 +19,14 @@ import type { BornonaConfig } from '../editor';
 import { canShareFiles } from '../export/deliver';
 import type { OutputMode } from './ShareMenu';
 import { DEFAULT_VOICE_PREFS, DEFAULT_VIEW, DEFAULT_GRID, voiceLang, type VoicePrefs, type ViewPrefs } from './prefs-types';
-import { DEFAULT_PAGE, envelopePage, normalizePage, type PageSetup } from '../docx-export/page';
-import { envelopeContent, envelopeText } from '../templates/envelope';
+import { DEFAULT_PAGE, normalizePage, type PageSetup } from '../docx-export/page';
 import type { ToggleKey, AnsiKey } from '../bornona-engine';
 import { saveFile } from '../storage/download';
 import { DEFAULT_FORMAT, type DocFormat } from '../docx-export/format';
 import { Sidebar } from './Sidebar';
 import { Workspace, type SaveState } from './Workspace';
-import { load, save } from './prefs';
+import { load, save, allPrefs, restorePrefs } from './prefs';
 import { I18nContext, setUiLangGlobal, translate, tr, type UiLang } from '../i18n';
-import { Popover } from './ui';
 import { LOCAL_UNI, WEB_FONTS, ENGLISH_FONTS, isFontAvailable } from '../fonts';
 import './fonts.css';
 import './app.css';
@@ -37,6 +35,8 @@ import { applyUpdate, canPromptInstall, checkForUpdate, isAppleDevice, isStandal
 
 const coarse = typeof matchMedia === 'function' && matchMedia('(pointer: coarse)').matches;
 const wideQuery = typeof matchMedia === 'function' ? matchMedia('(min-width: 1000px)') : null;
+/** Phones: keyboard layout moves into the ☰ list, short language labels. */
+const phoneQuery = typeof matchMedia === 'function' ? matchMedia('(max-width: 640px)') : null;
 
 /** One-time move of the M2 preview draft and word bank (localStorage) into the database. */
 async function migrateFromM2(): Promise<void> {
@@ -82,7 +82,9 @@ export function App() {
   const [bangla, setBangla] = useState(() => load('bangla', true));
   const [vf, setVf] = useState(() => load('vf', true));
   const [oldReph, setOldReph] = useState(() => load('oldReph', false));
-  const [kbVisible, setKbVisible] = useState(() => load('kb', coarse));
+  const [kbTablet, setKbTablet] = useState(() => load('kb', coarse));
+  /** Phones: tap the page → the phone's own keyboard, typing through the Bornona layout. */
+  const [kbPhone, setKbPhone] = useState(() => load('kbPhone', false));
   const [sideOpen, setSideOpen] = useState(() => load('side', true));
   const [format, setFormat] = useState<DocFormat>(() => ({ ...DEFAULT_FORMAT, ...load<Partial<DocFormat>>('format', {}) }));
   const [voice, setVoice] = useState<VoicePrefs>(() => ({ ...DEFAULT_VOICE_PREFS, ...load<Partial<VoicePrefs>>('voice', {}) }));
@@ -112,6 +114,33 @@ export function App() {
   const [fonts, setFonts] = useState<FontInfo[]>([]);
   const editorRef = useRef<Editor | null>(null);
   const [wide, setWide] = useState(() => wideQuery?.matches ?? true);
+  const [phone, setPhone] = useState(() => phoneQuery?.matches ?? false);
+  // touch devices (phone and iPad): the device's own keyboard types Bornona; ⌨ switches to the on-screen keyboard
+  const kbVisible = coarse || phone ? kbPhone : kbTablet;
+  /** Ask the browser not to clear this site's data (Safari otherwise may after 7 days unused, outside the home screen). */
+  const [persisted, setPersisted] = useState<boolean | null>(null);
+  /** One microphone key: AI voice (Gemini) or the device's voice. 'auto' = AI when a key is set. */
+  const [voiceEngine, setVoiceEngine] = useState<'auto' | 'ai' | 'device'>(() => load('voiceEngine', 'auto'));
+  useEffect(() => save('voiceEngine', voiceEngine), [voiceEngine]);
+  const askPersist = async () => {
+    try {
+      const ok = await navigator.storage.persist();
+      setPersisted(ok);
+      say(ok ? 'স্টোরেজ স্থায়ী হলো' : 'ব্রাউজার এখন রাজি হলো না; হোম স্ক্রিনে অ্যাপ হিসেবে বসালে সাধারণত রাজি হয়');
+    } catch {
+      setPersisted(false);
+    }
+  };
+  useEffect(() => {
+    const st = typeof navigator !== 'undefined' ? navigator.storage : undefined;
+    if (!st?.persisted) return;
+    st.persisted().then(async (p) => {
+      // Firefox asks the user, so it is only asked from Settings
+      if (!p && st.persist && !/firefox/i.test(navigator.userAgent)) p = await st.persist().catch(() => false);
+      setPersisted(p);
+    }).catch(() => setPersisted(false));
+  }, []);
+  const setKbVisible = coarse || phone ? setKbPhone : setKbTablet;
   const [settingsOpen, setSettingsOpen] = useState(false);
   /** AI assistant: Gemini key (IndexedDB, device only), model, words to hide. */
   const [geminiKey, setGeminiKeyState] = useState('');
@@ -146,7 +175,8 @@ export function App() {
   useEffect(() => save('bangla', bangla), [bangla]);
   useEffect(() => save('vf', vf), [vf]);
   useEffect(() => save('oldReph', oldReph), [oldReph]);
-  useEffect(() => save('kb', kbVisible), [kbVisible]);
+  useEffect(() => save('kb', kbTablet), [kbTablet]);
+  useEffect(() => save('kbPhone', kbPhone), [kbPhone]);
   useEffect(() => save('side', sideOpen), [sideOpen]);
   useEffect(() => save('format', format), [format]);
   useEffect(() => save('voice', voice), [voice]);
@@ -154,14 +184,29 @@ export function App() {
   useEffect(() => save('ansiFont', ansiFont), [ansiFont]);
   useEffect(() => save('enFont', enFont), [enFont]);
   useEffect(() => {
-    const on = () => setWide(wideQuery?.matches ?? true);
+    const on = () => {
+      setWide(wideQuery?.matches ?? true);
+      setPhone(phoneQuery?.matches ?? false);
+    };
     wideQuery?.addEventListener('change', on);
-    return () => wideQuery?.removeEventListener('change', on);
+    phoneQuery?.addEventListener('change', on);
+    return () => {
+      wideQuery?.removeEventListener('change', on);
+      phoneQuery?.removeEventListener('change', on);
+    };
   }, []);
 
   const toastTimer = useRef<number>(undefined);
   const toastNow = useRef('');
   /** Show a message. `m` is the Bangla text (translated here for the English interface). */
+  // a message saved before a restart (restore with settings)
+  useEffect(() => {
+    try {
+      const m = sessionStorage.getItem('pronotes.afterRestart');
+      if (m) { sessionStorage.removeItem('pronotes.afterRestart'); setTimeout(() => say(m), 300); }
+    } catch { /* blocked */ }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   const say = useCallback((m0: string, vars?: Record<string, string | number>) => {
     const m = tr(m0, vars);
     setToast(m);
@@ -275,16 +320,6 @@ export function App() {
     await refresh();
   }, [refresh]);
 
-  /** New envelope: a legal draft on DL envelope paper with the sender/recipient template. */
-  const newEnvelope = async () => {
-    const c = envelopeContent('bn');
-    const d = await createDoc(tr('খাম'), c, envelopeText(c), Date.now(), 'legal');
-    await setDocPage(d.id, envelopePage('env-dl'));
-    await refresh();
-    await open(d.id);
-    setView('docs');
-    say('খাম DL মাপে খোলা হলো। পাতা ট্যাব থেকে মাপ আর “লেখার দিক” বদলাতে পারেন।');
-  };
   const newDoc = async (kind: DocKind = 'legal') => {
     const d = await createDoc(tr(kind === 'note' ? 'নতুন নোট' : 'নতুন ড্রাফট'), undefined, '', Date.now(), kind);
     // a new document goes into the folder being looked at
@@ -378,10 +413,11 @@ export function App() {
   const getSideConfig = useCallback(() => sideCfg.current, []);
   const toggleBangla = useCallback(() => setBangla((b) => !b), []);
 
-  const prefs = () => ({ layout: layoutId, bangla, vf, oldReph, kb: kbVisible, format, voice, autoBijoy, ansiFont, enFont });
-  const backup = async () => {
+  // every setting on this device goes into the backup (store), and comes back on restore
+  const prefs = () => ({ layout: layoutId, bangla, vf, oldReph, kb: kbVisible, format, voice, autoBijoy, ansiFont, enFont, store: allPrefs() });
+  const backup = async (withKey = false) => {
     try {
-      const f = await exportAll(prefs());
+      const f = await exportAll(prefs(), new Date(), withKey && geminiKey ? geminiKey : undefined);
       const ok = await saveFile(backupFileName(), new Blob([JSON.stringify(f)], { type: 'application/json' }));
       if (ok) say('{n}টা ড্রাফট আর শব্দভান্ডারের ব্যাকআপ তৈরি হয়েছে', { n: f.docs.length });
     } catch {
@@ -390,13 +426,23 @@ export function App() {
   };
   const restore = async (file: File) => {
     try {
-      const r = await restoreAll(parseBackup(await file.text()));
+      const f = parseBackup(await file.text());
+      const r = await restoreAll(f);
+      if (f.aiKey && !geminiKey) setGeminiKey(f.aiKey);
       bank.current = (await loadBank()) ?? bank.current;
       setBankVersion((v) => v + 1);
       setCustomLayouts(await loadLayouts());
       setCorrectionsState(await loadCorrections());
       await refresh();
-      say('ফেরত এসেছে: নতুন {a}টা, আলাদা কপি {c}টা, আগে থেকেই ছিল {u}টা', { a: r.added, c: r.copies, u: r.unchanged });
+      const msg = tr('ফেরত এসেছে: নতুন {a}টা, আলাদা কপি {c}টা, আগে থেকেই ছিল {u}টা', { a: r.added, c: r.copies, u: r.unchanged });
+      say(msg);
+      const store = (r.prefs as { store?: Record<string, unknown> }).store;
+      if (store && restorePrefs(store)) {
+        // settings take effect after a fresh start; the open draft is saved first, the message is shown again after it
+        await flushAll();
+        try { sessionStorage.setItem('pronotes.afterRestart', msg + ' ' + tr('সেটিংও ফেরত এসেছে।')); } catch { /* blocked */ }
+        setTimeout(() => location.reload(), 900);
+      }
     } catch {
       say('ফাইলটা ProNotes-এর ব্যাকআপ না, বা পড়া যায়নি');
     }
@@ -517,7 +563,7 @@ export function App() {
     if (!current) return;
     const id = current.id;
     setCurrent((d) => (d && d.id === id ? { ...d, page } : d));
-    pageWrites.current = pageWrites.current.then(() => setDocPage(id, page)).catch(() => say('পাতার সেটিং সেভ করা যায়নি'));
+    pageWrites.current = pageWrites.current.then(() => setDocPage(id, page)).then(() => refresh()).catch(() => say('পাতার সেটিং সেভ করা যায়নি'));
   };
   const changeKind = async (kind: DocKind) => {
     if (!current || kind === kindOf(current)) return;
@@ -536,10 +582,21 @@ export function App() {
   const themeLabel: Record<Theme, string> = { auto: 'রং: ডিভাইস অনুযায়ী', light: 'রং: আলো', dark: 'রং: অন্ধকার' };
 
   const showSide = sideOpen;
+  const layoutSelect = (
+    <select className="layout" aria-label={t('কিবোর্ড লেআউট')} title={t('কিবোর্ড লেআউট')} data-testid="layout" value={layoutId} onChange={(e) => setLayoutId(e.target.value)}>
+      <optgroup label={t('সাথে দেওয়া')}>{BUILTIN_LAYOUTS.map((l) => <option key={l.id} value={l.id}>{l.name}</option>)}</optgroup>
+      {customLayouts.length > 0 && <optgroup label={t('আপনার যোগ করা')}>{customLayouts.map((l) => <option key={l.id} value={l.id}>{l.name}</option>)}</optgroup>}
+    </select>
+  );
   const sidebar = (
-    <Sidebar docs={docs} trash={trash} folders={folders} currentId={current?.id ?? null} view={view} setView={setView} kindIcon={KIND_ICON} kindLabel={KIND_LABEL}
+    <Sidebar top={
+      <>
+        <div className="side-brand">ProNotes</div>
+        {phone && <label className="side-layout">{t('কিবোর্ড লেআউট')}{layoutSelect}</label>}
+      </>
+    } docs={docs} trash={trash} folders={folders} currentId={current?.id ?? null} view={view} setView={setView} kindIcon={KIND_ICON} kindLabel={KIND_LABEL}
       prefs={listPrefs} setPrefs={setListPrefs} getConfig={getSideConfig} onToggleLanguage={toggleBangla}
-      onOpen={open} onNew={newDoc} onNewEnvelope={newEnvelope}
+      onOpen={open} onNew={newDoc}
       onRename={renameAny} onCopyText={copyText} onPin={pinDoc} onMove={moveDocs} onChangeKind={kindOfAny}
       onExport={exportDocs} canShare={canShareFiles()}
       onInfo={(id) => setDocSheet({ type: 'info', id })} onVersions={async (id) => { if (current?.id === id) await flushAll(); setDocSheet({ type: 'versions', id }); }}
@@ -553,7 +610,6 @@ export function App() {
       onClose={wide ? undefined : () => setSideOpen(false)} />
   );
   const statusText = t({ saved: 'এই ডিভাইসে সেভ হয়েছে', saving: 'সেভ হচ্ছে…', error: 'সেভ করা যায়নি' }[saveState]);
-  const curKind = current ? kindOf(current) : 'legal';
 
   if (fatal)
     return (
@@ -568,31 +624,16 @@ export function App() {
     <I18nContext.Provider value={i18n}>
     <div className={'app' + (showSide && wide ? ' with-side' : '')}>
       <header className="top">
-        <div className="brand">
-          <span className="name">ProNotes</span>
-          {current && (
-            <Popover label={<>{KIND_ICON[curKind]} {t(KIND_LABEL[curKind])} ▾</>} title={t('ডকুমেন্টের ধরন')} testid="kind" className="kind">
-              {(close) => (
-                <div className="menu">
-                  <p className="note">{t('এই ডকুমেন্টের ধরন বদলান (লেখা যেমন আছে থাকবে):')}</p>
-                  {(['note', 'legal'] as DocKind[]).map((k) => (
-                    <button key={k} type="button" data-testid={'kind-' + k} aria-pressed={k === curKind} onClick={() => { close(); changeKind(k); }}>{KIND_ICON[k]} {t(KIND_LABEL[k])}</button>
-                  ))}
-                  <button type="button" disabled>{KIND_ICON.chart} {t(KIND_LABEL.chart)} ({t('শীঘ্রই')})</button>
-                </div>
-              )}
-            </Popover>
-          )}
+        <div className="brand" id="title-slot">
+          {!current && <span className="name">ProNotes</span>}
         </div>
-        <span className={'status ' + saveState} data-testid="save-status" role="status">{statusText}</span>
-        <select className="layout" aria-label={t('কিবোর্ড লেআউট')} title={t('কিবোর্ড লেআউট')} data-testid="layout" value={layoutId} onChange={(e) => setLayoutId(e.target.value)}>
-          <optgroup label={t('সাথে দেওয়া')}>{BUILTIN_LAYOUTS.map((l) => <option key={l.id} value={l.id}>{l.name}</option>)}</optgroup>
-          {customLayouts.length > 0 && <optgroup label={t('আপনার যোগ করা')}>{customLayouts.map((l) => <option key={l.id} value={l.id}>{l.name}</option>)}</optgroup>}
-        </select>
-        <div className="seg" role="group" aria-label={t('টাইপিং-এর ভাষা')} title={t('টাইপিং-এর ভাষা (Ctrl+Space)')}>
-          <button type="button" aria-pressed={bangla} data-testid="mode-bn" onClick={() => setBangla(true)}>বাংলা</button>
-          <button type="button" aria-pressed={!bangla} data-testid="mode-en" onClick={() => setBangla(false)}>English</button>
-        </div>
+        {/* quiet: a small ✓ when saved; words only while saving fails */}
+        <span className={'status ' + saveState} data-testid="save-status" role="status" title={statusText}>{statusText}</span>
+        {!phone && layoutSelect}
+        <button type="button" className="tb lang" data-testid="lang-toggle" data-lang={bangla ? 'bn' : 'en'}
+          title={t(bangla ? 'টাইপ: বাংলা — চাপলে English' : 'টাইপ: English — চাপলে বাংলা')}
+          aria-label={t(bangla ? 'টাইপ: বাংলা — চাপলে English' : 'টাইপ: English — চাপলে বাংলা')}
+          onPointerDown={(e) => e.preventDefault()} onClick={() => setBangla((b) => !b)}>{bangla ? 'বা' : 'e'}</button>
         <button type="button" className="tb theme" data-testid="theme" data-theme-mode={theme} title={t(themeLabel[theme])} aria-label={t(themeLabel[theme])}
           onClick={() => setTheme(themeNext[theme])}>{THEME_ICON[theme]}</button>
         <button type="button" className={'tb' + (settingsOpen ? ' on' : '')} title={t('সেটিংস')} aria-label={t('সেটিংস')} data-testid="settings"
@@ -604,7 +645,7 @@ export function App() {
         <div className="work">
           {current && (
             <Workspace key={current.id + ':' + reloadKey} doc={current} map={map} bangla={bangla} vowelForming={vf} oldReph={oldReph}
-              kbVisible={kbVisible} coarse={coarse} bank={bank.current} bankVersion={bankVersion} onBankChanged={onBankChanged}
+              kbVisible={kbVisible} coarse={coarse} phone={phone} voiceEngine={voiceEngine === 'auto' ? (geminiKey ? 'ai' : 'device') : voiceEngine} bank={bank.current} bankVersion={bankVersion} onBankChanged={onBankChanged}
               onToggleLanguage={() => setBangla((b) => !b)} onSave={onSave}
               onRename={renameAny}
               onSaveState={setSaveState} format={format} say={say} fonts={fontChoices}
@@ -635,7 +676,7 @@ export function App() {
       {settingsOpen && (
         <Settings vf={vf} setVf={setVf} oldReph={oldReph} setOldReph={setOldReph}
           customLayouts={customLayouts} onAddLayout={addLayout} onDeleteLayout={deleteLayout}
-          voice={voice} setVoice={setVoice} voiceNote={voiceNote} corrections={corrections} setCorrections={setCorrections}
+          voice={voice} setVoice={setVoice} voiceEngine={voiceEngine} setVoiceEngine={setVoiceEngine} voiceNote={voiceNote} corrections={corrections} setCorrections={setCorrections}
           format={format} setFormat={setFormat} fonts={fonts} onAddFont={addFont} onDeleteFont={deleteFont}
           ansiFont={ansiFont} setAnsiFont={setAnsiFont} enFont={enFont} setEnFont={setEnFont}
           autoBijoy={autoBijoy} setAutoBijoy={setAutoBijoy}
@@ -648,6 +689,7 @@ export function App() {
           app={{
             supported: pwaSupported(), offlineReady, standalone: isStandalone(), apple: isAppleDevice(), canInstall,
             onInstall: async () => { if (await promptInstall()) say('ProNotes ইনস্টল হয়েছে'); },
+            persisted, onPersist: askPersist,
             onCheckUpdate: async () => { say((await checkForUpdate()) ? 'নতুন ভার্সন খোঁজা হলো; থাকলে উপরে জানানো হবে' : 'এখন খোঁজা গেল না (ইন্টারনেট নেই?)'); },
           }} />
       )}

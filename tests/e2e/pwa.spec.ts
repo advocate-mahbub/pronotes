@@ -130,6 +130,7 @@ test('new version: notice appears, the open draft is saved, then the app reloads
     await page.getByTestId('check-update').click();
     await expect(page.getByTestId('update-banner')).toBeVisible({ timeout: 15_000 });
     await editor(page).click();
+    await page.keyboard.press('ControlOrMeta+End'); // caret after the text, wherever the click landed
     await page.keyboard.press('KeyR');
     // update right after typing, before the autosave timer: the text must still be kept
     await Promise.all([page.waitForEvent('load'), page.getByTestId('update-now').click()]);
@@ -146,8 +147,8 @@ test('licence page: linked from Settings, works offline-cached, CSP meta in the 
   const csp = await page.locator('meta[http-equiv="Content-Security-Policy"]').getAttribute('content');
   expect(csp).toContain("connect-src 'self' data: blob: https://generativelanguage.googleapis.com");
   await page.getByTestId('settings').click();
-  const d = page.locator('details', { has: page.locator('summary', { hasText: 'অ্যাপ: অফলাইন ও ইনস্টল' }) });
-  if (!(await d.evaluate((e) => (e as HTMLDetailsElement).open))) await d.locator('summary').click();
+  const d = page.locator('details', { has: page.locator(':scope > summary', { hasText: 'অ্যাপ:' }) });
+  if (!(await d.evaluate((e) => (e as HTMLDetailsElement).open))) await d.locator(':scope > summary').click();
   const [lic] = await Promise.all([page.waitForEvent('popup'), page.getByTestId('license-link').click()]);
   await expect(lic.locator('h1')).toContainText('লাইসেন্স');
   await expect(lic.locator('body')).toContainText('সর্বস্বত্ব সংরক্ষিত');

@@ -142,7 +142,7 @@ test('note documents: lists, checklist, headings; kind can be changed', async ({
   await page.getByTestId('new-doc').click();
   await page.getByTestId('new-note').click();
   await expect(page.locator('.page.note')).toBeVisible();
-  await expect(page.getByTestId('kind')).toContainText('সাধারণ নোট');
+  await expect(page.getByTestId('sidebar').getByTestId('doc-row').first()).toHaveAttribute('data-kind', 'note');
   await expect(page.getByTestId('numbered')).toHaveCount(0);
   await editor(page).click();
   await page.getByTestId('pstyle').selectOption('h1');
@@ -157,13 +157,15 @@ test('note documents: lists, checklist, headings; kind can be changed', async ({
   await typeKeys(page, ['KeyL']);
   await expect(editor(page).locator('ul[data-type="taskList"] li')).toHaveCount(1);
   // typing "- " or "1. " never makes a list by itself
-  await page.getByTestId('mode-en').click();
+  await page.getByTestId('lang-toggle').click();
+  await expect(page.getByTestId('lang-toggle')).toHaveText('e');
   await page.keyboard.press('Enter');
   await page.keyboard.press('Enter');
   await page.keyboard.type('- 1. ');
   await expect(editor(page).locator('ul:not([data-type]) li')).toHaveCount(2);
-  await page.getByTestId('kind').click();
-  await page.getByTestId('kind-legal').click();
+  // the type changes from the draft's ⋯ menu in the ☰ list
+  await page.getByTestId('sidebar').getByTestId('doc-row').first().getByTestId('doc-menu').click();
+  await page.getByTestId('m-kind-legal').click();
   await expect(page.locator('.page.legal')).toBeVisible();
   await expect(page.getByTestId('numbered')).toBeVisible();
   await expect(page.getByTestId('sidebar').getByTestId('doc-row').first()).toHaveAttribute('data-kind', 'legal');
@@ -224,6 +226,8 @@ test('app language English ⇄ Bangla; document text and typing are not affected
   await start(page);
   await typeKeys(page, ['KeyK']);
   await page.getByTestId('settings').click();
+  // menu language lives in the App section of Settings
+  await page.locator('details', { has: page.locator(':scope > summary', { hasText: 'অ্যাপ: মেনুর ভাষা' }) }).locator(':scope > summary').click();
   await page.getByTestId('ui-en').click();
   await expect(page.getByTestId('tab-home')).toHaveText('Home');
   await expect(page.getByTestId('settings-panel')).toContainText('Keyboard and typing');
@@ -236,6 +240,7 @@ test('app language English ⇄ Bangla; document text and typing are not affected
   await page.reload();
   await expect(page.getByTestId('tab-insert')).toHaveText('Insert');
   await page.getByTestId('settings').click();
+  await page.locator('details', { has: page.locator(':scope > summary', { hasText: 'App: menu language' }) }).locator(':scope > summary').click();
   await page.getByTestId('ui-bn').click();
   await expect(page.getByTestId('tab-home')).toHaveText('হোম');
 });

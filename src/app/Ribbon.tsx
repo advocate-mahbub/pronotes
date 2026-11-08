@@ -9,8 +9,9 @@ import { PARAGRAPH_STYLES, FONT_SIZES, stepFontSize, marksShown, type ParagraphS
 import type { DocKind } from '../storage';
 import { useT } from '../i18n';
 import { Popover } from './ui';
+import { TableInsertMenu, TableDesignTools, TableLayoutTools } from './TableRibbon';
 import { load, save } from './prefs';
-import { MARGIN_PRESETS, PAPERS, isEnvelope, normalizePage, type PageSetup, type PaperId, type TextDir } from '../docx-export/page';
+import { MARGIN_PRESETS, PAPERS, envelopePage, isEnvelope, paperChoices, normalizePage, type PageSetup, type PaperId, type TextDir } from '../docx-export/page';
 
 const TEXT_DIRS: { id: TextDir; label: string; note: string }[] = [
   { id: 'lr', label: 'স্বাভাবিক', note: 'কাগজ যেভাবে দেখছেন সেভাবেই প্রিন্ট' },
@@ -19,7 +20,7 @@ const TEXT_DIRS: { id: TextDir; label: string; note: string }[] = [
 ];
 import { GRID_CM, type GridPrefs, type ViewPrefs } from './prefs-types';
 
-export type RibbonTab = 'home' | 'insert' | 'page' | 'view' | 'tools' | 'table';
+export type RibbonTab = 'home' | 'insert' | 'page' | 'view' | 'tools' | 'tdesign' | 'table';
 
 interface Props {
   editor: Editor;
@@ -38,6 +39,8 @@ interface Props {
   converterOpen: boolean;
   onAi: () => void;
   aiOpen: boolean;
+  /** Short notice (toast). */
+  say: (msg: string) => void;
   onWordCount: () => void;
   onFontPanel: () => void;
   onParagraphPanel: () => void;
@@ -81,7 +84,7 @@ export function Ribbon(p: Props) {
   const [collapsed, setCollapsed] = useState(() => load('ribbonCollapsed', false));
   useEffect(() => save('ribbonCollapsed', collapsed), [collapsed]);
   useEffect(() => {
-    if ((!inTable && tab === 'table') || (p.kind !== 'legal' && (tab === 'page' || tab === 'view'))) setTab('home');
+    if ((!inTable && (tab === 'table' || tab === 'tdesign')) || (p.kind !== 'legal' && (tab === 'page' || tab === 'view'))) setTab('home');
   }, [inTable, tab, p.kind]);
 
   // ----- current values -----
@@ -245,9 +248,6 @@ export function Ribbon(p: Props) {
 
   const home = (
     <>
-      {btn('↶', t('Undo (Ctrl/⌘+Z)'), false, () => chain().undo().run(), 'undo')}
-      {btn('↷', t('Redo (Ctrl/⌘+Y)'), false, () => chain().redo().run(), 'redo')}
-      <span className="sep" />
       <select className="sel style" aria-label={t('স্টাইল')} title={t('স্টাইল')} data-testid="pstyle" value={styleValue} onChange={(e) => setStyle(e.target.value)}>
         {legal
           ? PARAGRAPH_STYLES.map((s) => <option key={s.id} value={s.id}>{t(s.label)}</option>)
@@ -307,15 +307,7 @@ export function Ribbon(p: Props) {
   const insert = (
     <>
       {legal && btn(t('তফসিল'), t('তফসিলের টেবিল (৪ কলাম)'), false, () => chain().insertTable({ rows: 3, cols: 4, withHeaderRow: true }).run(), 'table-add')}
-      <Popover label={t('টেবিল')} title={t('টেবিল ঢোকান')} testid="table-grid">
-        {(close) => (
-          <div className="menu">
-            {[[2, 2], [3, 3], [4, 4], [3, 5], [5, 3]].map(([r, c]) => (
-              <button key={r + 'x' + c} type="button" onClick={() => { chain().insertTable({ rows: r, cols: c, withHeaderRow: false }).run(); close(); }}>{r} × {c}</button>
-            ))}
-          </div>
-        )}
-      </Popover>
+      <TableInsertMenu ed={ed} say={p.say} />
       {btn(t('পাতা ভাঙা'), t('নতুন পাতা (Ctrl/⌘+Enter)'), false, () => chain().setPageBreak().run(), 'page-break')}
       <Popover label="Ω" title={t('বিশেষ চিহ্ন')} testid="symbols">
         {(close) => (
@@ -346,17 +338,8 @@ export function Ribbon(p: Props) {
     </>
   );
 
-  const table = (
-    <>
-      {btn(t('+সারি'), t('নিচে সারি যোগ'), false, () => chain().addRowAfter().run(), 'row-add')}
-      {btn(t('−সারি'), t('এই সারি মুছুন'), false, () => chain().deleteRow().run(), 'row-del')}
-      {btn(t('+কলাম'), t('ডানে কলাম যোগ'), false, () => chain().addColumnAfter().run(), 'col-add')}
-      {btn(t('−কলাম'), t('এই কলাম মুছুন'), false, () => chain().deleteColumn().run(), 'col-del')}
-      {btn(t('ঘর জোড়া'), t('সিলেক্ট করা ঘর জোড়া লাগান'), false, () => chain().mergeCells().run(), 'merge')}
-      {btn(t('ঘর ভাগ'), t('ঘর আলাদা করুন'), false, () => chain().splitCell().run(), 'split')}
-      {btn(t('−টেবিল'), t('টেবিল মুছুন'), false, () => chain().deleteTable().run(), 'table-del')}
-    </>
-  );
+  const tdesign = <TableDesignTools ed={ed} />;
+  const table = <TableLayoutTools ed={ed} say={p.say} />;
 
   // ----- page tab -----
   const pg = p.page;
@@ -368,9 +351,11 @@ export function Ribbon(p: Props) {
         onChange={(e) => {
           const id = e.target.value as PaperId;
           if (id === 'custom') return p.onPageSheet();
-          setPg({ paper: id, width: PAPERS[id].width, height: PAPERS[id].height, ...(isEnvelope(id) ? { orientation: 'landscape' as const } : {}) });
+          // an envelope also gets the envelope margins and no page numbers
+          if (isEnvelope(id)) return setPg({ ...envelopePage(id as 'env-10'), lang: pg.lang, textDir: pg.textDir });
+          setPg({ paper: id, width: PAPERS[id].width, height: PAPERS[id].height });
         }}>
-        {Object.entries(PAPERS).map(([id, x]) => <option key={id} value={id}>{x.label}</option>)}
+        {paperChoices(pg.paper).map((id) => <option key={id} value={id}>{PAPERS[id].label}</option>)}
         <option value="custom">{t('নিজের মাপ…')}</option>
       </select>
       {btn(t('খাড়া'), t('খাড়া (Portrait)'), pg.orientation === 'portrait', () => setPg({ orientation: 'portrait' }), 'portrait')}
@@ -490,18 +475,23 @@ export function Ribbon(p: Props) {
   const tabs: [RibbonTab, string][] = legal
     ? [['home', 'হোম'], ['insert', 'ঢোকান'], ['page', 'পাতা'], ['view', 'View'], ['tools', 'টুলস']]
     : [['home', 'হোম'], ['insert', 'ঢোকান'], ['tools', 'টুলস']];
-  if (inTable) tabs.push(['table', 'টেবিল']);
+  if (inTable) tabs.push(['tdesign', 'টেবিল ডিজাইন'], ['table', 'টেবিল লেআউট']);
   return (
     <nav className={'ribbon' + (collapsed ? ' collapsed' : '')} aria-label={t('লেখার সরঞ্জাম')}>
       <div className="ribbon-tabs" role="tablist">
         {p.start}
         {tabs.map(([id, label]) => (
-          <button key={id} type="button" role="tab" aria-selected={tab === id} className={'rtab' + (id === 'table' ? ' ctx' : '')} data-testid={'tab-' + id}
+          <button key={id} type="button" role="tab" aria-selected={tab === id} className={'rtab' + (id === 'table' || id === 'tdesign' ? ' ctx' : '')} data-testid={'tab-' + id}
             onPointerDown={(e) => e.preventDefault()}
             onClick={() => { setTab(id); if (collapsed) setCollapsed(false); }}>
             {t(label)}
           </button>
         ))}
+        {/* Undo / Redo on every tab */}
+        <span className="tab-undo">
+  {btn('↶', t('Undo (Ctrl/⌘+Z)'), false, () => chain().undo().run(), 'undo')}
+  {btn('↷', t('Redo (Ctrl/⌘+Y)'), false, () => chain().redo().run(), 'redo')}
+        </span>
         <span className="grow" />
         {p.end}
         <button type="button" className="tb" data-testid="ribbon-collapse" title={collapsed ? t('সরঞ্জাম দেখান') : t('সরঞ্জাম লুকান')} aria-label={collapsed ? t('সরঞ্জাম দেখান') : t('সরঞ্জাম লুকান')}
@@ -509,7 +499,7 @@ export function Ribbon(p: Props) {
       </div>
       {!collapsed && (
         <div className="ribbon-body" role="tabpanel" data-testid={'panel-' + tab}>
-          <div className="ribbon-row">{tab === 'home' ? home : tab === 'insert' ? insert : tab === 'page' ? pageTab : tab === 'view' ? viewTab : tab === 'tools' ? tools : table}</div>
+          <div className={'ribbon-row' + (tab === 'table' || tab === 'tdesign' ? ' wrap' : '')}>{tab === 'home' ? home : tab === 'insert' ? insert : tab === 'page' ? pageTab : tab === 'view' ? viewTab : tab === 'tools' ? tools : tab === 'tdesign' ? tdesign : table}</div>
         </div>
       )}
     </nav>

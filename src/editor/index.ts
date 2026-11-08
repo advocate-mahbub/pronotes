@@ -6,3 +6,4 @@ export * from './find-replace';
 export * from './pagination';
 export * from './ansi-typing';
 export * from './text-map';
+export * from './table-tools';

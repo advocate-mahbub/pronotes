@@ -20,15 +20,17 @@ export interface BackupFile {
   corrections?: string;
   /** v2.0+: folders (documents carry folderId). Versions are not in backups (size). */
   folders?: Folder[];
+  /** Only when the owner ticks "Gemini key-ও রাখুন": the key in plain text. */
+  aiKey?: string;
 }
 
-export async function exportAll(prefs: Record<string, unknown>, now = new Date()): Promise<BackupFile> {
+export async function exportAll(prefs: Record<string, unknown>, now = new Date(), aiKey?: string): Promise<BackupFile> {
   const docs = await (await db()).getAll('docs');
   const wordBank = (await getMeta<WordBank>('wordBank')) ?? emptyBank();
   const layouts = (await getMeta<Layout[]>('layouts')) ?? [];
   const corrections = (await getMeta<string>('corrections')) ?? '';
   const folders = (await getMeta<Folder[]>('folders')) ?? [];
-  return { app: 'pronotes', version: 1, exportedAt: now.toISOString(), docs, wordBank, prefs, layouts, corrections, folders };
+  return { app: 'pronotes', version: 1, exportedAt: now.toISOString(), docs, wordBank, prefs, layouts, corrections, folders, ...(aiKey ? { aiKey } : {}) };
 }
 
 export function backupFileName(now = new Date()): string {
