@@ -7,3 +7,4 @@ playwright-report/
 .DS_Store
 dist-preview/
 i18n-missing.json
+tsconfig.tsbuildinfo

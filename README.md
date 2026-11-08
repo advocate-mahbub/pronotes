@@ -5,7 +5,7 @@ iPad-এ, internet ছাড়াও চলে এমন বাংলা আইন
 
 > অবস্থা: **v2.0, ধাপ ৫** — M6 পর্যন্ত সব + ribbon, দুই ধরনের ডকুমেন্ট, অ্যাপের ভাষা, আলো/অন্ধকার (ধাপ ১) + পাতা সেটআপ, Print Layout,
 > Ruler, Gridlines (ধাপ ২) + শেয়ার/Export: .docx, .doc, বিজয় ANSI, .txt, .md, .html, .png, PDF; কপি ইউনিকোড ⇄ ANSI (ধাপ ৩) + Converter (টাকা কথায়, সংখ্যা, ভাঙা লেখা ঠিক), বিজয়ে টাইপ (পরীক্ষামূলক), খাম (ধাপ ৪) + AI সহকারী: Claude (কপি-পেস্ট) ও Gemini ফ্রি API, নাম লুকিয়ে (ধাপ ৫)।
-> পরের ধাপ: v2.1 — OCR, স্নিপেট, বাংলা তারিখ, নেভিগেশন প্যান। সাইটে বসানো এখনো হয়নি।
+> পরের ধাপ: টেবিলের সরঞ্জাম, তারপর টাইটেল চার্ট (v2.2)। সাইটে বসানো এখনো হয়নি — `docs/DEPLOY.md` দেখুন।
 
 ## চালানো
 
@@ -18,6 +18,15 @@ npm test             # unit test
 npm run build        # dist/ ফোল্ডারে তৈরি
 npm run test:e2e     # ব্রাউজার test (প্রথমবার: npx playwright install chromium webkit)
 ```
+
+## GitHub ও সাইটে বসানো
+
+- GitHub-এ private repo বানিয়ে তোলা: [`docs/GITHUB.md`](docs/GITHUB.md)
+- সাইটে বসানো (Cloudflare Pages বা আপনার ওয়েবসাইটের `/pronotes/`): [`docs/DEPLOY.md`](docs/DEPLOY.md)
+- বসানোর পর iPad-এ পরীক্ষা: [`docs/ipad-checklist.md`](docs/ipad-checklist.md)
+- প্রতিটা push-এ GitHub টাইপ, unit test ও build পরীক্ষা করে: `.github/workflows/ci.yml`
+- নিরাপত্তা ও cache-এর header: `public/_headers` (Cloudflare Pages/Netlify মানে)
+
 
 ## ফোল্ডার
 

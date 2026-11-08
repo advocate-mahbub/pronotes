@@ -1,0 +1,21 @@
+# Response headers for Cloudflare Pages / Netlify (other hosts ignore this file; see docs/DEPLOY.md).
+# No analytics, no third-party scripts: the only outside address the app may contact is Google's
+# Gemini API, and only when the user has added a key and confirms a send.
+/*
+  X-Content-Type-Options: nosniff
+  Referrer-Policy: no-referrer
+  X-Frame-Options: DENY
+  Permissions-Policy: camera=(), geolocation=(), payment=(), usb=(), microphone=(self)
+  Content-Security-Policy: default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data: blob:; connect-src 'self' data: blob: https://generativelanguage.googleapis.com; worker-src 'self'; manifest-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'none'; object-src 'none'
+
+# the app shell and the service worker must always be checked for a new version
+/index.html
+  Cache-Control: no-cache
+/sw.js
+  Cache-Control: no-cache
+/manifest.webmanifest
+  Cache-Control: no-cache
+
+# file names carry a content hash: safe to keep for a year
+/assets/*
+  Cache-Control: public, max-age=31536000, immutable
