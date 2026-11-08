@@ -18,9 +18,12 @@ describe('Bijoy glyphs the owner corrected', () => {
     expect(toBijoy('‘হ্যাঁ’')).toBe('Ôn¨vuÕ');
     // the library's own ‘ ’ “ ” letter parts are not touched
     expect(toBijoy('স্থ')).toBe('¯’');
-    expect(toBijoy('দ্রুত')).toBe('`ª“Z');
   });
-  it('৪. রু → iæ', () => {
+  it('৪. রু → iæ  ৭. দ্রু → `ªæ', () => {
+    expect(toBijoy('দ্রু')).toBe('`ªæ');
+    expect(toBijoy('দ্রুত')).toBe('`ªæZ');
+    expect(toUnicode('`ªæZ')).toBe('দ্রুত');
+    expect(toUnicode('`ª“Z')).toBe('দ্রুত'); // older files
     expect(toBijoy('রু')).toBe('iæ');
     expect(toBijoy('রুজু')).toBe('iæRy');
   });
@@ -33,7 +36,7 @@ describe('Bijoy glyphs the owner corrected', () => {
     expect(bijoyRuns('শে কথা', 'দে')[0].text).toBe('‡k K_v');
   });
   it('৬. converting back and again changes nothing', () => {
-    for (const b of ['¯Í', 'šÍ', 'iæ', 'Ò†`‡kÓ', 'Ôn¨vuÕ', '†`‡k', 'gv¯Ívb', '¯‘', 'š‘']) expect(toBijoy(toUnicode(b)), b).toBe(b);
+    for (const b of ['`ªæZ', '¯Í', 'šÍ', 'iæ', 'Ò†`‡kÓ', 'Ôn¨vuÕ', '†`‡k', 'gv¯Ívb', '¯‘', 'š‘']) expect(toBijoy(toUnicode(b)), b).toBe(b);
     expect(toUnicode('Ò†`‡kÓ')).toBe('“দেশে”');
     // older files with the — form still read correctly
     expect(toUnicode('¯—')).toBe('স্ত');

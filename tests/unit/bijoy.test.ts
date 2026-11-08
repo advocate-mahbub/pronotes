@@ -9,7 +9,7 @@ const ui = golden('bijoy-ui.json');
 
 /** v8's output with the SutonnyMJ glyph fixes the owner asked for (decision 42). */
 const ownerFix = (b: string) =>
-  b.replace(/([¯š])—y/g, '$1‘').replace(/([¯š])—/g, '$1Í').replace(/i“/g, 'iæ')
+  b.replace(/([¯š])—y/g, '$1‘').replace(/([¯š])—/g, '$1Í').replace(/i“/g, 'iæ').replace(/ª“/g, 'ªæ')
     .replace(/(^|[\s(])"/g, '$1Ò').replace(/"/g, 'Ó').replace(/(^|[\s(])'/g, '$1Ô').replace(/'/g, 'Õ');
 /** straight quotes come back curly (Bijoy has only Ò Ó Ô Õ) */
 const curly = (u: string) => u.replace(/(^|[\s(])"/g, '$1“').replace(/"/g, '”').replace(/(^|[\s(])'/g, '$1‘').replace(/'/g, '’');

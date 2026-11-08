@@ -12,7 +12,7 @@ const BN_IN_WORD = /[\u0981-\u0983\u0985-\u09B9\u09BC-\u09D7\u09DC-\u09DF\u09E6-
 
 /**
  * Unicode → Bijoy, with the SutonnyMJ glyph fixes the owner checked (decision 42):
- * স্ত "¯Í" (not "¯—"), ন্ত "šÍ", স্তু "¯‘", রু "iæ" (not "i“"), quotes “ ” ‘ ’ → Ò Ó Ô Õ
+ * স্ত "¯Í" (not "¯—"), ন্ত "šÍ", স্তু "¯‘", রু "iæ" (not "i“"), দ্রু "`ªæ", quotes “ ” ‘ ’ → Ò Ó Ô Õ
  * (straight " and ' too, opening or closing by position).
  * `prev` is the text just before (another formatting run of the same paragraph): when it ends
  * inside a word, a leading ে-কার stays the in-word form ‡ instead of the word-start form †.
@@ -35,6 +35,7 @@ export function toBijoy(u: string, prev = ''): string {
     .replace(/([¯š])—y/g, '$1‘')
     .replace(/([¯š])—/g, '$1Í')
     .replace(/i“/g, 'iæ')
+    .replace(/ª“/g, 'ªæ')
     .replace(/\uE020/g, 'Ò').replace(/\uE021/g, 'Ó').replace(/\uE022/g, 'Ô').replace(/\uE023/g, 'Õ');
 }
 
