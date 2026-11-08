@@ -796,4 +796,8 @@ export const EN: Record<string, string> = {
   "কিছু বদলালে সাথে সাথে এই ডিভাইসে সংরক্ষিত হয় — আলাদা Save লাগে না।": "Changes are saved on this device at once — no separate Save needed.",
   "ড্রাফটের নাম (চাপলে বদলানো যায়)": "Draft name (tap to change)",
   "সেটিংও ফেরত এসেছে।": "Settings are back too.",
+  "বাংলা অভিধানের শব্দও পরামর্শে দেখাও": "Also suggest words from the Bangla dictionary",
+  "অভিধান: {n}টা শব্দ (উৎস: bangla-spellcheck-dict)। আপনার নিজের শব্দ সবসময় আগে আসে; দুই অক্ষর লেখার পর অভিধানের শব্দ আসে।": "Dictionary: {n} words (source: bangla-spellcheck-dict). Your own words always come first; dictionary words appear after two letters.",
+  "অভিধান লোড হচ্ছে…": "Loading the dictionary…",
+  "অভিধান বন্ধ: শুধু আপনার শেখা শব্দ ও আইনি শব্দ।": "Dictionary off: only your learned words and legal words.",
 };

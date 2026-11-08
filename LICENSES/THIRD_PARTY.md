@@ -25,3 +25,10 @@ users upload their own licensed copy in the app.
 | vite-plugin-pwa, Workbox | MIT | service worker তৈরি (build-time) ও workbox-window (runtime) |
 | html-to-image | MIT | পাতার ছবি (.png) |
 | JSZip | MIT (dual MIT/GPLv3, MIT বেছে নেওয়া) | একাধিক ছবির .zip, .docx পড়া/লেখা |
+
+## বাংলা শব্দ-তালিকা (`public/dict/bn-words.txt`)
+
+- উৎস: https://github.com/habibullahnaiem/bangla-spellcheck-dict — `words.txt` (master, ২০২৬-১১-০৯-এ নেওয়া), পরিষ্কার ও য়/ড়/ঢ় এক অক্ষরে করে।
+- লাইসেন্স: repo-তে ঘোষণা নেই। repo-র নোট: "শব্দ-বানান তথ্যগত (factual) ডেটা। hunspell bn_BD: LGPL/GPL/MPL ট্রাই-লাইসেন্স।" শব্দের উৎস হিসেবে আরও আছে Banan Andolon অ্যাপ ও বাংলা একাডেমি আধুনিক বাংলা অভিধানের শিরোনাম-শব্দ।
+- ProNotes-এ রাখার সিদ্ধান্ত মালিকের (decision 56)। অনুমতি যাচাই হয়নি; নির্মাতার কাছ থেকে লিখিত লাইসেন্স পেলে এখানে যোগ করুন।
+- ProNotes-এর "সর্বস্বত্ব সংরক্ষিত" লাইসেন্স এই তালিকায় খাটে না।

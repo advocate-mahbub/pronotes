@@ -3,6 +3,7 @@
  * Pure logic: storage of the WordBank is the caller's job (see src/storage later).
  */
 import { LEX_BN_LEGAL, LEX_BN_COMMON, LEX_EN, SEED_PHRASES } from './lexicon-data';
+import { dictionaryWords } from './dictionary';
 
 /** Learned data. `w`: word → count. `b`: previous word → (next word → count). Same shape as v8 `bornona.lex`. */
 export interface WordBank {
@@ -111,7 +112,7 @@ export function contextOf(before: string): SuggestContext {
 }
 
 /** Suggestions for the text before the caret: up to 12 completions, or up to 10 next words. */
-export function suggest(bank: WordBank, before: string): string[] {
+export function suggest(bank: WordBank, before: string, opts: { dictionary?: boolean } = {}): string[] {
   const c = contextOf(before);
   if (c.prefix) {
     const isEn = /^[A-Za-z]/.test(c.prefix);
@@ -124,6 +125,8 @@ export function suggest(bank: WordBank, before: string): string[] {
       cand.set(w, (cand.get(w) || 0) + s);
     };
     (isEn ? BASE_EN : BASE_BN).forEach((w) => add(w, 1));
+    // the large Bangla word list: below the built-in legal words and far below the owner's own
+    if (!isEn && opts.dictionary !== false && [...c.prefix].length >= 2) dictionaryWords(c.prefix).forEach((w) => add(w, 0.5));
     for (const w in bank.w) add(w, 2 + Math.min(bank.w[w], 40) * 2);
     if (c.prev) nextFor(bank, c.prev).forEach((s, w) => add(w, s * 25));
     let out = [...cand].sort((a, b) => b[1] - a[1] || a[0].length - b[0].length).slice(0, 12).map((x) => x[0]);

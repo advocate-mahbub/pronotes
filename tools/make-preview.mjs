@@ -24,6 +24,7 @@ const out = `<meta charset="utf-8">
 <title>ProNotes Preview</title>
 <style>${style}</style>
 <div id="root"></div>
+<script>window.__PN_DICT = ${JSON.stringify(fs.readFileSync('public/dict/bn-words.txt', 'utf8')).replace(/<\/script/gi, '<\\/script')};</script>
 <script type="module">${read(js[1]).replace(/<\/script/gi, '<\\/script').replace(/\uFFFD/g, '\\uFFFD')}</script>
 `;
 fs.writeFileSync('dist-preview/pronotes-preview.html', out);

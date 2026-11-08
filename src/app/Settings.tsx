@@ -55,6 +55,7 @@ interface Props {
   ansiKey: AnsiKey;
   setAnsiKey: (k: AnsiKey) => void;
   ai: AiSettings;
+  dict: { on: boolean; setOn: (v: boolean) => void; count: number };
   voiceEngine: 'auto' | 'ai' | 'device';
   setVoiceEngine: (v: 'auto' | 'ai' | 'device') => void;
 }
@@ -323,6 +324,8 @@ export function Settings(p: Props) {
 
       <details>
         <summary>{t('শব্দভান্ডার')}</summary>
+        <label className="chk"><input type="checkbox" data-testid="dict-on" checked={p.dict.on} onChange={(e) => p.dict.setOn(e.target.checked)} /> {t('বাংলা অভিধানের শব্দও পরামর্শে দেখাও')}</label>
+        <p className="note" data-testid="dict-status">{p.dict.on ? (p.dict.count ? t('অভিধান: {n}টা শব্দ (উৎস: bangla-spellcheck-dict)। আপনার নিজের শব্দ সবসময় আগে আসে; দুই অক্ষর লেখার পর অভিধানের শব্দ আসে।', { n: p.dict.count.toLocaleString('bn-BD') }) : t('অভিধান লোড হচ্ছে…')) : t('অভিধান বন্ধ: শুধু আপনার শেখা শব্দ ও আইনি শব্দ।')}</p>
         <p className="note" data-testid="word-count">{t('শেখা শব্দ: {n}টা। বর্ণনা প্যাড (v8)-এর এক্সপোর্ট করা ফাইলও এখানে ইমপোর্ট করা যায়।', { n: p.wordCount })}</p>
         <div className="row">
           <button type="button" className="btn" data-testid="learn-doc" onClick={p.onLearnDoc}>{t('এই ড্রাফট থেকে শব্দ শিখুন')}</button>

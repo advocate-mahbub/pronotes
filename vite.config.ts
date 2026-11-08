@@ -46,8 +46,8 @@ export default defineConfig({
       },
       workbox: {
         // everything the app needs offline, fonts included (woff2 only; every current browser uses it)
-        globPatterns: ['**/*.{js,css,html,png,woff2}'],
-        maximumFileSizeToCacheInBytes: 3 * 1024 * 1024,
+        globPatterns: ['**/*.{js,css,html,png,woff2}', 'dict/*.txt'],
+        maximumFileSizeToCacheInBytes: 5 * 1024 * 1024, // the Bangla word list is ~4 MB (≈0.6 MB compressed)
         navigateFallback: 'index.html',
         cleanupOutdatedCaches: true,
       },

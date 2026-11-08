@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { Editor } from '@tiptap/react';
 import { BUILTIN_LAYOUTS, findLayout, fixNukta, parseAvroLayout, type Layout } from '../bornona-engine';
-import { emptyBank, learnText, mergeBankFile, pruneBank, type WordBank, type WordBankFile } from '../suggest';
+import { emptyBank, learnText, mergeBankFile, pruneBank, type WordBank, type WordBankFile, loadDictionary, clearDictionary, resetDictionaryLoad } from '../suggest';
 import {
   listDocs, getDoc, createDoc, saveContent, renameDoc, duplicateDoc, trashDoc, restoreDoc, deleteForever, purgeExpired,
   loadBank, saveBank, requestPersistence, exportAll, restoreAll, parseBackup, backupFileName, mergeCorrections,
@@ -120,6 +120,16 @@ export function App() {
   /** Ask the browser not to clear this site's data (Safari otherwise may after 7 days unused, outside the home screen). */
   const [persisted, setPersisted] = useState<boolean | null>(null);
   /** One microphone key: AI voice (Gemini) or the device's voice. 'auto' = AI when a key is set. */
+  /** The large Bangla word list in suggestions (decision 56). */
+  const [dictOn, setDictOn] = useState(() => load('dictOn', true));
+  const [dictCount, setDictCount] = useState(0);
+  useEffect(() => {
+    save('dictOn', dictOn);
+    if (!dictOn) { clearDictionary(); resetDictionaryLoad(); setDictCount(0); return; }
+    // after the first paint, so opening the app stays quick
+    const id = window.setTimeout(() => { loadDictionary().then(setDictCount); }, 1200);
+    return () => clearTimeout(id);
+  }, [dictOn]);
   const [voiceEngine, setVoiceEngine] = useState<'auto' | 'ai' | 'device'>(() => load('voiceEngine', 'auto'));
   useEffect(() => save('voiceEngine', voiceEngine), [voiceEngine]);
   const askPersist = async () => {
@@ -680,6 +690,7 @@ export function App() {
           format={format} setFormat={setFormat} fonts={fonts} onAddFont={addFont} onDeleteFont={deleteFont}
           ansiFont={ansiFont} setAnsiFont={setAnsiFont} enFont={enFont} setEnFont={setEnFont}
           autoBijoy={autoBijoy} setAutoBijoy={setAutoBijoy}
+          dict={{ on: dictOn, setOn: setDictOn, count: dictCount }}
           wordCount={Object.keys(bank.current.w).length + 0 * bankVersion}
           onLearnDoc={learnDoc} onExportWords={exportWords} onImportWords={importWords} onResetWords={resetWords}
           onBackup={backup} onRestore={restore} uiLang={uiLang} setUiLang={setUiLangState}
