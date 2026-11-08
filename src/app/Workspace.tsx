@@ -465,7 +465,10 @@ export function Workspace(p: Props) {
         const t = node.text!.slice(Math.max(0, from - pos), to - pos);
         const f = node.marks.find((m) => m.type.name === 'textStyle')?.attrs.fontFamily;
         if (isBijoyFont(f, cb.current.ansiFont)) r.push({ en: false, text: t });
-        else r.push(...bijoyRuns(t));
+        else {
+          const at = Math.max(pos, from);
+          r.push(...bijoyRuns(t, editor.state.doc.textBetween(Math.max(0, at - 1), at)));
+        }
       });
       e.preventDefault();
       e.clipboardData.setData('text/plain', r.map((x) => x.text).join(''));

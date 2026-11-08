@@ -142,3 +142,20 @@ test('envelope: new from the menu, DL landscape, text direction, Word file turne
   await page.getByTestId('text-dir').click();
   await expect(page.getByTestId('dir-tb')).toHaveAttribute('aria-pressed', 'true');
 });
+
+test('ANSI typing: conjuncts, রু, quotes and ে-কার come out as SutonnyMJ expects', async ({ page }) => {
+  await start(page);
+  await page.keyboard.press('Control+Shift+KeyA');
+  // মাস্তান is not on one key: স ্ ত typed one by one must still join (¯Í)
+  await typeKeys(page, ['KeyS', 'KeyH', 'KeyT']); // স্ত
+  await expect(editor(page)).toHaveText('¯Í');
+  await page.keyboard.press('Space');
+  await typeKeys(page, ['KeyN', 'KeyH', 'KeyT']); // ন্ত
+  await page.keyboard.press('Space');
+  await typeKeys(page, ['KeyR', 'KeyU']); // রু
+  await page.keyboard.press('Space');
+  await typeKeys(page, ['Shift+Quote', 'KeyD', 'KeyE', 'Shift+KeyS', 'KeyE', 'Shift+Quote']); // "দেশে"
+  await expect(editor(page)).toHaveText('¯Í šÍ iæ Ò†`‡kÓ');
+  await page.keyboard.press('Backspace'); // the closing quote only
+  await expect(editor(page)).toHaveText('¯Í šÍ iæ Ò†`‡k');
+});

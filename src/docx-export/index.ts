@@ -97,13 +97,16 @@ const own = (s: string) => (ANSI ? toBijoy(s) : s);
 
 function runs(nodes: JSONContent[] = []): ParagraphChild[] {
   const out: ParagraphChild[] = [];
+  let prev = '';
   for (const n of nodes) {
+    const before = prev;
+    prev = n.type === 'text' ? n.text ?? '' : '';
     if (n.type === 'hardBreak') out.push(new TextRun({ break: 1 }));
     else if (n.type === 'text' && n.text) {
       const o = runOptions(n);
       // text typed in Bijoy (ANSI typing) is already Bijoy: keep it in its own font
       if (!ANSI || isBijoyFont(nodeFont(n), ANSI.bijoyFont)) out.push(new TextRun(o));
-      else for (const r of bijoyRuns(n.text)) out.push(new TextRun({ ...o, text: r.text, font: fontObj(r.en ? ANSI.englishFont : ANSI.bijoyFont) }));
+      else for (const r of bijoyRuns(n.text, before)) out.push(new TextRun({ ...o, text: r.text, font: fontObj(r.en ? ANSI.englishFont : ANSI.bijoyFont) }));
     }
   }
   return out;

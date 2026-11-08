@@ -7,14 +7,21 @@ const golden = (f: string) => JSON.parse(fs.readFileSync(new URL('../golden/' + 
 const g = golden('bijoy.json');
 const ui = golden('bijoy-ui.json');
 
-describe('Bijoy converter matches v8', () => {
+/** v8's output with the SutonnyMJ glyph fixes the owner asked for (decision 42). */
+const ownerFix = (b: string) =>
+  b.replace(/([¯š])—y/g, '$1‘').replace(/([¯š])—/g, '$1Í').replace(/i“/g, 'iæ')
+    .replace(/(^|[\s(])"/g, '$1Ò').replace(/"/g, 'Ó').replace(/(^|[\s(])'/g, '$1Ô').replace(/'/g, 'Õ');
+/** straight quotes come back curly (Bijoy has only Ò Ó Ô Õ) */
+const curly = (u: string) => u.replace(/(^|[\s(])"/g, '$1“').replace(/"/g, '”').replace(/(^|[\s(])'/g, '$1‘').replace(/'/g, '’');
+
+describe('Bijoy converter matches v8 (with the owner\'s glyph fixes)', () => {
   it(`Unicode → Bijoy for ${g.enc.length} words and samples`, () => {
-    for (const e of g.enc) expect(toBijoy(e.u), e.u).toBe(e.b);
+    for (const e of g.enc) expect(toBijoy(e.u), e.u).toBe(ownerFix(e.b));
   });
   it('round trip Unicode → Bijoy → Unicode returns the original', () => {
     let n = 0;
     for (const e of g.enc) {
-      expect(toUnicode(toBijoy(e.u)), e.u).toBe(e.u);
+      expect(toUnicode(toBijoy(e.u)), e.u).toBe(curly(e.u));
       n++;
     }
     expect(n).toBeGreaterThan(940);
@@ -32,7 +39,7 @@ describe('Bijoy converter matches v8', () => {
 
 describe('mixed Bangla/English', () => {
   it('runs keep English text as is', () => {
-    for (const r of ui.runs) expect(bijoyRuns(r.s)).toEqual(r.runs);
+    for (const r of ui.runs) expect(bijoyRuns(r.s)).toEqual(r.runs.map((x: { en: boolean; text: string }) => (x.en ? x : { ...x, text: ownerFix(x.text) })));
   });
   it('clipboard HTML puts each run in its font', () => {
     const h = runsToClipboardHtml(bijoyRuns('নাম National (Jatiya).avrolayout'), 'SutonnyMJ', 'Times New Roman');

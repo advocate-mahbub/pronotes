@@ -3,9 +3,46 @@
  * vendored unchanged in ./vendor. This file adds the v8 helpers for mixed
  * Bangla/English text (bijoyRuns, bijoyFromHtml).
  */
-import { toBijoy, toUnicode, looksBijoy } from './vendor/bijoy-lib.js';
+import { toBijoy as libToBijoy, toUnicode as libToUnicode, looksBijoy } from './vendor/bijoy-lib.js';
 
-export { toBijoy, toUnicode, looksBijoy };
+export { looksBijoy };
+
+/** A Bangla letter, sign or kar: text after it continues the same word. */
+const BN_IN_WORD = /[\u0981-\u0983\u0985-\u09B9\u09BC-\u09D7\u09DC-\u09DF\u09E6-\u09EF\u200C\u200D]$/;
+
+/**
+ * Unicode → Bijoy, with the SutonnyMJ glyph fixes the owner checked (decision 42):
+ * স্ত "¯Í" (not "¯—"), ন্ত "šÍ", স্তু "¯‘", রু "iæ" (not "i“"), quotes “ ” ‘ ’ → Ò Ó Ô Õ
+ * (straight " and ' too, opening or closing by position).
+ * `prev` is the text just before (another formatting run of the same paragraph): when it ends
+ * inside a word, a leading ে-কার stays the in-word form ‡ instead of the word-start form †.
+ */
+export function toBijoy(u: string, prev = ''): string {
+  // quotes travel as private placeholders: the library's own output uses ‘ ’ “ ” as letter parts (স্তু ¯‘, স্থ ¯’)
+  const q = u
+    .replace(/(^|[\s(\[{—–-])"/g, '$1“').replace(/"/g, '”')
+    .replace(/(^|[\s(\[{—–-])'/g, '$1‘').replace(/'/g, '’')
+    .replace(/“/g, '\uE020').replace(/”/g, '\uE021').replace(/‘/g, '\uE022').replace(/’/g, '\uE023');
+  const cont = BN_IN_WORD.test(prev) && !/^\s/.test(q);
+  let b: string;
+  if (cont) {
+    // encode as if a consonant came before, then take it off again
+    const w = libToBijoy('ক' + q);
+    b = w.startsWith('K') ? w.slice(1) : libToBijoy(q);
+  } else b = libToBijoy(q);
+  return b
+    .replace(/([\uE020\uE022])‡/g, '$1†')
+    .replace(/([¯š])—y/g, '$1‘')
+    .replace(/([¯š])—/g, '$1Í')
+    .replace(/i“/g, 'iæ')
+    .replace(/\uE020/g, 'Ò').replace(/\uE021/g, 'Ó').replace(/\uE022/g, 'Ô').replace(/\uE023/g, 'Õ');
+}
+
+/** Bijoy → Unicode. Ò Ó Ô Õ come back as curly quotes (the library made them straight). */
+export function toUnicode(b: string): string {
+  return libToUnicode(b.replace(/Ò/g, '\uE010').replace(/Ó/g, '\uE011').replace(/Ô/g, '\uE012').replace(/Õ/g, '\uE013'))
+    .replace(/\uE010/g, '“').replace(/\uE011/g, '”').replace(/\uE012/g, '‘').replace(/\uE013/g, '’');
+}
 
 export interface Run {
   /** true = English run (kept as is, English font); false = Bangla run converted to Bijoy. */
@@ -16,7 +53,7 @@ export interface Run {
 const EN_RUN = /[A-Za-z][A-Za-z0-9@#$%&*_+=/\\.:'"()[\]{}<>?!,;-]*(?:[ \t]+[A-Za-z0-9(][A-Za-z0-9@#$%&*_+=/\\.:'"()[\]{}<>?!,;-]*)*/g;
 
 /** Split Unicode text into English runs and Bangla runs (Bangla converted to Bijoy). v8 `bijoyRuns`. */
-export function bijoyRuns(src: string): Run[] {
+export function bijoyRuns(src: string, prev = ''): Run[] {
   const out: Run[] = [];
   let last = 0;
   let m: RegExpExecArray | null;
@@ -24,11 +61,11 @@ export function bijoyRuns(src: string): Run[] {
   while ((m = EN_RUN.exec(src))) {
     const s = m.index;
     const txt = m[0];
-    if (s > last) out.push({ en: false, text: toBijoy(src.slice(last, s)) });
+    if (s > last) out.push({ en: false, text: toBijoy(src.slice(last, s), last === 0 ? prev : '') });
     out.push({ en: true, text: txt });
     last = s + txt.length;
   }
-  if (last < src.length) out.push({ en: false, text: toBijoy(src.slice(last)) });
+  if (last < src.length) out.push({ en: false, text: toBijoy(src.slice(last), last === 0 ? prev : '') });
   return out.filter((r) => r.text);
 }
 

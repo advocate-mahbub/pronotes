@@ -45,6 +45,7 @@ test('Claude by copy and paste: private details hidden, put back in the answer',
   await expect(page.getByTestId('ai-result')).toHaveText('১। বাদী মোঃ আব্দুল করিম, সাকিন চরকান্দি, নালিশী দাগ নং ১২৩৪।');
   await page.getByTestId('ai-insert-after').click();
   await expect(editor(page)).toContainText('১। বাদী মোঃ আব্দুল করিম, সাকিন চরকান্দি');
+  await editor(page).focus();
   await page.keyboard.press('Control+z');
   await expect(editor(page)).toHaveText(TEXT);
   expect(outbound).toBe(0); // nothing left the device

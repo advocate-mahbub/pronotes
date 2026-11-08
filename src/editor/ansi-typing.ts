@@ -51,6 +51,32 @@ export function bijoyWordBefore(view: EditorView, cfg: AnsiConfig): { text: stri
   return { text, from: $from.pos - text.length };
 }
 
+/**
+ * The Unicode of the word last written in Bijoy, per editor. Bijoy is ambiguous while a word is
+ * being typed ("কর্" and "র্ক" are both "K©"; "স্" reads back as a visible hasanta), so the word
+ * is not read back from Bijoy when it is still the one we wrote.
+ */
+const shadow = new WeakMap<EditorView, { from: number; bj: string; uni: string }>();
+
+/** Unicode of the Bijoy word before the caret. */
+function wordUnicode(view: EditorView, w: { text: string; from: number }): string {
+  const s = shadow.get(view);
+  if (s && s.from === w.from && s.bj === w.text) return s.uni;
+  // a hasanta at the end is still being typed (a conjunct follows), not a visible hasanta
+  return fixNukta(toUnicode(w.text)).replace(/্\u200C$/, '্');
+}
+
+function writeWord(view: EditorView, w: { from: number }, to: number, uni: string, marks: readonly Mark[]) {
+  const { state } = view;
+  const bj = toBijoy(uni);
+  const tr = state.tr;
+  if (bj) tr.replaceWith(w.from, to, state.schema.text(bj, marks));
+  else tr.delete(w.from, to);
+  view.dispatch(tr.scrollIntoView());
+  if (bj) shadow.set(view, { from: w.from, bj, uni });
+  else shadow.delete(view);
+}
+
 /** Type `out` (Unicode, from the layout) in Bijoy. */
 export function typeAnsi(view: EditorView, out: string, cfg: AnsiConfig & { vowelForming: boolean; oldReph: boolean; fixChandra?: boolean }): void {
   const { state } = view;
@@ -62,14 +88,9 @@ export function typeAnsi(view: EditorView, out: string, cfg: AnsiConfig & { vowe
     return;
   }
   const w = bijoyWordBefore(view, cfg);
-  const uni = fixNukta(toUnicode(w.text));
+  const uni = wordUnicode(view, w);
   const edit = planType(uni, true, out, { bangla: true, vowelForming: cfg.vowelForming, oldReph: cfg.oldReph, fixChandra: cfg.fixChandra });
-  const next = applyEdit(uni, uni.length, edit).value;
-  const bj = toBijoy(next);
-  const tr = state.tr;
-  if (bj) tr.replaceWith(w.from, sel.from, state.schema.text(bj, marks));
-  else tr.delete(w.from, sel.from);
-  view.dispatch(tr.scrollIntoView());
+  writeWord(view, w, sel.from, applyEdit(uni, uni.length, edit).value, marks);
 }
 
 /** English text in ANSI mode: set in the English font so it is never mistaken for Bijoy. */
@@ -85,13 +106,9 @@ export function backspaceAnsi(view: EditorView, cfg: AnsiConfig): boolean {
   if (!state.selection.empty) return false;
   const w = bijoyWordBefore(view, cfg);
   if (!w.text) return false;
-  const uni = [...fixNukta(toUnicode(w.text))];
+  const uni = [...wordUnicode(view, w)];
   uni.pop();
-  const bj = toBijoy(uni.join(''));
-  const tr = state.tr;
-  if (bj) tr.replaceWith(w.from, state.selection.from, state.schema.text(bj, marksWithFont(view, cfg.bijoyFont)));
-  else tr.delete(w.from, state.selection.from);
-  view.dispatch(tr.scrollIntoView());
+  writeWord(view, w, state.selection.from, uni.join(''), marksWithFont(view, cfg.bijoyFont));
   return true;
 }
 
@@ -108,7 +125,8 @@ export function docToBijoy(view: EditorView, cfg: Pick<AnsiConfig, 'bijoyFont' |
   for (const { pos, node } of items.reverse()) {
     const old = node.marks.find((m) => m.type === ts);
     const withFont = (f: string) => ts.create({ ...(old?.attrs ?? {}), fontFamily: `"${f}"` }).addToSet(node.marks.filter((m) => m.type !== ts));
-    const parts = bijoyRuns(node.text!).map((r) => state.schema.text(r.text, withFont(r.en ? cfg.englishFont : cfg.bijoyFont)));
+    const prev = state.doc.textBetween(Math.max(0, pos - 1), pos);
+    const parts = bijoyRuns(node.text!, prev).map((r) => state.schema.text(r.text, withFont(r.en ? cfg.englishFont : cfg.bijoyFont)));
     tr.replaceWith(tr.mapping.map(pos), tr.mapping.map(pos + node.nodeSize), parts);
     n++;
   }

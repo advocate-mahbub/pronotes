@@ -75,7 +75,10 @@ const colorIdx = (c: Ctx, hex: string) => {
 const HIGHLIGHT: Record<string, string> = { '#fff59d': 'FFFF00', '#c5e1a5': '00FF00', '#b3e5fc': '00FFFF', '#f8bbd0': 'FF00FF', '#ffcc80': '808000', '#e0e0e0': 'C0C0C0' };
 
 /** One text run: character formatting + text (split into Bijoy/English parts in ANSI mode). */
-function run(n: JSONContent, c: Ctx, extra = ''): string {
+/** Text of the run before (same paragraph), so a word split by formatting converts as one word. */
+const prevText = (a: JSONContent[], i: number) => (i > 0 && a[i - 1].type === 'text' ? a[i - 1].text ?? '' : '');
+
+function run(n: JSONContent, c: Ctx, extra = '', prev = ''): string {
   let fmt = '';
   let font = c.baseFont;
   /** font set on this run itself (not the document default) */
@@ -110,10 +113,10 @@ function run(n: JSONContent, c: Ctx, extra = ''): string {
   };
   const text = n.type === 'hardBreak' ? '\n' : n.text ?? '';
   if (!c.ansi || isBijoyFont(markFont, c.ansi.bijoyFont)) return piece(text, font);
-  return bijoyRuns(text).map((r) => piece(r.text, r.en ? c.ansi!.englishFont : c.ansi!.bijoyFont)).join('');
+  return bijoyRuns(text, prev).map((r) => piece(r.text, r.en ? c.ansi!.englishFont : c.ansi!.bijoyFont)).join('');
 }
 
-const runs = (nodes: JSONContent[] = [], c: Ctx) => nodes.map((n) => run(n, c)).join('');
+const runs = (nodes: JSONContent[] = [], c: Ctx) => nodes.map((n, i, a) => run(n, c, '', prevText(a, i))).join('');
 const plainRun = (text: string, c: Ctx) => run({ type: 'text', text }, c);
 
 /** Paragraph properties: the legal style's own values, then direct formatting on top. */
@@ -157,7 +160,7 @@ function paragraph(n: JSONContent, c: Ctx, inTable = false): string {
   let extra = '';
   if (ps === 'numbered') pre = plainRun(paraNumber(++c.counter.n, c.lang), c) + '\\tab ';
   if (ps === 'heading' || ps === 'title') extra = '\\b\\ab';
-  const body = (n.content || []).map((x) => run(x, ps === 'title' ? { ...c, size: titleSize } : c, extra)).join('');
+  const body = (n.content || []).map((x, i, a) => run(x, ps === 'title' ? { ...c, size: titleSize } : c, extra, prevText(a, i))).join('');
   return pPr(a, c, inTable) + pre + body + (inTable ? '' : '\\par\n');
 }
 let titleSize = DEFAULT_FORMAT.titleSize;
@@ -205,7 +208,7 @@ function blocks(nodes: JSONContent[], c: Ctx, depth = 0): string {
         const k = { 1: 1.6, 2: 1.3, 3: 1.12 }[Number(n.attrs?.level ?? 1) as 1 | 2 | 3] ?? 1.3;
         const save = c.size;
         c.size = Math.round(save * k * 2) / 2;
-        out += pPr({ ...n.attrs, spBefore: 12, spAfter: 6, keepNext: true }, { ...c, legal: false }) + (n.content || []).map((x) => run(x, c, '\\b\\ab')).join('') + '\\par\n';
+        out += pPr({ ...n.attrs, spBefore: 12, spAfter: 6, keepNext: true }, { ...c, legal: false }) + (n.content || []).map((x, i, a) => run(x, c, '\\b\\ab', prevText(a, i))).join('') + '\\par\n';
         c.size = save;
         break;
       }
