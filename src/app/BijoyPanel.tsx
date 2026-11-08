@@ -4,6 +4,7 @@ import { bijoyRuns, bijoyFromHtml, runsToClipboardHtml, toUnicode, PASTE_MSG_HTM
 import { insertPlainText, docToBijoy, docToUnicode, mapDocText, selectedOrAll } from '../editor';
 import { amountInWords, toBnDigits, toEnDigits, fixBrokenBangla, countText } from '../convert';
 import { useT } from '../i18n';
+import { PanelControls } from './ui';
 
 type Tab = 'bijoy' | 'amount' | 'digits' | 'fix' | 'count';
 const TABS: { id: Tab; label: string }[] = [
@@ -20,6 +21,7 @@ interface Props {
   ansiFont: string;
   enFont: string;
   say: (m: string, vars?: Record<string, string | number>) => void;
+  onClose?: () => void;
 }
 
 /**
@@ -29,8 +31,9 @@ interface Props {
 export function BijoyPanel(p: Props) {
   const { t } = useT();
   const [tab, setTab] = useState<Tab>('bijoy');
+  const [min, setMin] = useState(false);
   return (
-    <section className="conv" aria-label="Converter" data-testid="bijoy-panel">
+    <section className={'conv' + (min ? ' min' : '')} aria-label="Converter" data-testid="bijoy-panel">
       <div className="conv-head">
         <h2 className="conv-title">Converter</h2>
         <div className="conv-tabs" role="tablist">
@@ -39,12 +42,13 @@ export function BijoyPanel(p: Props) {
               onPointerDown={(e) => e.preventDefault()} onClick={() => setTab(x.id)}>{t(x.label)}</button>
           ))}
         </div>
+        {p.onClose && <PanelControls min={min} setMin={setMin} onClose={p.onClose} testid="conv" />}
       </div>
-      {tab === 'bijoy' && <BijoyTab {...p} />}
-      {tab === 'amount' && <AmountTab {...p} />}
-      {tab === 'digits' && <DigitsTab {...p} />}
-      {tab === 'fix' && <FixTab {...p} />}
-      {tab === 'count' && <CountTab {...p} />}
+      {!min && tab === 'bijoy' && <BijoyTab {...p} />}
+      {!min && tab === 'amount' && <AmountTab {...p} />}
+      {!min && tab === 'digits' && <DigitsTab {...p} />}
+      {!min && tab === 'fix' && <FixTab {...p} />}
+      {!min && tab === 'count' && <CountTab {...p} />}
     </section>
   );
 }

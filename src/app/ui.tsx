@@ -1,5 +1,6 @@
 /** Small shared UI pieces: a popover that is never clipped by a scrolling toolbar, and a panel sheet. */
 import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react';
+import { useT } from '../i18n';
 
 interface PopoverProps {
   label: ReactNode;
@@ -72,6 +73,19 @@ export function Sheet({ title, onClose, children, testid, footer }: { title: str
         <div className="sheet-body">{children}</div>
         {footer && <div className="row sheet-foot">{footer}</div>}
       </div>
+    </div>
+  );
+}
+
+/** Minimise (− / ▢) and close (✕) buttons for the panels under the page (Converter, AI). */
+export function PanelControls({ min, setMin, onClose, testid }: { min: boolean; setMin: (v: boolean) => void; onClose: () => void; testid: string }) {
+  const { t } = useT();
+  return (
+    <div className="panel-ctl">
+      <button type="button" className="tb" data-testid={testid + '-min'} aria-pressed={min} title={min ? t('বড় করুন') : t('ছোট করুন')} aria-label={min ? t('বড় করুন') : t('ছোট করুন')}
+        onPointerDown={(e) => e.preventDefault()} onClick={() => setMin(!min)}>{min ? '▢' : '−'}</button>
+      <button type="button" className="tb" data-testid={testid + '-close'} title={t('বন্ধ করুন')} aria-label={t('বন্ধ করুন')}
+        onPointerDown={(e) => e.preventDefault()} onClick={onClose}>✕</button>
     </div>
   );
 }

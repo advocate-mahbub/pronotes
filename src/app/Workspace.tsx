@@ -555,8 +555,8 @@ export function Workspace(p: Props) {
           </div>
         </div>
       )}
-      {aiOpen && <AiPanel editor={editor} say={p.say} gemini={p.gemini} privateWords={p.privateWords} setPrivateWords={p.setPrivateWords} onOpenSettings={p.onOpenSettings} />}
-      {convOpen && <BijoyPanel editor={editor} ansiFont={p.ansiFont} enFont={p.enFont} say={p.say} />}
+      {aiOpen && <AiPanel editor={editor} say={p.say} gemini={p.gemini} privateWords={p.privateWords} setPrivateWords={p.setPrivateWords} onOpenSettings={p.onOpenSettings} onClose={() => { setAiOpen(false); editor.commands.focus(); }} />}
+      {convOpen && <BijoyPanel editor={editor} ansiFont={p.ansiFont} enFont={p.enFont} say={p.say} onClose={() => { setConvOpen(false); editor.commands.focus(); }} />}
       <footer className="dock">
         {listening ? (
           <div className="sug voice" data-testid="voice-bar">

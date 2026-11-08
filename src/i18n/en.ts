@@ -578,4 +578,7 @@ export const EN: Record<string, string> = {
   "ইন্টারনেট নেই বা Gemini-তে পৌঁছানো গেল না।": "No internet, or Gemini could not be reached.",
   "Gemini থেকে উত্তর আনা গেল না।": "Could not get an answer from Gemini.",
   "Claude-এ: Settings → Privacy → “Help improve Claude” বন্ধ রাখুন, যাতে চ্যাট ট্রেনিং-এ না যায়।": "In Claude: keep Settings → Privacy → “Help improve Claude” off, so chats are not used for training.",
+  "বড় করুন": "Restore",
+  "ছোট করুন": "Minimise",
+  "বন্ধ করুন": "Close",
 };

@@ -10,6 +10,7 @@ import type { Editor } from '@tiptap/react';
 import { findPrivate, mask, unmask, buildPrompt, cleanAnswer, geminiGenerate, AiError, AI_ERROR_TEXT, KIND_LABEL, TASKS, type Finding, type Task } from '../ai';
 import { insertPlainText, selectedOrAll } from '../editor';
 import { useT } from '../i18n';
+import { PanelControls } from './ui';
 
 interface Props {
   editor: Editor;
@@ -19,6 +20,7 @@ interface Props {
   privateWords: string[];
   setPrivateWords: (w: string[]) => void;
   onOpenSettings: () => void;
+  onClose?: () => void;
 }
 
 type Step = 'prepare' | 'answer';
@@ -35,6 +37,7 @@ export function AiPanel(p: Props) {
   const [answer, setAnswer] = useState('');
   const [busy, setBusy] = useState(false);
   const [confirmSend, setConfirmSend] = useState(false);
+  const [min, setMin] = useState(false);
   const abort = useRef<AbortController | null>(null);
 
   // the selection may change while the panel is open
@@ -102,16 +105,17 @@ export function AiPanel(p: Props) {
   };
 
   return (
-    <section className="conv ai" aria-label={t('AI সহকারী')} data-testid="ai-panel">
+    <section className={'conv ai' + (min ? ' min' : '')} aria-label={t('AI সহকারী')} data-testid="ai-panel">
       <div className="conv-head">
         <h2 className="conv-title">✦ {t('AI সহকারী')}</h2>
         <div className="conv-tabs" role="tablist">
           <button type="button" role="tab" aria-selected={step === 'prepare'} data-testid="ai-step-prepare" onClick={() => setStep('prepare')}>{t('১. তৈরি')}</button>
           <button type="button" role="tab" aria-selected={step === 'answer'} data-testid="ai-step-answer" onClick={() => setStep('answer')}>{t('২. উত্তর')}</button>
         </div>
+        {p.onClose && <PanelControls min={min} setMin={setMin} onClose={p.onClose} testid="ai" />}
       </div>
 
-      {step === 'prepare' && (
+      {!min && step === 'prepare' && (
         <div className="conv-body two">
           <div>
             <h3>{t('কী করাবেন')}</h3>
@@ -156,7 +160,7 @@ export function AiPanel(p: Props) {
         </div>
       )}
 
-      {step === 'answer' && (
+      {!min && step === 'answer' && (
         <div className="conv-body two">
           <div>
             <h3>{busy ? t('Gemini লিখছে…') : t('উত্তর এখানে পেস্ট করুন')}</h3>

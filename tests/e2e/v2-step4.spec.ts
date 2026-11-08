@@ -159,3 +159,19 @@ test('ANSI typing: conjuncts, রু, quotes and ে-কার come out as Suton
   await page.keyboard.press('Backspace'); // the closing quote only
   await expect(editor(page)).toHaveText('¯Í šÍ iæ Ò†`‡k');
 });
+
+test('Converter and AI panels can be minimised and closed', async ({ page }) => {
+  await start(page);
+  await openConverter(page);
+  await page.getByTestId('conv-min').click();
+  await expect(page.getByTestId('bijoy-panel')).toHaveClass(/min/);
+  await expect(page.getByTestId('to-bijoy')).toHaveCount(0);
+  await page.getByTestId('conv-min').click();
+  await expect(page.getByTestId('to-bijoy')).toBeVisible();
+  await page.getByTestId('conv-close').click();
+  await expect(page.getByTestId('bijoy-panel')).toHaveCount(0);
+  await expect(page.getByTestId('bijoy-toggle')).toHaveAttribute('aria-pressed', 'false');
+  await page.getByTestId('ai').click();
+  await page.getByTestId('ai-close').click();
+  await expect(page.getByTestId('ai-panel')).toHaveCount(0);
+});
