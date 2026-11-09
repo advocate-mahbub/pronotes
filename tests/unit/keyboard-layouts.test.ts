@@ -12,9 +12,8 @@ describe('ProNotes keyboard integration', () => {
     }
   });
 
-  it('filters legacy Bornona independently from the public layout list', () => {
+  it('never exposes legacy Bornona in the public layout list', () => {
     expect(availableLayouts().some((l) => l.id === 'bornona')).toBe(false);
-    expect(availableLayouts([], true).some((l) => l.id === 'bornona')).toBe(true);
     expect(availableLayouts().filter((l) => l.id === PRONOTES_LAYOUT_ID)).toHaveLength(1);
   });
 });

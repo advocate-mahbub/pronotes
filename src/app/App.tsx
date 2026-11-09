@@ -81,8 +81,7 @@ export function App() {
     if (theme === 'auto') delete document.documentElement.dataset.theme;
     else document.documentElement.dataset.theme = theme;
   }, [theme]);
-  const [layoutId, setLayoutId] = useState(() => { const saved = load<string>('layout', PRONOTES_LAYOUT_ID); return saved === 'bornona' ? PRONOTES_LAYOUT_ID : saved; });
-  const [legacyLayout, setLegacyLayout] = useState(() => load('legacyLayout', false));
+  const [layoutId, setLayoutId] = useState(() => load('layout', PRONOTES_LAYOUT_ID));
   const [enabledDesktop, setEnabledDesktop] = useState<string[]>(() => load('enabledLayouts.desktop', []));
   const [enabledMobile, setEnabledMobile] = useState<string[]>(() => load('enabledLayouts.mobile', []));
   const [bangla, setBangla] = useState(() => load('bangla', true));
@@ -186,14 +185,13 @@ export function App() {
   const [bankVersion, setBankVersion] = useState(0);
   const bank = useRef<WordBank>(emptyBank());
   const layout = useMemo(() => findLayout(layoutId, customLayouts), [layoutId, customLayouts]);
-  const allKeyboardLayouts = useMemo(() => availableLayouts(customLayouts, legacyLayout), [customLayouts, legacyLayout]);
+  const allKeyboardLayouts = useMemo(() => availableLayouts(customLayouts), [customLayouts]);
   const enabledIds = phone ? enabledMobile : enabledDesktop;
   const enabledKeyboardLayouts = useMemo(() => allKeyboardLayouts.filter((l) => !enabledIds.length || enabledIds.includes(l.id)), [allKeyboardLayouts, enabledIds]);
   useEffect(() => { if (!enabledKeyboardLayouts.some((l) => l.id === layoutId)) setLayoutId(PRONOTES_LAYOUT_ID); }, [enabledKeyboardLayouts, layoutId]);
   const map = layout.map;
 
   useEffect(() => save('layout', layoutId), [layoutId]);
-  useEffect(() => save('legacyLayout', legacyLayout), [legacyLayout]);
   useEffect(() => save('enabledLayouts.desktop', enabledDesktop), [enabledDesktop]);
   useEffect(() => save('enabledLayouts.mobile', enabledMobile), [enabledMobile]);
   useEffect(() => save('bangla', bangla), [bangla]);
@@ -248,7 +246,7 @@ export function App() {
     setAnsiTypingState(on);
     if (!on) return say('টাইপ: ইউনিকোড');
     const fontOk = fonts.some((f) => f.family === ansiFont) || isFontAvailable(ansiFont, true);
-    say(fontOk ? 'টাইপ: বিজয় ANSI (পরীক্ষামূলক)। voice typing আর word suggestion এই সময় বন্ধ।'
+    say(fontOk ? 'টাইপ: বিজয় ANSI (পরীক্ষামূলক)। কথা বলে লেখা আর শব্দের পরামর্শ এই সময় বন্ধ।'
       : 'টাইপ: বিজয় ANSI। এই ডিভাইসে {font} ফন্ট নেই, তাই লেখা ভাঙা দেখাবে। Settings → ফন্ট থেকে ফন্ট যোগ করুন।', { font: ansiFont });
   }, [say, fonts, ansiFont]);
   const sayIfIdle = useCallback((m: string) => {
@@ -548,7 +546,7 @@ export function App() {
   const voiceNote = useMemo(() => {
     const d = decideVoice(voiceLang(voice, bangla), detectVoiceEnv());
     return d.kind === 'live'
-      ? 'এই ব্রাউজারে সরাসরি ভয়েস চলবে। পাতার কোণের লাল মাইক চাপুন, আবার চাপলে থামবে। ইন্টারনেট সচল থাকতে হয়।'
+      ? 'এই ব্রাউজারে সরাসরি ভয়েস চলবে। পাতার কোণের লাল মাইক চাপুন, আবার চাপলে থামবে। ইন্টারনেট লাগে।'
       : d.message;
   }, [voice, bangla]);
 
@@ -714,7 +712,7 @@ export function App() {
       {settingsOpen && (
         <Settings vf={vf} setVf={setVf} oldReph={oldReph} setOldReph={setOldReph}
           keyboardLayouts={allKeyboardLayouts} enabledDesktop={enabledDesktop} setEnabledDesktop={setEnabledDesktop}
-          enabledMobile={enabledMobile} setEnabledMobile={setEnabledMobile} legacyLayout={legacyLayout} setLegacyLayout={setLegacyLayout}
+          enabledMobile={enabledMobile} setEnabledMobile={setEnabledMobile}
           customLayouts={customLayouts} onAddLayout={addLayout} onDeleteLayout={deleteLayout}
           voice={voice} setVoice={setVoice} voiceEngine={voiceEngine} setVoiceEngine={setVoiceEngine} voiceNote={voiceNote} corrections={corrections} setCorrections={setCorrections}
           format={format} setFormat={setFormat} fonts={fonts} onAddFont={addFont} onDeleteFont={deleteFont}
