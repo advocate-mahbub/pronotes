@@ -22,8 +22,6 @@ interface Props {
   setEnabledDesktop: (v: string[]) => void;
   enabledMobile: string[];
   setEnabledMobile: (v: string[]) => void;
-  legacyLayout: boolean;
-  setLegacyLayout: (v: boolean) => void;
   vf: boolean;
   setVf: (v: boolean) => void;
   oldReph: boolean;
@@ -197,10 +195,7 @@ export function Settings(p: Props) {
   const layoutEnabled = (list: string[], id: string) => !list.length || list.includes(id);
   const setLayoutEnabled = (platform: 'desktop' | 'mobile', id: string, checked: boolean) => {
     const current = platform === 'desktop' ? p.enabledDesktop : p.enabledMobile;
-    const universe = p.keyboardLayouts.map((l) => l.id);
-    const enabled = new Set(current.length ? current : universe);
-    if (checked) enabled.add(id); else enabled.delete(id);
-    const next = universe.every((x) => enabled.has(x)) ? [] : universe.filter((x) => enabled.has(x));
+    const next = checked ? [...new Set([...current, id])] : current.filter((x) => x !== id);
     if (platform === 'desktop') p.setEnabledDesktop(next); else p.setEnabledMobile(next);
   };
 
@@ -220,7 +215,6 @@ export function Settings(p: Props) {
             </fieldset>;
           })}
         </div>
-        <label><input type="checkbox" data-testid="legacy-bornona" checked={p.legacyLayout} onChange={(e) => p.setLegacyLayout(e.target.checked)} /> {t('পুরোনো Bornona layout Legacy হিসেবে Settings-এ দেখাও')}</label>
         <p className="note">{t('অন্য কোনো Avro লেআউট (.avrolayout) ব্যবহার করতে চাইলে ফাইলটা যোগ করুন। এটা শুধু এই ডিভাইসে থাকে (ব্যাকআপে যায়)।')}</p>
         <div className="row">
           <FileButton label={t('লেআউট যোগ করুন (.avrolayout)')} accept=".avrolayout,.xml,text/xml" testid="layout-add" onFile={p.onAddLayout} />

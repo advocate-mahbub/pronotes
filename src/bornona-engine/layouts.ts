@@ -24,8 +24,8 @@ export const PRO_NOTES_LAYOUT: Layout = (() => {
   map.Backslash = ['\u200c', '~'];
   return { ...base, id: PRONOTES_LAYOUT_ID, name: 'ProNotes', map };
 })();
-export function availableLayouts(custom: Layout[] = [], includeLegacy = false): Layout[] {
-  return [PRO_NOTES_LAYOUT, ...BUILTIN_LAYOUTS.filter((l) => includeLegacy || l.id !== 'bornona'), ...custom]
+export function availableLayouts(custom: Layout[] = []): Layout[] {
+  return [PRO_NOTES_LAYOUT, ...BUILTIN_LAYOUTS.filter((l) => l.id !== 'bornona'), ...custom]
     .filter((l, i, all) => all.findIndex((x) => x.id === l.id) === i);
 }
 
