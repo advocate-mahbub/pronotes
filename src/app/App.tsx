@@ -670,7 +670,7 @@ export function App() {
         <button type="button" className="tb lang" data-testid="lang-toggle" data-lang={bangla ? 'bn' : 'en'}
           title={t(bangla ? 'টাইপ: বাংলা — চাপলে English' : 'টাইপ: English — চাপলে বাংলা')}
           aria-label={t(bangla ? 'টাইপ: বাংলা — চাপলে English' : 'টাইপ: English — চাপলে বাংলা')}
-          onPointerDown={(e) => e.preventDefault()} onClick={() => setBangla((b) => !b)}>{bangla ? 'বা' : 'E'}</button>
+          onPointerDown={(e) => e.preventDefault()} onClick={() => setBangla((b) => !b)}>{bangla ? 'বা' : 'e'}</button>
         <button type="button" className={'tb' + (lawDictionaryOpen ? ' on' : '')} title="ProNotes Law Dictionary" aria-label="ProNotes Law Dictionary" data-testid="law-dictionary-toggle" onClick={() => setLawDictionaryOpen((v) => !v)}>⚖</button>
         <button type="button" className="tb theme" data-testid="theme" data-theme-mode={theme} title={t(themeLabel[theme])} aria-label={t(themeLabel[theme])}
           onClick={() => setTheme(themeNext[theme])}>{THEME_ICON[theme]}</button>
