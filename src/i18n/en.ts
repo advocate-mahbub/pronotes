@@ -201,6 +201,9 @@ export const EN: Record<string, string> = {
   "অ্যাপের ভাষা": "App language",
   "শুধু মেনু ও বাটনের ভাষা বদলায়। টাইপিং-এর ভাষা (উপরের বাংলা | English) আর ডকুমেন্টের ভাষা আলাদা।": "Changes only the language of menus and buttons. The typing language (Bangla | English at the top) and the document language are separate.",
   "টাইপিং ও কিবোর্ড লেআউট": "Typing and keyboard layout",
+  "Desktop এবং Mobile/iPad-এর dropdown-এ কোন layout থাকবে তা আলাদাভাবে বেছে নিন।": "Choose separately which layouts appear in the Desktop and Mobile/iPad dropdowns.",
+  // Compatibility with an earlier typo that may exist in an older source snapshot.
+  "Desktop এবং Mobile/iPad-এর dropdown-এ কোন layout থাকবে তা আলাদাভাবে বেলে নিন।": "Choose separately which layouts appear in the Desktop and Mobile/iPad dropdowns.",
   "স্বর-গঠন: শব্দের শুরুতে বা স্বরবর্ণের পরে কার চাপুন (ি চাপলে হবে ই, ে চাপলে এ, অ-এর পরে া চাপলে আ)": "Vowel forming: a kar (vowel sign) pressed at the start of a word or after a vowel becomes the full vowel",
   "Bornona-য় ই, উ, এ, ও-এর আলাদা key নেই, তাই এটা চালু রাখতে হয়। যে লেআউটে পূর্ণ স্বরবর্ণের আলাদা key আছে (যেমন National, Probhat), সেখানে চাইলে বন্ধ রাখতে পারেন।": "Bornona has no separate keys for the full vowels, so keep this on. Layouts with full-vowel keys (such as National or Probhat) can turn it off.",
   "বিজয়-ধাঁচের রেফ: বর্ণ লেখার পরে রেফ চাপুন (ক ম রেফ লিখলে হবে কর্ম)": "Bijoy-style reph: press reph after the letters it goes on",
