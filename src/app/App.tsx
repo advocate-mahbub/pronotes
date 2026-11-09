@@ -238,7 +238,7 @@ export function App() {
     setAnsiTypingState(on);
     if (!on) return say('টাইপ: ইউনিকোড');
     const fontOk = fonts.some((f) => f.family === ansiFont) || isFontAvailable(ansiFont, true);
-    say(fontOk ? 'টাইপ: বিজয় ANSI (পরীক্ষামূলক)। কথা বলে লেখা আর শব্দের পরামর্শ এই সময় বন্ধ।'
+    say(fontOk ? 'টাইপ: বিজয় ANSI (পরীক্ষামূলক)। voice typing আর word suggestion এই সময় বন্ধ।'
       : 'টাইপ: বিজয় ANSI। এই ডিভাইসে {font} ফন্ট নেই, তাই লেখা ভাঙা দেখাবে। Settings → ফন্ট থেকে ফন্ট যোগ করুন।', { font: ansiFont });
   }, [say, fonts, ansiFont]);
   const sayIfIdle = useCallback((m: string) => {
@@ -538,7 +538,7 @@ export function App() {
   const voiceNote = useMemo(() => {
     const d = decideVoice(voiceLang(voice, bangla), detectVoiceEnv());
     return d.kind === 'live'
-      ? 'এই ব্রাউজারে সরাসরি ভয়েস চলবে। পাতার কোণের লাল মাইক চাপুন, আবার চাপলে থামবে। ইন্টারনেট লাগে।'
+      ? 'এই ব্রাউজারে সরাসরি ভয়েস চলবে। পাতার কোণের লাল মাইক চাপুন, আবার চাপলে থামবে। ইন্টারনেট সচল থাকতে হয়।'
       : d.message;
   }, [voice, bangla]);
 
@@ -661,7 +661,7 @@ export function App() {
         <button type="button" className="tb lang" data-testid="lang-toggle" data-lang={bangla ? 'bn' : 'en'}
           title={t(bangla ? 'টাইপ: বাংলা — চাপলে English' : 'টাইপ: English — চাপলে বাংলা')}
           aria-label={t(bangla ? 'টাইপ: বাংলা — চাপলে English' : 'টাইপ: English — চাপলে বাংলা')}
-          onPointerDown={(e) => e.preventDefault()} onClick={() => setBangla((b) => !b)}>{bangla ? 'বা' : 'e'}</button>
+          onPointerDown={(e) => e.preventDefault()} onClick={() => setBangla((b) => !b)}>{bangla ? 'বা' : 'E'}</button>
         <button type="button" className={'tb' + (lawDictionaryOpen ? ' on' : '')} title="ProNotes Law Dictionary" aria-label="ProNotes Law Dictionary" data-testid="law-dictionary-toggle" onClick={() => setLawDictionaryOpen((v) => !v)}>⚖</button>
         <button type="button" className="tb theme" data-testid="theme" data-theme-mode={theme} title={t(themeLabel[theme])} aria-label={t(themeLabel[theme])}
           onClick={() => setTheme(themeNext[theme])}>{THEME_ICON[theme]}</button>
