@@ -16,9 +16,21 @@ export interface Layout {
 
 /** Bornona, National (Jatiya), Probhat, Munir Optima (uni), Avro Easy — identical to v8's BUILTIN_LAYOUTS. */
 export const BUILTIN_LAYOUTS: Layout[] = builtin as Layout[];
+export const PRONOTES_LAYOUT_ID = 'pronotes';
+export const PRO_NOTES_LAYOUT: Layout = (() => {
+  const base = BUILTIN_LAYOUTS.find((l) => l.id === 'bornona') ?? BUILTIN_LAYOUTS[0];
+  const map = Object.fromEntries(Object.entries(base.map).map(([code, chars]) => [code, [...chars]]));
+  map.Backquote = ['ৱ', 'ৰ'];
+  map.Backslash = ['\u200c', '~'];
+  return { ...base, id: PRONOTES_LAYOUT_ID, name: 'ProNotes', map };
+})();
+export function availableLayouts(custom: Layout[] = [], includeLegacy = false): Layout[] {
+  return [PRO_NOTES_LAYOUT, ...BUILTIN_LAYOUTS.filter((l) => includeLegacy || l.id !== 'bornona'), ...custom]
+    .filter((l, i, all) => all.findIndex((x) => x.id === l.id) === i);
+}
 
 export function findLayout(id: string, custom: Layout[] = []): Layout {
-  return [...BUILTIN_LAYOUTS, ...custom].find((l) => l.id === id) ?? BUILTIN_LAYOUTS[0];
+  return [PRO_NOTES_LAYOUT, ...BUILTIN_LAYOUTS, ...custom].find((l) => l.id === id) ?? PRO_NOTES_LAYOUT;
 }
 
 /** True when the layout uses the AltGr layers (shows the AltGr key on the on-screen keyboard). */

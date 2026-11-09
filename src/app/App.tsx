@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { Editor } from '@tiptap/react';
-import { BUILTIN_LAYOUTS, findLayout, fixNukta, parseAvroLayout, type Layout } from '../bornona-engine';
+import { availableLayouts, PRONOTES_LAYOUT_ID, findLayout, fixNukta, parseAvroLayout, type Layout } from '../bornona-engine';
 import { emptyBank, learnText, mergeBankFile, pruneBank, type WordBank, type WordBankFile, loadDictionary, clearDictionary, resetDictionaryLoad } from '../suggest';
 import {
   listDocs, getDoc, createDoc, saveContent, renameDoc, duplicateDoc, trashDoc, restoreDoc, deleteForever, purgeExpired,
@@ -81,7 +81,10 @@ export function App() {
     if (theme === 'auto') delete document.documentElement.dataset.theme;
     else document.documentElement.dataset.theme = theme;
   }, [theme]);
-  const [layoutId, setLayoutId] = useState(() => load('layout', 'bornona'));
+  const [layoutId, setLayoutId] = useState(() => { const saved = load<string>('layout', PRONOTES_LAYOUT_ID); return saved === 'bornona' ? PRONOTES_LAYOUT_ID : saved; });
+  const [legacyLayout, setLegacyLayout] = useState(() => load('legacyLayout', false));
+  const [enabledDesktop, setEnabledDesktop] = useState<string[]>(() => load('enabledLayouts.desktop', []));
+  const [enabledMobile, setEnabledMobile] = useState<string[]>(() => load('enabledLayouts.mobile', []));
   const [bangla, setBangla] = useState(() => load('bangla', true));
   const [vf, setVf] = useState(() => load('vf', true));
   const [oldReph, setOldReph] = useState(() => load('oldReph', false));
@@ -183,9 +186,16 @@ export function App() {
   const [bankVersion, setBankVersion] = useState(0);
   const bank = useRef<WordBank>(emptyBank());
   const layout = useMemo(() => findLayout(layoutId, customLayouts), [layoutId, customLayouts]);
+  const allKeyboardLayouts = useMemo(() => availableLayouts(customLayouts, legacyLayout), [customLayouts, legacyLayout]);
+  const enabledIds = phone ? enabledMobile : enabledDesktop;
+  const enabledKeyboardLayouts = useMemo(() => allKeyboardLayouts.filter((l) => !enabledIds.length || enabledIds.includes(l.id)), [allKeyboardLayouts, enabledIds]);
+  useEffect(() => { if (!enabledKeyboardLayouts.some((l) => l.id === layoutId)) setLayoutId(PRONOTES_LAYOUT_ID); }, [enabledKeyboardLayouts, layoutId]);
   const map = layout.map;
 
   useEffect(() => save('layout', layoutId), [layoutId]);
+  useEffect(() => save('legacyLayout', legacyLayout), [legacyLayout]);
+  useEffect(() => save('enabledLayouts.desktop', enabledDesktop), [enabledDesktop]);
+  useEffect(() => save('enabledLayouts.mobile', enabledMobile), [enabledMobile]);
   useEffect(() => save('bangla', bangla), [bangla]);
   useEffect(() => save('vf', vf), [vf]);
   useEffect(() => save('oldReph', oldReph), [oldReph]);
@@ -479,7 +489,7 @@ export function App() {
     const next = customLayouts.filter((l) => l.id !== id);
     await saveLayouts(next);
     setCustomLayouts(next);
-    if (layoutId === id) setLayoutId('bornona');
+    if (layoutId === id) setLayoutId(PRONOTES_LAYOUT_ID);
     say('লেআউট মুছে ফেলা হয়েছে');
   };
 
@@ -612,8 +622,7 @@ export function App() {
   const showSide = sideOpen;
   const layoutSelect = (
     <select className="layout" aria-label={t('কিবোর্ড লেআউট')} title={t('কিবোর্ড লেআউট')} data-testid="layout" value={layoutId} onChange={(e) => setLayoutId(e.target.value)}>
-      <optgroup label={t('সাথে দেওয়া')}>{BUILTIN_LAYOUTS.map((l) => <option key={l.id} value={l.id}>{l.name}</option>)}</optgroup>
-      {customLayouts.length > 0 && <optgroup label={t('আপনার যোগ করা')}>{customLayouts.map((l) => <option key={l.id} value={l.id}>{l.name}</option>)}</optgroup>}
+      <optgroup label={t('সাথে দেওয়া')}>{enabledKeyboardLayouts.map((l) => <option key={l.id} value={l.id}>{l.name}</option>)}</optgroup>
     </select>
   );
   const sidebar = (
@@ -704,6 +713,8 @@ export function App() {
 
       {settingsOpen && (
         <Settings vf={vf} setVf={setVf} oldReph={oldReph} setOldReph={setOldReph}
+          keyboardLayouts={allKeyboardLayouts} enabledDesktop={enabledDesktop} setEnabledDesktop={setEnabledDesktop}
+          enabledMobile={enabledMobile} setEnabledMobile={setEnabledMobile} legacyLayout={legacyLayout} setLegacyLayout={setLegacyLayout}
           customLayouts={customLayouts} onAddLayout={addLayout} onDeleteLayout={deleteLayout}
           voice={voice} setVoice={setVoice} voiceEngine={voiceEngine} setVoiceEngine={setVoiceEngine} voiceNote={voiceNote} corrections={corrections} setCorrections={setCorrections}
           format={format} setFormat={setFormat} fonts={fonts} onAddFont={addFont} onDeleteFont={deleteFont}
