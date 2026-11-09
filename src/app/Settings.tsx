@@ -17,6 +17,13 @@ export interface FontInfo {
 }
 
 interface Props {
+  keyboardLayouts: Layout[];
+  enabledDesktop: string[];
+  setEnabledDesktop: (v: string[]) => void;
+  enabledMobile: string[];
+  setEnabledMobile: (v: string[]) => void;
+  legacyLayout: boolean;
+  setLegacyLayout: (v: boolean) => void;
   vf: boolean;
   setVf: (v: boolean) => void;
   oldReph: boolean;
@@ -187,6 +194,15 @@ export function Settings(p: Props) {
   const [withKey, setWithKey] = useState(false);
   // families that have only italic or bold files: normal text would be drawn slanted or heavy
   const noRegular = [...new Set(p.fonts.map((f) => f.family))].filter((fam) => !p.fonts.some((f) => f.family === fam && !f.italic && (f.weight ?? 400) < 600));
+  const layoutEnabled = (list: string[], id: string) => !list.length || list.includes(id);
+  const setLayoutEnabled = (platform: 'desktop' | 'mobile', id: string, checked: boolean) => {
+    const current = platform === 'desktop' ? p.enabledDesktop : p.enabledMobile;
+    const universe = p.keyboardLayouts.map((l) => l.id);
+    const enabled = new Set(current.length ? current : universe);
+    if (checked) enabled.add(id); else enabled.delete(id);
+    const next = universe.every((x) => enabled.has(x)) ? [] : universe.filter((x) => enabled.has(x));
+    if (platform === 'desktop') p.setEnabledDesktop(next); else p.setEnabledMobile(next);
+  };
 
   return (
     <section className="settings" aria-label={t('সেটিংস')} data-testid="settings-panel">
@@ -194,6 +210,17 @@ export function Settings(p: Props) {
       <details open>
         <summary>{t('কিবোর্ড ও টাইপিং')}</summary>
         <h3 className="sub-h">{t('কিবোর্ড লেআউট')}</h3>
+        <p className="note">{t('Desktop এবং Mobile/iPad-এর dropdown-এ কোন layout থাকবে তা আলাদাভাবে বেছে নিন।')}</p>
+        <div className="grid2" data-testid="enabled-layouts">
+          {(['desktop', 'mobile'] as const).map((platform) => {
+            const list = platform === 'desktop' ? p.enabledDesktop : p.enabledMobile;
+            return <fieldset key={platform}><legend>{platform === 'desktop' ? t('Desktop / PC') : t('Mobile / iPad')}</legend>
+              {p.keyboardLayouts.map((l) => <label key={l.id}><input type="checkbox" data-testid={'layout-enabled-' + platform + '-' + l.id}
+                checked={layoutEnabled(list, l.id)} onChange={(e) => setLayoutEnabled(platform, l.id, e.target.checked)} /> {l.name}</label>)}
+            </fieldset>;
+          })}
+        </div>
+        <label><input type="checkbox" data-testid="legacy-bornona" checked={p.legacyLayout} onChange={(e) => p.setLegacyLayout(e.target.checked)} /> {t('পুরোনো Bornona layout Legacy হিসেবে Settings-এ দেখাও')}</label>
         <p className="note">{t('অন্য কোনো Avro লেআউট (.avrolayout) ব্যবহার করতে চাইলে ফাইলটা যোগ করুন। এটা শুধু এই ডিভাইসে থাকে (ব্যাকআপে যায়)।')}</p>
         <div className="row">
           <FileButton label={t('লেআউট যোগ করুন (.avrolayout)')} accept=".avrolayout,.xml,text/xml" testid="layout-add" onFile={p.onAddLayout} />

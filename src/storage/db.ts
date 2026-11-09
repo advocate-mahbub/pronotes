@@ -32,6 +32,12 @@ export interface Doc {
   folderId?: string;
 }
 
+export interface DictionarySource { id: string; title: string; author?: string; publisher?: string; year?: number; jurisdiction?: string; importedAt: number; }
+export interface DictionaryEntry { id: string; title: string; normalizedTitle: string; language: 'en' | 'bn'; partOfSpeech?: string; pronunciation?: string; sourceId?: string; sourcePages?: number[]; jurisdiction?: string; verificationStatus: 'machine_unverified' | 'user_reviewed'; createdAt: number; updatedAt: number; }
+export interface DictionarySense { id: string; entryId: string; definition: string; senseNumber?: number; subject?: string; sourcePage?: number; /** All PDF pages associated with the source entry; sourcePage remains for older records. */ sourcePages?: number[]; verificationStatus: 'machine_unverified' | 'user_reviewed'; }
+export interface DictionaryEquivalent { id: string; entryId: string; /** Optional: scope a translation to one particular legal sense. */ senseId?: string; language: 'en' | 'bn'; text: string; normalizedText: string; kind: 'translation' | 'synonym' | 'near_equivalent'; note?: string; reviewStatus?: 'draft' | 'reviewed' | 'verified'; verificationEvidence?: { note: string; reviewer: string; authority: string; verifiedAt: number }; createdAt: number; updatedAt?: number; }
+export interface DictionaryRelation { id: string; fromEntryId: string; toEntryId: string; type: 'see' | 'see_also' | 'compare' | 'related'; }
+
 export interface Folder {
   id: string;
   name: string;
@@ -68,6 +74,11 @@ interface Schema extends DBSchema {
   meta: { key: string; value: unknown };
   fonts: { key: string; value: StoredFont };
   versions: { key: string; value: Version; indexes: { docId: string } };
+  dictionarySources: { key: string; value: DictionarySource };
+  dictionaryEntries: { key: string; value: DictionaryEntry; indexes: { language: string; normalizedTitle: string; sourceId: string } };
+  dictionarySenses: { key: string; value: DictionarySense; indexes: { entryId: string } };
+  dictionaryEquivalents: { key: string; value: DictionaryEquivalent; indexes: { entryId: string; language: string; normalizedText: string } };
+  dictionaryRelations: { key: string; value: DictionaryRelation; indexes: { fromEntryId: string; toEntryId: string } };
 }
 
 export const DB_NAME = 'pronotes';
@@ -77,7 +88,7 @@ const DAY = 24 * 60 * 60 * 1000;
 let dbp: Promise<IDBPDatabase<Schema>> | null = null;
 export function db(): Promise<IDBPDatabase<Schema>> {
   if (!dbp) {
-    dbp = openDB<Schema>(DB_NAME, 3, {
+    dbp = openDB<Schema>(DB_NAME, 4, {
       upgrade(d, oldVersion) {
         if (oldVersion < 1) {
           const docs = d.createObjectStore('docs', { keyPath: 'id' });
@@ -86,6 +97,16 @@ export function db(): Promise<IDBPDatabase<Schema>> {
         }
         if (oldVersion < 2) d.createObjectStore('fonts', { keyPath: 'id' });
         if (oldVersion < 3) d.createObjectStore('versions', { keyPath: 'id' }).createIndex('docId', 'docId');
+        if (oldVersion < 4) {
+          d.createObjectStore('dictionarySources', { keyPath: 'id' });
+          const entries = d.createObjectStore('dictionaryEntries', { keyPath: 'id' });
+          entries.createIndex('language', 'language'); entries.createIndex('normalizedTitle', 'normalizedTitle'); entries.createIndex('sourceId', 'sourceId');
+          const senses = d.createObjectStore('dictionarySenses', { keyPath: 'id' }); senses.createIndex('entryId', 'entryId');
+          const equivalents = d.createObjectStore('dictionaryEquivalents', { keyPath: 'id' });
+          equivalents.createIndex('entryId', 'entryId'); equivalents.createIndex('language', 'language'); equivalents.createIndex('normalizedText', 'normalizedText');
+          const relations = d.createObjectStore('dictionaryRelations', { keyPath: 'id' });
+          relations.createIndex('fromEntryId', 'fromEntryId'); relations.createIndex('toEntryId', 'toEntryId');
+        }
       },
     });
   }
@@ -324,4 +345,267 @@ export async function restoreVersion(versionId: string, now = Date.now()): Promi
   await addVersion(doc, 'restore', now);
   await update(v.docId, (x) => ({ ...x, content: structuredClone(v.content), text: v.text, updatedAt: now }));
   return getDoc(v.docId);
+}
+
+
+const normDictionaryText = (value: string) => value.normalize('NFC').toLocaleLowerCase().replace(/\s+/g, ' ').trim();
+export async function countDictionaryEntries(language: 'en' | 'bn' = 'en'): Promise<number> {
+  return (await (await db()).getAllFromIndex('dictionaryEntries', 'language', language)).length;
+}
+export async function searchDictionary(query: string, language: 'en' | 'bn' = 'en', limit = 60): Promise<DictionaryEntry[]> {
+  const q = normDictionaryText(query); if (!q) return [];
+  const database = await db();
+  // Fast path for the common autocomplete case: use the normalizedTitle index.
+  const prefix = await database.getAllFromIndex('dictionaryEntries', 'normalizedTitle', IDBKeyRange.bound(q, q + '\uffff'));
+  const prefixMatches = prefix.filter((entry) => entry.language === language);
+  if (prefixMatches.length >= limit) return prefixMatches.sort((a, b) => a.title.localeCompare(b.title)).slice(0, limit);
+  // Preserve substring search for users who remember only a middle part of a term.
+  const all = await database.getAllFromIndex('dictionaryEntries', 'language', language);
+  const seen = new Set(prefixMatches.map((entry) => entry.id));
+  const matches = [...prefixMatches, ...all.filter((entry) => !seen.has(entry.id) && entry.normalizedTitle.includes(q))];
+  return matches.sort((a, b) => a.title.localeCompare(b.title)).slice(0, limit);
+}
+export async function getDictionarySenses(entryId: string): Promise<DictionarySense[]> {
+  return (await db()).getAllFromIndex('dictionarySenses', 'entryId', entryId);
+}
+export async function getDictionaryEquivalents(entryId: string): Promise<DictionaryEquivalent[]> {
+  return (await db()).getAllFromIndex('dictionaryEquivalents', 'entryId', entryId);
+}
+export async function addDictionaryTranslation(entryId: string, text: string, note = '', senseId?: string): Promise<void> {
+  const value = text.trim(); if (!value) return;
+  const entry = await (await db()).get('dictionaryEntries', entryId); if (!entry) throw new Error('Dictionary entry not found');
+  const normalizedText = normDictionaryText(value);
+  const existing = await (await db()).getAllFromIndex('dictionaryEquivalents', 'entryId', entryId);
+  if (existing.some((item) => item.language === 'bn' && item.normalizedText === normalizedText && item.senseId === senseId)) return;
+  if (senseId) { const sense = await (await db()).get('dictionarySenses', senseId); if (!sense || sense.entryId !== entryId) throw new Error('Sense does not belong to this entry'); }
+  await (await db()).put('dictionaryEquivalents', { id: newId(), entryId, senseId, language: 'bn', text: value, normalizedText, kind: 'translation', note: note.trim() || undefined, reviewStatus: 'draft', createdAt: Date.now(), updatedAt: Date.now() });
+}
+
+export async function setDictionaryEquivalentReviewStatus(
+  id: string,
+  reviewStatus: DictionaryEquivalent['reviewStatus'],
+  evidence?: { note: string; reviewer: string; authority: string },
+): Promise<void> {
+  const database = await db();
+  const current = await database.get('dictionaryEquivalents', id);
+  if (!current) throw new Error('Translation not found');
+  if (reviewStatus === 'verified') {
+    const note = evidence?.note.trim();
+    const reviewer = evidence?.reviewer.trim();
+    const authority = evidence?.authority.trim();
+    if (!note || !reviewer || !authority) throw new Error('Verified status requires a reviewer, verification note, and cited authority.');
+    await database.put('dictionaryEquivalents', { ...current, reviewStatus, verificationEvidence: { note, reviewer, authority, verifiedAt: Date.now() }, updatedAt: Date.now() });
+    return;
+  }
+  await database.put('dictionaryEquivalents', { ...current, reviewStatus, ...(reviewStatus === 'draft' ? { verificationEvidence: undefined } : {}), updatedAt: Date.now() });
+}
+
+/** Search Bengali user headwords and Bengali equivalents attached to English entries. */
+export async function searchBanglaDictionary(query: string, limit = 60): Promise<DictionaryEntry[]> {
+  const q = normDictionaryText(query);
+  if (!q) return [];
+  const database = await db();
+  const direct = await searchDictionary(q, 'bn', limit);
+  const equivalents = await database.getAllFromIndex('dictionaryEquivalents', 'language', 'bn');
+  const ranked = equivalents.filter((item) => item.normalizedText.includes(q))
+    .sort((a, b) => Number(b.normalizedText.startsWith(q)) - Number(a.normalizedText.startsWith(q)));
+  const seen = new Set(direct.map((entry) => entry.id));
+  const results = [...direct];
+  for (const item of ranked) {
+    if (results.length >= limit) break;
+    if (seen.has(item.entryId)) continue;
+    const entry = await database.get('dictionaryEntries', item.entryId);
+    if (entry) { seen.add(entry.id); results.push(entry); }
+  }
+  return results.slice(0, limit);
+}
+
+/** Add a user-authored Bengali lemma without changing the Oxford source records. */
+export async function createBanglaDictionaryEntry(title: string, definition = ''): Promise<DictionaryEntry> {
+  const clean = title.trim();
+  if (!clean) throw new Error('বাংলা headword লিখুন');
+  const database = await db();
+  const normalizedTitle = normDictionaryText(clean);
+  const matches = await database.getAllFromIndex('dictionaryEntries', 'normalizedTitle', normalizedTitle);
+  if (matches.some((item) => item.language === 'bn')) throw new Error('এই বাংলা headword আগে থেকেই রয়েছে');
+  const now = Date.now();
+  const entry: DictionaryEntry = { id: newId(), title: clean, normalizedTitle, language: 'bn', jurisdiction: 'Bangladesh (user-authored; not legally verified)', verificationStatus: 'user_reviewed', createdAt: now, updatedAt: now };
+  const tx = database.transaction(['dictionaryEntries', 'dictionarySenses'], 'readwrite');
+  await tx.objectStore('dictionaryEntries').add(entry);
+  if (definition.trim()) await tx.objectStore('dictionarySenses').add({ id: newId(), entryId: entry.id, definition: definition.trim(), verificationStatus: 'user_reviewed' });
+  await tx.done;
+  return entry;
+}
+
+/** Link an English term to a Bengali lemma, preserving both entries and preventing duplicate links. */
+export async function linkDictionaryEquivalent(entryId: string, equivalentId: string, type: DictionaryRelation['type'] = 'related'): Promise<void> {
+  if (entryId === equivalentId) throw new Error('Cannot link an entry to itself');
+  const database = await db();
+  const [entry, equivalent] = await Promise.all([database.get('dictionaryEntries', entryId), database.get('dictionaryEntries', equivalentId)]);
+  if (!entry || !equivalent || entry.language === equivalent.language) throw new Error('Choose existing English and Bengali entries');
+  const existing = await database.getAllFromIndex('dictionaryRelations', 'fromEntryId', entryId);
+  if (existing.some((relation) => relation.toEntryId === equivalentId && relation.type === type)) return;
+  await database.put('dictionaryRelations', { id: newId(), fromEntryId: entryId, toEntryId: equivalentId, type });
+}
+
+export async function getDictionaryLinkedEntries(entryId: string): Promise<DictionaryEntry[]> {
+  const database = await db();
+  const [outgoing, incoming] = await Promise.all([
+    database.getAllFromIndex('dictionaryRelations', 'fromEntryId', entryId),
+    database.getAllFromIndex('dictionaryRelations', 'toEntryId', entryId),
+  ]);
+  const ids = [...new Set([...outgoing.map((item) => item.toEntryId), ...incoming.map((item) => item.fromEntryId)])];
+  return (await Promise.all(ids.map((id) => database.get('dictionaryEntries', id)))).filter((entry): entry is DictionaryEntry => Boolean(entry));
+}
+
+export async function addDictionaryEquivalent(entryId: string, text: string, language: 'en' | 'bn', note = ''): Promise<void> {
+  const value = text.trim(); if (!value) return;
+  const database = await db();
+  const entry = await database.get('dictionaryEntries', entryId);
+  if (!entry || entry.language === language) throw new Error('Equivalent must be in the other language');
+  const normalizedText = normDictionaryText(value);
+  const existing = await database.getAllFromIndex('dictionaryEquivalents', 'entryId', entryId);
+  if (existing.some((item) => item.language === language && item.normalizedText === normalizedText)) return;
+  await database.put('dictionaryEquivalents', { id: newId(), entryId, language, text: value, normalizedText, kind: 'translation', note: note.trim() || undefined, createdAt: Date.now(), updatedAt: Date.now() });
+}
+
+export async function updateDictionaryEquivalent(id: string, text: string, note?: string): Promise<void> {
+  const value = text.trim(); if (!value) throw new Error('Translation cannot be empty');
+  const database = await db(); const current = await database.get('dictionaryEquivalents', id);
+  if (!current) throw new Error('Translation not found');
+  const normalizedText = normDictionaryText(value);
+  const siblings = await database.getAllFromIndex('dictionaryEquivalents', 'entryId', current.entryId);
+  if (siblings.some((item) => item.id !== id && item.language === current.language && item.senseId === current.senseId && item.normalizedText === normalizedText)) throw new Error('This equivalent already exists');
+  await database.put('dictionaryEquivalents', { ...current, text: value, normalizedText, ...(note === undefined ? {} : { note: note.trim() || undefined }), updatedAt: Date.now() });
+}
+
+export async function deleteDictionaryEquivalent(id: string): Promise<void> {
+  await (await db()).delete('dictionaryEquivalents', id);
+}
+
+export async function addDictionarySense(entryId: string, definition: string, subject = ''): Promise<DictionarySense> {
+  const clean = definition.trim(); if (!clean) throw new Error('Sense definition cannot be empty');
+  const database = await db(); if (!await database.get('dictionaryEntries', entryId)) throw new Error('Dictionary entry not found');
+  const existing = await database.getAllFromIndex('dictionarySenses', 'entryId', entryId);
+  const sense: DictionarySense = { id: newId(), entryId, definition: clean, senseNumber: existing.length + 1, subject: subject.trim() || undefined, verificationStatus: 'user_reviewed' };
+  await database.put('dictionarySenses', sense); return sense;
+}
+
+/** Update a sense without changing its stable identity or source provenance. */
+export async function updateDictionarySense(id: string, definition: string, subject?: string): Promise<void> {
+  const clean = definition.trim(); if (!clean) throw new Error('Sense definition cannot be empty');
+  const database = await db(); const current = await database.get('dictionarySenses', id);
+  if (!current) throw new Error('Sense not found');
+  await database.put('dictionarySenses', { ...current, definition: clean, ...(subject === undefined ? {} : { subject: subject.trim() || undefined }) });
+}
+
+/** Delete a sense and its sense-scoped translations atomically; general translations remain. */
+export async function deleteDictionarySense(id: string): Promise<void> {
+  const database = await db();
+  const tx = database.transaction(['dictionarySenses', 'dictionaryEquivalents'], 'readwrite');
+  const sense = await tx.objectStore('dictionarySenses').get(id);
+  if (!sense) { await tx.done; return; }
+  const equivalents = await tx.objectStore('dictionaryEquivalents').index('entryId').getAll(sense.entryId);
+  for (const item of equivalents) if (item.senseId === id) await tx.objectStore('dictionaryEquivalents').delete(item.id);
+  await tx.objectStore('dictionarySenses').delete(id);
+  await tx.done;
+}
+
+/** Return duplicate headword groups for review; never merges or deletes user data. */
+export async function findDictionaryDuplicateGroups(language?: 'en' | 'bn'): Promise<DictionaryEntry[][]> {
+  const database = await db();
+  const entries = language ? await database.getAllFromIndex('dictionaryEntries', 'language', language) : await database.getAll('dictionaryEntries');
+  const groups = new Map<string, DictionaryEntry[]>();
+  for (const entry of entries) {
+    const key = `${entry.language}:${entry.normalizedTitle || normDictionaryText(entry.title)}`;
+    const group = groups.get(key) || []; group.push(entry); groups.set(key, group);
+  }
+  return [...groups.values()].filter((group) => group.length > 1).sort((a, b) => a[0].title.localeCompare(b[0].title));
+}
+
+export async function importOxfordDictionaryJsonl(
+  file: File,
+  options: { sensesFile?: File; crossReferencesFile?: File; signal?: AbortSignal; onProgress?: (progress: { processed: number; total: number; imported: number; skipped: number }) => void; batchSize?: number } = {},
+): Promise<{ imported: number; skipped: number; sensesImported: number; relationsImported: number; unresolvedRelations: number; cancelled: boolean }> {
+  const sourceId = 'oxford-dictionary-of-law-5e-2002';
+  const database = await db();
+  const source: DictionarySource = { id: sourceId, title: 'A Dictionary of Law', author: 'Elizabeth A. Martin', publisher: 'Oxford University Press', year: 2002, jurisdiction: 'Primarily United Kingdom; source context must be retained', importedAt: Date.now() };
+  const lines = (await file.text()).split(/\r?\n/).filter(Boolean);
+  const batchSize = Math.max(10, Math.min(500, options.batchSize ?? 100));
+  let imported = 0, skipped = 0, processed = 0, cancelled = false;
+  for (let offset = 0; offset < lines.length; offset += batchSize) {
+    if (options.signal?.aborted) { cancelled = true; break; }
+    const tx = database.transaction(options.sensesFile ? ['dictionarySources', 'dictionaryEntries'] : ['dictionarySources', 'dictionaryEntries', 'dictionarySenses'], 'readwrite');
+    await tx.objectStore('dictionarySources').put(source);
+    for (const line of lines.slice(offset, offset + batchSize)) {
+      if (options.signal?.aborted) { cancelled = true; break; }
+      try {
+        const item = JSON.parse(line) as { id: string; title: string; content: string; language?: string; source?: { pdf_pages?: number[] }; metadata?: { part_of_speech_candidate?: string }; jurisdiction_context?: string };
+        if (!item.id || !item.title || !item.content || (item.language && item.language !== 'en')) { skipped++; continue; }
+        const existing = await tx.objectStore('dictionaryEntries').get(item.id); if (existing) { skipped++; continue; }
+        await tx.objectStore('dictionaryEntries').put({ id: item.id, title: item.title, normalizedTitle: normDictionaryText(item.title), language: 'en', partOfSpeech: item.metadata?.part_of_speech_candidate, sourceId, sourcePages: item.source?.pdf_pages, jurisdiction: item.jurisdiction_context, verificationStatus: 'machine_unverified', createdAt: Date.now(), updatedAt: Date.now() });
+        if (!options.sensesFile) await tx.objectStore('dictionarySenses').put({ id: `${item.id}-source`, entryId: item.id, definition: item.content, verificationStatus: 'machine_unverified', sourcePage: item.source?.pdf_pages?.[0] });
+        imported++;
+      } catch { skipped++; }
+      finally { processed++; }
+    }
+    await tx.done;
+    options.onProgress?.({ processed, total: lines.length, imported, skipped });
+    if (cancelled) break;
+  }
+
+  // Structured sense segmentation is imported separately from headwords. It is never
+  // treated as legally verified; the extraction status remains machine-unverified.
+  let sensesImported = 0;
+  if (!cancelled && options.sensesFile) {
+    const senseLines = (await options.sensesFile.text()).split(/\r?\n/).filter(Boolean);
+    for (let offset = 0; offset < senseLines.length; offset += batchSize) {
+      if (options.signal?.aborted) { cancelled = true; break; }
+      const tx = database.transaction(['dictionaryEntries', 'dictionarySenses'], 'readwrite');
+      for (const line of senseLines.slice(offset, offset + batchSize)) {
+        try {
+          const item = JSON.parse(line) as { entry_id: string; sense_id: string; sense_number?: number | null; sense_text: string; status?: string };
+          if (!item.entry_id || !item.sense_id || !item.sense_text?.trim()) continue;
+          const entry = await tx.objectStore('dictionaryEntries').get(item.entry_id);
+          if (!entry) continue;
+          const existing = await tx.objectStore('dictionarySenses').get(item.sense_id);
+          if (existing) continue;
+          const legacyPlaceholder = await tx.objectStore('dictionarySenses').get(`${item.entry_id}-source`);
+          if (legacyPlaceholder?.verificationStatus === 'machine_unverified') await tx.objectStore('dictionarySenses').delete(`${item.entry_id}-source`);
+          await tx.objectStore('dictionarySenses').put({ id: item.sense_id, entryId: item.entry_id, definition: item.sense_text.trim(), senseNumber: typeof item.sense_number === 'number' ? item.sense_number : undefined, sourcePage: entry.sourcePages?.[0], sourcePages: entry.sourcePages, verificationStatus: 'machine_unverified' });
+          sensesImported++;
+        } catch { /* malformed line is safely ignored */ }
+      }
+      await tx.done;
+    }
+  }
+
+  let relationsImported = 0, unresolvedRelations = 0;
+  if (!cancelled && options.crossReferencesFile) {
+    const relationLines = (await options.crossReferencesFile.text()).split(/\r?\n/).filter(Boolean);
+    for (let offset = 0; offset < relationLines.length; offset += batchSize) {
+      if (options.signal?.aborted) { cancelled = true; break; }
+      const tx = database.transaction(['dictionaryEntries', 'dictionaryRelations'], 'readwrite');
+      for (const line of relationLines.slice(offset, offset + batchSize)) {
+        try {
+          const item = JSON.parse(line) as { entry_id: string; relation: string; targets?: Array<{ text: string; matched_entry_ids?: string[]; match_status?: string }> };
+          if (!item.entry_id || !await tx.objectStore('dictionaryEntries').get(item.entry_id)) continue;
+          for (let index = 0; index < (item.targets ?? []).length; index++) {
+            const target = item.targets![index];
+            if (target.match_status !== 'exact_unique' || target.matched_entry_ids?.length !== 1) { unresolvedRelations++; continue; }
+            const toEntryId = target.matched_entry_ids[0];
+            if (!await tx.objectStore('dictionaryEntries').get(toEntryId)) { unresolvedRelations++; continue; }
+            const type: DictionaryRelation['type'] = /also/i.test(item.relation) ? 'see_also' : /^see$/i.test(item.relation) ? 'see' : /^compare$/i.test(item.relation) ? 'compare' : 'related';
+            const id = `oxlaw-rel-${item.entry_id}-${index}-${toEntryId}`;
+            if (!await tx.objectStore('dictionaryRelations').get(id)) {
+              await tx.objectStore('dictionaryRelations').put({ id, fromEntryId: item.entry_id, toEntryId, type });
+              relationsImported++;
+            }
+          }
+        } catch { /* malformed line is safely ignored */ }
+      }
+      await tx.done;
+    }
+  }
+  return { imported, skipped, sensesImported, relationsImported, unresolvedRelations, cancelled };
 }

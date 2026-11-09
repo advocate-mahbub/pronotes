@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { Editor } from '@tiptap/react';
-import { BUILTIN_LAYOUTS, findLayout, fixNukta, parseAvroLayout, type Layout } from '../bornona-engine';
+import { availableLayouts, PRONOTES_LAYOUT_ID, findLayout, fixNukta, parseAvroLayout, type Layout } from '../bornona-engine';
 import { emptyBank, learnText, mergeBankFile, pruneBank, type WordBank, type WordBankFile, loadDictionary, clearDictionary, resetDictionaryLoad } from '../suggest';
 import {
   listDocs, getDoc, createDoc, saveContent, renameDoc, duplicateDoc, trashDoc, restoreDoc, deleteForever, purgeExpired,
@@ -27,6 +27,7 @@ import { saveFile } from '../storage/download';
 import { DEFAULT_FORMAT, type DocFormat } from '../docx-export/format';
 import { Sidebar } from './Sidebar';
 import { Workspace, type SaveState } from './Workspace';
+import { LawDictionary } from './LawDictionary';
 import { load, save, allPrefs, restorePrefs } from './prefs';
 import { I18nContext, setUiLangGlobal, translate, tr, type UiLang } from '../i18n';
 import { LOCAL_UNI, WEB_FONTS, ENGLISH_FONTS, isFontAvailable } from '../fonts';
@@ -80,7 +81,10 @@ export function App() {
     if (theme === 'auto') delete document.documentElement.dataset.theme;
     else document.documentElement.dataset.theme = theme;
   }, [theme]);
-  const [layoutId, setLayoutId] = useState(() => load('layout', 'bornona'));
+  const [layoutId, setLayoutId] = useState(() => { const saved = load<string>('layout', PRONOTES_LAYOUT_ID); return saved === 'bornona' ? PRONOTES_LAYOUT_ID : saved; });
+  const [legacyLayout, setLegacyLayout] = useState(() => load('legacyLayout', false));
+  const [enabledDesktop, setEnabledDesktop] = useState<string[]>(() => load('enabledLayouts.desktop', []));
+  const [enabledMobile, setEnabledMobile] = useState<string[]>(() => load('enabledLayouts.mobile', []));
   const [bangla, setBangla] = useState(() => load('bangla', true));
   const [vf, setVf] = useState(() => load('vf', true));
   const [oldReph, setOldReph] = useState(() => load('oldReph', false));
@@ -88,6 +92,7 @@ export function App() {
   /** Phones: tap the page → the phone's own keyboard, typing through the Bornona layout. */
   const [kbPhone, setKbPhone] = useState(() => load('kbPhone', false));
   const [sideOpen, setSideOpen] = useState(() => load('side', true));
+  const [lawDictionaryOpen, setLawDictionaryOpen] = useState(false);
   const [format, setFormat] = useState<DocFormat>(() => ({ ...DEFAULT_FORMAT, ...load<Partial<DocFormat>>('format', {}) }));
   const [voice, setVoice] = useState<VoicePrefs>(() => ({ ...DEFAULT_VOICE_PREFS, ...load<Partial<VoicePrefs>>('voice', {}) }));
   const [autoBijoy, setAutoBijoy] = useState(() => load('autoBijoy', true));
@@ -181,9 +186,16 @@ export function App() {
   const [bankVersion, setBankVersion] = useState(0);
   const bank = useRef<WordBank>(emptyBank());
   const layout = useMemo(() => findLayout(layoutId, customLayouts), [layoutId, customLayouts]);
+  const allKeyboardLayouts = useMemo(() => availableLayouts(customLayouts, legacyLayout), [customLayouts, legacyLayout]);
+  const enabledIds = phone ? enabledMobile : enabledDesktop;
+  const enabledKeyboardLayouts = useMemo(() => allKeyboardLayouts.filter((l) => !enabledIds.length || enabledIds.includes(l.id)), [allKeyboardLayouts, enabledIds]);
+  useEffect(() => { if (!enabledKeyboardLayouts.some((l) => l.id === layoutId)) setLayoutId(PRONOTES_LAYOUT_ID); }, [enabledKeyboardLayouts, layoutId]);
   const map = layout.map;
 
   useEffect(() => save('layout', layoutId), [layoutId]);
+  useEffect(() => save('legacyLayout', legacyLayout), [legacyLayout]);
+  useEffect(() => save('enabledLayouts.desktop', enabledDesktop), [enabledDesktop]);
+  useEffect(() => save('enabledLayouts.mobile', enabledMobile), [enabledMobile]);
   useEffect(() => save('bangla', bangla), [bangla]);
   useEffect(() => save('vf', vf), [vf]);
   useEffect(() => save('oldReph', oldReph), [oldReph]);
@@ -236,7 +248,7 @@ export function App() {
     setAnsiTypingState(on);
     if (!on) return say('টাইপ: ইউনিকোড');
     const fontOk = fonts.some((f) => f.family === ansiFont) || isFontAvailable(ansiFont, true);
-    say(fontOk ? 'টাইপ: বিজয় ANSI (পরীক্ষামূলক)। কথা বলে লেখা আর শব্দের পরামর্শ এই সময় বন্ধ।'
+    say(fontOk ? 'টাইপ: বিজয় ANSI (পরীক্ষামূলক)। voice typing আর word suggestion এই সময় বন্ধ।'
       : 'টাইপ: বিজয় ANSI। এই ডিভাইসে {font} ফন্ট নেই, তাই লেখা ভাঙা দেখাবে। Settings → ফন্ট থেকে ফন্ট যোগ করুন।', { font: ansiFont });
   }, [say, fonts, ansiFont]);
   const sayIfIdle = useCallback((m: string) => {
@@ -477,7 +489,7 @@ export function App() {
     const next = customLayouts.filter((l) => l.id !== id);
     await saveLayouts(next);
     setCustomLayouts(next);
-    if (layoutId === id) setLayoutId('bornona');
+    if (layoutId === id) setLayoutId(PRONOTES_LAYOUT_ID);
     say('লেআউট মুছে ফেলা হয়েছে');
   };
 
@@ -536,7 +548,7 @@ export function App() {
   const voiceNote = useMemo(() => {
     const d = decideVoice(voiceLang(voice, bangla), detectVoiceEnv());
     return d.kind === 'live'
-      ? 'এই ব্রাউজারে সরাসরি ভয়েস চলবে। পাতার কোণের লাল মাইক চাপুন, আবার চাপলে থামবে। ইন্টারনেট লাগে।'
+      ? 'এই ব্রাউজারে সরাসরি ভয়েস চলবে। পাতার কোণের লাল মাইক চাপুন, আবার চাপলে থামবে। ইন্টারনেট সচল থাকতে হয়।'
       : d.message;
   }, [voice, bangla]);
 
@@ -610,8 +622,7 @@ export function App() {
   const showSide = sideOpen;
   const layoutSelect = (
     <select className="layout" aria-label={t('কিবোর্ড লেআউট')} title={t('কিবোর্ড লেআউট')} data-testid="layout" value={layoutId} onChange={(e) => setLayoutId(e.target.value)}>
-      <optgroup label={t('সাথে দেওয়া')}>{BUILTIN_LAYOUTS.map((l) => <option key={l.id} value={l.id}>{l.name}</option>)}</optgroup>
-      {customLayouts.length > 0 && <optgroup label={t('আপনার যোগ করা')}>{customLayouts.map((l) => <option key={l.id} value={l.id}>{l.name}</option>)}</optgroup>}
+      <optgroup label={t('সাথে দেওয়া')}>{enabledKeyboardLayouts.map((l) => <option key={l.id} value={l.id}>{l.name}</option>)}</optgroup>
     </select>
   );
   const sidebar = (
@@ -648,7 +659,7 @@ export function App() {
 
   return (
     <I18nContext.Provider value={i18n}>
-    <div className={'app' + (showSide && wide ? ' with-side' : '')}>
+    <div className={'app' + (!lawDictionaryOpen && showSide && wide ? ' with-side' : '')}>
       <header className="top">
         <div className="brand" id="title-slot">
           {!current && <span className="name">ProNotes</span>}
@@ -660,6 +671,7 @@ export function App() {
           title={t(bangla ? 'টাইপ: বাংলা — চাপলে English' : 'টাইপ: English — চাপলে বাংলা')}
           aria-label={t(bangla ? 'টাইপ: বাংলা — চাপলে English' : 'টাইপ: English — চাপলে বাংলা')}
           onPointerDown={(e) => e.preventDefault()} onClick={() => setBangla((b) => !b)}>{bangla ? 'বা' : 'e'}</button>
+        <button type="button" className={'tb' + (lawDictionaryOpen ? ' on' : '')} title="ProNotes Law Dictionary" aria-label="ProNotes Law Dictionary" data-testid="law-dictionary-toggle" onClick={() => setLawDictionaryOpen((v) => !v)}>⚖</button>
         <button type="button" className="tb theme" data-testid="theme" data-theme-mode={theme} title={t(themeLabel[theme])} aria-label={t(themeLabel[theme])}
           onClick={() => setTheme(themeNext[theme])}>{THEME_ICON[theme]}</button>
         <button type="button" className={'tb' + (settingsOpen ? ' on' : '')} title={t('সেটিংস')} aria-label={t('সেটিংস')} data-testid="settings"
@@ -667,9 +679,9 @@ export function App() {
       </header>
 
       <div className="body">
-        {showSide && (wide ? sidebar : <div className="drawer" onClick={(e) => e.target === e.currentTarget && setSideOpen(false)}>{sidebar}</div>)}
+        {!lawDictionaryOpen && showSide && (wide ? sidebar : <div className="drawer" onClick={(e) => e.target === e.currentTarget && setSideOpen(false)}>{sidebar}</div>)}
         <div className="work">
-          {current && (
+          {lawDictionaryOpen ? <LawDictionary onClose={() => setLawDictionaryOpen(false)} /> : current && (
             <Workspace key={current.id + ':' + reloadKey} doc={current} map={map} bangla={bangla} vowelForming={vf} oldReph={oldReph}
               kbVisible={kbVisible} coarse={coarse} phone={phone} voiceEngine={voiceEngine === 'auto' ? (geminiKey ? 'ai' : 'device') : voiceEngine} bank={bank.current} bankVersion={bankVersion} onBankChanged={onBankChanged}
               onToggleLanguage={() => setBangla((b) => !b)} onSave={onSave}
@@ -701,6 +713,8 @@ export function App() {
 
       {settingsOpen && (
         <Settings vf={vf} setVf={setVf} oldReph={oldReph} setOldReph={setOldReph}
+          keyboardLayouts={allKeyboardLayouts} enabledDesktop={enabledDesktop} setEnabledDesktop={setEnabledDesktop}
+          enabledMobile={enabledMobile} setEnabledMobile={setEnabledMobile} legacyLayout={legacyLayout} setLegacyLayout={setLegacyLayout}
           customLayouts={customLayouts} onAddLayout={addLayout} onDeleteLayout={deleteLayout}
           voice={voice} setVoice={setVoice} voiceEngine={voiceEngine} setVoiceEngine={setVoiceEngine} voiceNote={voiceNote} corrections={corrections} setCorrections={setCorrections}
           format={format} setFormat={setFormat} fonts={fonts} onAddFont={addFont} onDeleteFont={deleteFont}

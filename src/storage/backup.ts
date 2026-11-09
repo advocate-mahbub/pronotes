@@ -4,7 +4,7 @@
  * comes back as a separate copy.
  * Font files are never included (size, and font licences such as SutonnyMJ's).
  */
-import { db, getMeta, setMeta, type Doc, type Folder } from './db';
+import { db, getMeta, setMeta, type Doc, type Folder, type DictionarySource, type DictionaryEntry, type DictionarySense, type DictionaryEquivalent, type DictionaryRelation } from './db';
 import { emptyBank, type WordBank } from '../suggest';
 import { fixNukta, type Layout } from '../bornona-engine';
 
@@ -22,6 +22,8 @@ export interface BackupFile {
   folders?: Folder[];
   /** Only when the owner ticks "Gemini key-ও রাখুন": the key in plain text. */
   aiKey?: string;
+  /** v4+: offline legal dictionary data; optional for backward compatibility. */
+  dictionary?: { sources: DictionarySource[]; entries: DictionaryEntry[]; senses: DictionarySense[]; equivalents: DictionaryEquivalent[]; relations: DictionaryRelation[] };
 }
 
 export async function exportAll(prefs: Record<string, unknown>, now = new Date(), aiKey?: string): Promise<BackupFile> {
@@ -30,7 +32,15 @@ export async function exportAll(prefs: Record<string, unknown>, now = new Date()
   const layouts = (await getMeta<Layout[]>('layouts')) ?? [];
   const corrections = (await getMeta<string>('corrections')) ?? '';
   const folders = (await getMeta<Folder[]>('folders')) ?? [];
-  return { app: 'pronotes', version: 1, exportedAt: now.toISOString(), docs, wordBank, prefs, layouts, corrections, folders, ...(aiKey ? { aiKey } : {}) };
+  const database = await db();
+  const dictionary = {
+    sources: await database.getAll('dictionarySources'),
+    entries: await database.getAll('dictionaryEntries'),
+    senses: await database.getAll('dictionarySenses'),
+    equivalents: await database.getAll('dictionaryEquivalents'),
+    relations: await database.getAll('dictionaryRelations'),
+  };
+  return { app: 'pronotes', version: 1, exportedAt: now.toISOString(), docs, wordBank, prefs, layouts, corrections, folders, dictionary, ...(aiKey ? { aiKey } : {}) };
 }
 
 export function backupFileName(now = new Date()): string {
@@ -42,6 +52,8 @@ export interface RestoreResult {
   copies: number;
   unchanged: number;
   words: number;
+  dictionaryAdded: number;
+  dictionaryUnchanged: number;
   prefs: Record<string, unknown>;
 }
 
@@ -71,7 +83,7 @@ export function parseBackup(json: string): BackupFile {
 
 export async function restoreAll(f: BackupFile): Promise<RestoreResult> {
   const d = await db();
-  const r: RestoreResult = { added: 0, copies: 0, unchanged: 0, words: 0, prefs: f.prefs || {} };
+  const r: RestoreResult = { added: 0, copies: 0, unchanged: 0, words: 0, dictionaryAdded: 0, dictionaryUnchanged: 0, prefs: f.prefs || {} };
   for (const raw of f.docs) {
     const doc: Doc = { ...raw, title: fixNukta(raw.title), text: fixNukta(raw.text || ''), content: JSON.parse(fixNukta(JSON.stringify(raw.content))) };
     const existing = await d.get('docs', doc.id);
@@ -84,6 +96,29 @@ export async function restoreAll(f: BackupFile): Promise<RestoreResult> {
       await d.put('docs', { ...doc, id: newId(), title: doc.title + ' (ব্যাকআপ থেকে)' });
       r.copies++;
     }
+  }
+  // Dictionary restore is additive and ID-based: never overwrite local records silently.
+  if (f.dictionary) {
+    const stores = ['dictionarySources', 'dictionaryEntries', 'dictionarySenses', 'dictionaryEquivalents', 'dictionaryRelations'] as const;
+    const tx = d.transaction([...stores], 'readwrite');
+    const groups = [
+      ['dictionarySources', f.dictionary.sources || []],
+      ['dictionaryEntries', f.dictionary.entries || []],
+      ['dictionarySenses', f.dictionary.senses || []],
+      ['dictionaryEquivalents', f.dictionary.equivalents || []],
+      ['dictionaryRelations', f.dictionary.relations || []],
+    ] as const;
+    for (const [storeName, records] of groups) {
+      const store = tx.objectStore(storeName);
+      for (const record of records) {
+        const id = (record as { id: string }).id;
+        if (!id) continue;
+        const existing = await store.get(id);
+        if (existing) r.dictionaryUnchanged++;
+        else { await store.put(record as never); r.dictionaryAdded++; }
+      }
+    }
+    await tx.done;
   }
   const bank = (await getMeta<WordBank>('wordBank')) ?? emptyBank();
   r.words = mergeBankMax(bank, f.wordBank || emptyBank());
