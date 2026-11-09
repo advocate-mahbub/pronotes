@@ -27,6 +27,7 @@ import { saveFile } from '../storage/download';
 import { DEFAULT_FORMAT, type DocFormat } from '../docx-export/format';
 import { Sidebar } from './Sidebar';
 import { Workspace, type SaveState } from './Workspace';
+import { LawDictionary } from './LawDictionary';
 import { load, save, allPrefs, restorePrefs } from './prefs';
 import { I18nContext, setUiLangGlobal, translate, tr, type UiLang } from '../i18n';
 import { LOCAL_UNI, WEB_FONTS, ENGLISH_FONTS, isFontAvailable } from '../fonts';
@@ -88,6 +89,7 @@ export function App() {
   /** Phones: tap the page → the phone's own keyboard, typing through the Bornona layout. */
   const [kbPhone, setKbPhone] = useState(() => load('kbPhone', false));
   const [sideOpen, setSideOpen] = useState(() => load('side', true));
+  const [lawDictionaryOpen, setLawDictionaryOpen] = useState(false);
   const [format, setFormat] = useState<DocFormat>(() => ({ ...DEFAULT_FORMAT, ...load<Partial<DocFormat>>('format', {}) }));
   const [voice, setVoice] = useState<VoicePrefs>(() => ({ ...DEFAULT_VOICE_PREFS, ...load<Partial<VoicePrefs>>('voice', {}) }));
   const [autoBijoy, setAutoBijoy] = useState(() => load('autoBijoy', true));
@@ -648,7 +650,7 @@ export function App() {
 
   return (
     <I18nContext.Provider value={i18n}>
-    <div className={'app' + (showSide && wide ? ' with-side' : '')}>
+    <div className={'app' + (!lawDictionaryOpen && showSide && wide ? ' with-side' : '')}>
       <header className="top">
         <div className="brand" id="title-slot">
           {!current && <span className="name">ProNotes</span>}
@@ -660,6 +662,7 @@ export function App() {
           title={t(bangla ? 'টাইপ: বাংলা — চাপলে English' : 'টাইপ: English — চাপলে বাংলা')}
           aria-label={t(bangla ? 'টাইপ: বাংলা — চাপলে English' : 'টাইপ: English — চাপলে বাংলা')}
           onPointerDown={(e) => e.preventDefault()} onClick={() => setBangla((b) => !b)}>{bangla ? 'বা' : 'e'}</button>
+        <button type="button" className={'tb' + (lawDictionaryOpen ? ' on' : '')} title="ProNotes Law Dictionary" aria-label="ProNotes Law Dictionary" data-testid="law-dictionary-toggle" onClick={() => setLawDictionaryOpen((v) => !v)}>⚖</button>
         <button type="button" className="tb theme" data-testid="theme" data-theme-mode={theme} title={t(themeLabel[theme])} aria-label={t(themeLabel[theme])}
           onClick={() => setTheme(themeNext[theme])}>{THEME_ICON[theme]}</button>
         <button type="button" className={'tb' + (settingsOpen ? ' on' : '')} title={t('সেটিংস')} aria-label={t('সেটিংস')} data-testid="settings"
@@ -667,9 +670,9 @@ export function App() {
       </header>
 
       <div className="body">
-        {showSide && (wide ? sidebar : <div className="drawer" onClick={(e) => e.target === e.currentTarget && setSideOpen(false)}>{sidebar}</div>)}
+        {!lawDictionaryOpen && showSide && (wide ? sidebar : <div className="drawer" onClick={(e) => e.target === e.currentTarget && setSideOpen(false)}>{sidebar}</div>)}
         <div className="work">
-          {current && (
+          {lawDictionaryOpen ? <LawDictionary onClose={() => setLawDictionaryOpen(false)} /> : current && (
             <Workspace key={current.id + ':' + reloadKey} doc={current} map={map} bangla={bangla} vowelForming={vf} oldReph={oldReph}
               kbVisible={kbVisible} coarse={coarse} phone={phone} voiceEngine={voiceEngine === 'auto' ? (geminiKey ? 'ai' : 'device') : voiceEngine} bank={bank.current} bankVersion={bankVersion} onBankChanged={onBankChanged}
               onToggleLanguage={() => setBangla((b) => !b)} onSave={onSave}
