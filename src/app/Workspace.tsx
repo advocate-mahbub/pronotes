@@ -26,6 +26,7 @@ import { tr } from '../i18n';
 import { attachBornona } from './bornona-input';
 import { OnScreenKeyboard } from './OnScreenKeyboard';
 import { AiVoiceKey } from './AiVoiceKey';
+import type { FontLists } from './FontPicker';
 import { SuggestionBar } from './SuggestionBar';
 
 export type SaveState = 'saved' | 'saving' | 'error';
@@ -54,6 +55,8 @@ interface Props {
   format: DocFormat;
   /** Font families for the font box (document default first). */
   fonts: string[];
+  /** Unicode and Bijoy font lists for the font box. */
+  fontLists: FontLists;
   /** Page setup of this (legal) document, already filled in. */
   page: PageSetup;
   onPage: (p: PageSetup) => void;
@@ -517,10 +520,10 @@ export function Workspace(p: Props) {
   return (
     <>
       <Ribbon page={pg} onPage={p.onPage} onPageSheet={() => setPanel('page')} view={p.view} setView={p.setView} pages={pages} zoomPct={Math.round(zoom * 100)}
-        editor={editor} kind={kind} fonts={p.fonts} defaultFont={kind === 'note' ? NOTE_FONT : p.format.font} defaultSize={kind === 'note' ? NOTE_SIZE : p.format.size} bangla={p.bangla}
+        editor={editor} kind={kind} fonts={p.fonts} fontLists={p.fontLists} ansiTyping={p.ansiTyping} ansiFont={p.ansiFont} enFont={p.enFont} onToggleAnsi={p.onToggleAnsi} defaultFont={kind === 'note' ? NOTE_FONT : p.format.font} defaultSize={kind === 'note' ? NOTE_SIZE : p.format.size} bangla={p.bangla}
         start={p.toolbarExtra} end={<>{share}{p.toolbarRight}</>}
         onFind={(replace) => setFind({ replace })} onConverter={() => setConvOpen((v) => !v)} converterOpen={convOpen}
-        onAi={() => setAiOpen((v) => !v)} aiOpen={aiOpen} say={(m) => p.say(m)}
+        onAi={() => setAiOpen((v) => !v)} aiOpen={aiOpen} say={(m, v) => p.say(m, v)}
         onWordCount={() => setPanel('wc')} onFontPanel={() => setPanel('font')} onParagraphPanel={() => setPanel('para')} />
       {find && <FindBar editor={editor} showReplace={find.replace} getConfig={getConfig} onToggleLanguage={toggleLang}
         onClose={() => { setFind(null); editor.commands.focus(); }} />}

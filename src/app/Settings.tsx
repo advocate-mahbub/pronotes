@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { toBijoy } from '../bijoy';
 import { DEFAULT_FORMAT, type DocFormat } from '../docx-export/format';
 import { ENGLISH_FONTS, LOCAL_ANSI, LOCAL_UNI, WEB_FONTS, isFontAvailable } from '../fonts';
 import { TOGGLE_KEYS, ANSI_KEYS, type Layout, type ToggleKey, type AnsiKey } from '../bornona-engine';
@@ -10,6 +11,9 @@ export interface FontInfo {
   family: string;
   fileName: string;
   role: 'uni' | 'ansi';
+  /** Read from the file: italic, and weight (400 regular, 700 bold). */
+  italic?: boolean;
+  weight?: number;
 }
 
 interface Props {
@@ -181,6 +185,8 @@ export function Settings(p: Props) {
   const ansiChoices = [...new Set([...LOCAL_ANSI, ...ansiFonts.map((f) => f.family)])];
   const sv = (patch: Partial<VoicePrefs>) => p.setVoice({ ...p.voice, ...patch });
   const [withKey, setWithKey] = useState(false);
+  // families that have only italic or bold files: normal text would be drawn slanted or heavy
+  const noRegular = [...new Set(p.fonts.map((f) => f.family))].filter((fam) => !p.fonts.some((f) => f.family === fam && !f.italic && (f.weight ?? 400) < 600));
 
   return (
     <section className="settings" aria-label={t('সেটিংস')} data-testid="settings-panel">
@@ -292,14 +298,22 @@ export function Settings(p: Props) {
           <FileButton label={t('বিজয় (ANSI) ফন্ট যোগ করুন')} accept={FONT_ACCEPT} testid="font-add-ansi" onFile={(f) => p.onAddFont(f, 'ansi')} />
         </div>
         {p.fonts.length > 0 && (
+          <>
+          {noRegular.length > 0 && (
+            <p className="note warn" data-testid="font-no-regular">{t('{f}: শুধু Italic/Bold ফাইল আছে, সাধারণ (Regular) ফাইল নেই — তাই সাধারণ লেখাও বাঁকা বা মোটা দেখাবে। Regular ফাইলটা যোগ করুন।', { f: noRegular.join(', ') })}</p>
+          )}
           <ul className="itemlist" data-testid="font-list">
             {p.fonts.map((f) => (
               <li key={f.id}>
-                <span style={{ fontFamily: `"${f.family}", var(--f-sans)` }}>{f.family}</span><small>{f.role === 'ansi' ? 'ANSI' : t('ইউনিকোড')}</small>
+                {/* the name in the app's font; the sample in the font itself (Bijoy-encoded for ANSI, so it reads as Bangla) */}
+                <span className="fl-name">{f.family} <small>{styleName(f)}</small></span>
+                <span className="fl-sample" style={{ fontFamily: `"${f.family}", var(--f-sans)`, fontStyle: f.italic ? 'italic' : 'normal', fontWeight: f.weight ?? 400 }}>{f.role === 'ansi' ? SAMPLE_BIJOY : 'আমার সোনার বাংলা'}</span>
+                <small>{f.role === 'ansi' ? 'ANSI' : t('ইউনিকোড')}</small>
                 <ArmedButton label={t('মুছুন')} armedLabel={t('নিশ্চিত?')} testid={'font-del-' + f.id} onConfirm={() => p.onDeleteFont(f.id)} />
               </li>
             ))}
           </ul>
+          </>
         )}
         <div className="grid2">
           <label>{t('বিজয় লেখা দেখার ফন্ট')}
@@ -424,4 +438,11 @@ function SavedLine() {
       {flash ? t('✓ সংরক্ষিত') : t('কিছু বদলালে সাথে সাথে এই ডিভাইসে সংরক্ষিত হয় — আলাদা Save লাগে না।')}
     </p>
   );
+}
+
+const SAMPLE_BIJOY = toBijoy('আমার সোনার বাংলা');
+/** "Regular", "Bold", "Italic", "Bold Italic" (as fonts name their styles). */
+function styleName(f: { italic?: boolean; weight?: number }): string {
+  const bold = (f.weight ?? 400) >= 600;
+  return bold && f.italic ? 'Bold Italic' : bold ? 'Bold' : f.italic ? 'Italic' : 'Regular';
 }

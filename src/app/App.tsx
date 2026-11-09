@@ -8,7 +8,8 @@ import {
   listFonts, putFont, removeFont, loadLayouts, saveLayouts, loadCorrections, saveCorrections, loadAiKey, saveAiKey, loadPrivateWords, savePrivateWords, setDocKind,
   setPinned, moveToFolder, loadFolders, createFolder, renameFolder, deleteFolder, snapshotNow, restoreVersion, type Folder, setDocPage, kindOf, type Doc, type DocKind,
 } from '../storage';
-import { MAX_FONT_BYTES, familyFor, registerFont, unregisterFont } from '../fonts';
+import { setAnsiFamilies } from '../bijoy';
+import { MAX_FONT_BYTES, familyFor, registerFont, unregisterFont, LOCAL_ANSI, readFontStyle } from '../fonts';
 import { decideVoice, detectVoiceEnv } from '../voice';
 import { DEFAULT_GEMINI_MODEL } from '../ai/gemini';
 import { Settings, type FontInfo } from './Settings';
@@ -16,6 +17,7 @@ import { InfoSheet, VersionsSheet } from './DocSheets';
 import type { ListPrefs } from './Sidebar';
 import type { ListFormat } from './doc-export';
 import type { BornonaConfig } from '../editor';
+import type { FontItem, FontLists } from './FontPicker';
 import { canShareFiles } from '../export/deliver';
 import type { OutputMode } from './ShareMenu';
 import { DEFAULT_VOICE_PREFS, DEFAULT_VIEW, DEFAULT_GRID, voiceLang, type VoicePrefs, type ViewPrefs } from './prefs-types';
@@ -485,7 +487,8 @@ export function App() {
     for (const f of await listFonts()) {
       try {
         await registerFont(f);
-        list.push({ id: f.id, family: f.family, fileName: f.fileName, role: f.role });
+        const st = readFontStyle(f.data, f.fileName);
+        list.push({ id: f.id, family: f.family, fileName: f.fileName, role: f.role, italic: st.style === 'italic', weight: st.weight });
       } catch {
         /* unreadable file: keep it stored, skip it on screen */
       }
@@ -506,7 +509,8 @@ export function App() {
     } catch {
       say('ফন্ট এবার কাজ করবে, কিন্তু ডিভাইসে সেভ করা গেল না');
     }
-    setFonts((l) => [...l, { id: rec.id, family: rec.family, fileName: rec.fileName, role }]);
+    const st = readFontStyle(data, file.name);
+    setFonts((l) => [...l, { id: rec.id, family: rec.family, fileName: rec.fileName, role, italic: st.style === 'italic', weight: st.weight }]);
     if (role === 'ansi') setAnsiFont(rec.family);
     else setFormat((f) => ({ ...f, font: rec.family }));
     say('{name} যোগ হয়েছে', { name: rec.family });
@@ -588,6 +592,18 @@ export function App() {
     () => [...new Set([format.font, ...LOCAL_UNI, ...WEB_FONTS, ...fonts.filter((f) => f.role === 'uni').map((f) => f.family), ...ENGLISH_FONTS])],
     [format.font, fonts],
   );
+  // every Bijoy (ANSI) family the app should treat as Bijoy: the user's ANSI fonts and the chosen Bijoy font
+  useEffect(() => setAnsiFamilies([ansiFont, ...fonts.filter((f) => f.role === 'ansi').map((f) => f.family)]), [ansiFont, fonts]);
+  /** Both font lists for the font box, each font marked as usable on this device or not. */
+  const fontLists = useMemo((): FontLists => {
+    const own = new Set(fonts.map((f) => f.family));
+    const item = (name: string, ansi: boolean): FontItem => ({
+      name, ansi, own: own.has(name),
+      available: own.has(name) || WEB_FONTS.includes(name) || isFontAvailable(name, ansi),
+    });
+    const ansiNames = [...new Set([ansiFont, ...fonts.filter((f) => f.role === 'ansi').map((f) => f.family), ...LOCAL_ANSI])];
+    return { uni: fontChoices.map((n) => item(n, false)), ansi: ansiNames.map((n) => item(n, true)) };
+  }, [fontChoices, fonts, ansiFont]);
   const themeNext: Record<Theme, Theme> = { auto: 'light', light: 'dark', dark: 'auto' };
   const themeLabel: Record<Theme, string> = { auto: 'রং: ডিভাইস অনুযায়ী', light: 'রং: আলো', dark: 'রং: অন্ধকার' };
 
@@ -658,7 +674,7 @@ export function App() {
               kbVisible={kbVisible} coarse={coarse} phone={phone} voiceEngine={voiceEngine === 'auto' ? (geminiKey ? 'ai' : 'device') : voiceEngine} bank={bank.current} bankVersion={bankVersion} onBankChanged={onBankChanged}
               onToggleLanguage={() => setBangla((b) => !b)} onSave={onSave}
               onRename={renameAny}
-              onSaveState={setSaveState} format={format} say={say} fonts={fontChoices}
+              onSaveState={setSaveState} format={format} say={say} fonts={fontChoices} fontLists={fontLists}
               page={normalizePage(current.page, pageDefault)} onPage={changePage}
               onMakeDefaultPage={(pg) => { setPageDefault(pg); say('নতুন লিগ্যাল ড্রাফট এখন থেকে এই পাতায় খুলবে'); }}
               view={viewPrefs} setView={setViewPrefs} fixChandra={fixChandra} toggleKey={toggleKey}

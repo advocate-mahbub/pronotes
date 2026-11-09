@@ -8,6 +8,7 @@
  * Word suggestions, learning and voice do not work on Bijoy text.
  */
 import type { EditorView } from '@tiptap/pm/view';
+import type { EditorState, Transaction } from '@tiptap/pm/state';
 import { closeHistory } from '@tiptap/pm/history';
 import type { Mark, Node as PMNode } from '@tiptap/pm/model';
 import { planType, applyEdit, fixNukta } from '../bornona-engine';
@@ -23,6 +24,14 @@ export interface AnsiConfig {
 
 const clean = (f: unknown) => String(f ?? '').replace(/["']/g, '').split(',')[0].trim();
 const fontOf = (marks: readonly Mark[]) => marks.find((m) => m.type.name === 'textStyle')?.attrs.fontFamily;
+
+/** The Bijoy font to type in: the one at the caret when it is a Bijoy font (chosen in the font box), else the setting. */
+function bijoyFontAt(view: EditorView, cfg: AnsiConfig): string {
+  const { state } = view;
+  const marks = state.storedMarks ?? state.selection.$from.marks();
+  const f = fontOf(marks);
+  return f && isBijoyFont(f, cfg.bijoyFont) ? clean(f) : cfg.bijoyFont;
+}
 
 /** Marks for new text: the marks at the caret with the font set to `font`. */
 function marksWithFont(view: EditorView, font: string): readonly Mark[] {
@@ -81,7 +90,7 @@ function writeWord(view: EditorView, w: { from: number }, to: number, uni: strin
 export function typeAnsi(view: EditorView, out: string, cfg: AnsiConfig & { vowelForming: boolean; oldReph: boolean; fixChandra?: boolean }): void {
   const { state } = view;
   const sel = state.selection;
-  const marks = marksWithFont(view, cfg.bijoyFont);
+  const marks = marksWithFont(view, bijoyFontAt(view, cfg));
   if (!sel.empty) {
     const tr = state.tr.replaceWith(sel.from, sel.to, state.schema.text(toBijoy(out), marks));
     view.dispatch(tr.scrollIntoView());
@@ -108,55 +117,76 @@ export function backspaceAnsi(view: EditorView, cfg: AnsiConfig): boolean {
   if (!w.text) return false;
   const uni = [...wordUnicode(view, w)];
   uni.pop();
-  writeWord(view, w, state.selection.from, uni.join(''), marksWithFont(view, cfg.bijoyFont));
+  writeWord(view, w, state.selection.from, uni.join(''), marksWithFont(view, bijoyFontAt(view, cfg)));
   return true;
 }
 
 /** Convert the whole document (or nothing if it is already so): Unicode → Bijoy. Returns the number of runs changed. */
-export function docToBijoy(view: EditorView, cfg: Pick<AnsiConfig, 'bijoyFont' | 'englishFont'>): number {
+export function docToBijoy(view: EditorView, cfg: Pick<AnsiConfig, 'bijoyFont' | 'englishFont'>, range?: { from: number; to: number }): number {
   const { state } = view;
   const tr = state.tr;
-  const ts = state.schema.marks.textStyle;
-  let n = 0;
-  const items: { pos: number; node: PMNode }[] = [];
-  state.doc.descendants((node, pos) => {
-    if (node.isText && !isBijoyFont(fontOf(node.marks), cfg.bijoyFont) && /[ঀ-৿]/.test(node.text!)) items.push({ pos, node });
-  });
-  for (const { pos, node } of items.reverse()) {
-    const old = node.marks.find((m) => m.type === ts);
-    const withFont = (f: string) => ts.create({ ...(old?.attrs ?? {}), fontFamily: `"${f}"` }).addToSet(node.marks.filter((m) => m.type !== ts));
-    const prev = state.doc.textBetween(Math.max(0, pos - 1), pos);
-    const parts = bijoyRuns(node.text!, prev).map((r) => state.schema.text(r.text, withFont(r.en ? cfg.englishFont : cfg.bijoyFont)));
-    tr.replaceWith(tr.mapping.map(pos), tr.mapping.map(pos + node.nodeSize), parts);
-    n++;
-  }
+  const n = toBijoyIn(tr, state, cfg, range);
   if (n) view.dispatch(closeHistory(tr));
   return n;
 }
 
+/** Text nodes (or the parts of them inside `range`) that a conversion touches. */
+function pieces(state: EditorState, range: { from: number; to: number } | undefined, want: (node: PMNode) => boolean) {
+  const out: { node: PMNode; from: number; to: number }[] = [];
+  const visit = (node: PMNode, pos: number) => {
+    if (!node.isText || !want(node)) return;
+    const from = range ? Math.max(range.from, pos) : pos;
+    const to = range ? Math.min(range.to, pos + node.nodeSize) : pos + node.nodeSize;
+    if (to > from) out.push({ node, from, to });
+  };
+  if (range) state.doc.nodesBetween(range.from, range.to, visit);
+  else state.doc.descendants(visit);
+  return out;
+}
+
+/** Unicode Bangla → Bijoy in the given font (English parts in the English font); adds the steps to `tr`. */
+export function toBijoyIn(tr: Transaction, state: EditorState, cfg: Pick<AnsiConfig, 'bijoyFont' | 'englishFont'>, range?: { from: number; to: number }): number {
+  const ts = state.schema.marks.textStyle;
+  const items = pieces(state, range, (node) => !isBijoyFont(fontOf(node.marks), cfg.bijoyFont) && /[ঀ-৿]/.test(node.text!));
+  for (const { node, from, to } of items.reverse()) {
+    const old = node.marks.find((m) => m.type === ts);
+    const withFont = (f: string) => ts.create({ ...(old?.attrs ?? {}), fontFamily: `"${f}"` }).addToSet(node.marks.filter((m) => m.type !== ts));
+    const text = state.doc.textBetween(from, to);
+    const prev = state.doc.textBetween(Math.max(0, from - 1), from);
+    const parts = bijoyRuns(text, prev).map((r) => state.schema.text(r.text, withFont(r.en ? cfg.englishFont : cfg.bijoyFont)));
+    tr.replaceWith(tr.mapping.map(from), tr.mapping.map(to), parts);
+  }
+  return items.length;
+}
+
 /** Convert every run set in a Bijoy font back to Unicode and remove the Bijoy/English fonts it set. */
-export function docToUnicode(view: EditorView, cfg: Pick<AnsiConfig, 'bijoyFont' | 'englishFont'>): number {
+export function docToUnicode(view: EditorView, cfg: Pick<AnsiConfig, 'bijoyFont' | 'englishFont'>, range?: { from: number; to: number }): number {
   const { state } = view;
   const tr = state.tr;
+  const n = toUnicodeIn(tr, state, cfg, range);
+  if (n) view.dispatch(closeHistory(tr));
+  return n;
+}
+
+/** Bijoy → Unicode; the font becomes `unicodeFont`, or the document's own when none is given. Adds the steps to `tr`. */
+export function toUnicodeIn(tr: Transaction, state: EditorState, cfg: Pick<AnsiConfig, 'bijoyFont' | 'englishFont'>, range?: { from: number; to: number }, unicodeFont?: string): number {
   const ts = state.schema.marks.textStyle;
-  let n = 0;
-  const items: { pos: number; node: PMNode; bj: boolean }[] = [];
-  state.doc.descendants((node, pos) => {
-    if (!node.isText) return;
+  const items = pieces(state, range, (node) => {
     const f = fontOf(node.marks);
-    if (isBijoyFont(f, cfg.bijoyFont)) items.push({ pos, node, bj: true });
-    else if (clean(f) === cfg.englishFont) items.push({ pos, node, bj: false });
+    return isBijoyFont(f, cfg.bijoyFont) || (!range && clean(f) === cfg.englishFont);
   });
-  for (const { pos, node, bj } of items.reverse()) {
+  let n = 0;
+  for (const { node, from, to } of items.reverse()) {
+    const bj = isBijoyFont(fontOf(node.marks), cfg.bijoyFont);
     const old = node.marks.find((m) => m.type === ts);
-    const attrs = { ...(old?.attrs ?? {}), fontFamily: null };
-    const keep = Object.entries(attrs).some(([k, v]) => k !== 'fontFamily' && v !== null && v !== false && v !== undefined);
+    const attrs = { ...(old?.attrs ?? {}), fontFamily: unicodeFont ? `"${unicodeFont}"` : null };
+    const keep = Object.entries(attrs as Record<string, unknown>).some(([k, v]) => (k !== 'fontFamily' || !!unicodeFont) && v !== null && v !== false && v !== undefined);
     const marks = keep ? ts.create(attrs).addToSet(node.marks.filter((m) => m.type !== ts)) : node.marks.filter((m) => m.type !== ts);
-    const text = bj ? fixNukta(toUnicode(node.text!)) : node.text!;
+    const raw = state.doc.textBetween(from, to);
+    const text = bj ? fixNukta(toUnicode(raw)) : raw;
     if (!text) continue;
-    tr.replaceWith(tr.mapping.map(pos), tr.mapping.map(pos + node.nodeSize), state.schema.text(text, marks));
+    tr.replaceWith(tr.mapping.map(from), tr.mapping.map(to), state.schema.text(text, marks));
     n++;
   }
-  if (n) view.dispatch(closeHistory(tr));
   return n;
 }

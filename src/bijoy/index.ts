@@ -159,9 +159,22 @@ export function convertBijoyPaste(text: string, html: string, parser?: DOMParser
 }
 
 /** A font that holds Bijoy (ANSI) text: SutonnyMJ, SulekhaT, … (not the Unicode SutonnyOMJ). */
+/** Families the app knows are Bijoy (ANSI) encoded: the user's own ANSI fonts and the chosen Bijoy font. */
+const ANSI_FAMILIES = new Set<string>();
+export function setAnsiFamilies(names: Iterable<string>): void {
+  ANSI_FAMILIES.clear();
+  for (const n of names) if (n) ANSI_FAMILIES.add(n.toLowerCase());
+}
+
+/**
+ * Is text in this font Bijoy (ANSI) encoded? By name (…MJ, Sulekha…, …Bijoy…; not SutonnyOMJ, which is
+ * Unicode) or because the user added it as an ANSI font. Any font in a stack counts ("SutonnyMJ", serif).
+ */
 export function isBijoyFont(f: unknown, bijoyFont?: string): boolean {
   const n = String(f ?? '').replace(/["']/g, '').split(',')[0].trim();
-  return !!n && (n === bijoyFont || (/mj$|^sulekha|bijoy/i.test(n) && !/omj$/i.test(n)));
+  if (!n) return false;
+  if (n === bijoyFont || ANSI_FAMILIES.has(n.toLowerCase())) return true;
+  return /mj\b|mj$|^sulekha|bijoy/i.test(n) && !/omj\b|omj$/i.test(n);
 }
 
 /** Font of a Tiptap JSON text node (textStyle mark), if any. */

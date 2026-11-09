@@ -591,3 +591,26 @@ button, select, .chip, .key, summary { touch-action: manipulation; }
 .mic.ai-voice.rec .ai-badge { color: #fff; }
 .ai-voice-bar { bottom: 20px; }
 @media (max-width: 640px) { .mic.ai-voice { right: 10px; bottom: 10px; width: 48px; height: 48px; } .ai-voice-bar { bottom: 14px; } }
+
+/* ---------- font picker: Unicode / Bijoy lists, search, readable samples ---------- */
+.fp-btn { max-width: 190px; }
+.fp-label { display: inline-block; max-width: 160px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; vertical-align: middle; }
+.font-picker { width: min(360px, 92vw); display: flex; flex-direction: column; gap: 8px; }
+.font-picker .seg { align-self: stretch; }
+.font-picker .seg button { flex: 1; }
+.fp-search { width: 100%; min-height: 40px; padding: 6px 10px; border: 1px solid var(--line); border-radius: 8px; background: var(--bg); color: var(--fg);
+  font: 16px var(--f-sans); /* the app's own font: what is typed here never shows broken */ }
+.fp-list { max-height: min(52vh, 420px); overflow-y: auto; display: flex; flex-direction: column; gap: 2px; -webkit-overflow-scrolling: touch; }
+.pop .menu .fp-row { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; min-height: 52px; padding: 6px 10px; text-align: left; }
+.fp-row[aria-selected="true"] { background: var(--accent-soft); }
+.fp-row.off { opacity: .55; }
+.fp-name { font: 600 13px var(--f-sans); color: var(--muted); }
+.fp-name small { font-weight: 400; }
+.fp-sample { font-size: 20px; line-height: 1.25; color: var(--fg); }
+.fp-list > * { flex: none; } /* rows keep their height; the list scrolls instead of squeezing them */
+.pop .menu.font-picker .seg button { border-radius: 999px; min-height: 36px; }
+.pop .menu.font-picker .seg button[aria-pressed="true"] { background: var(--accent); color: var(--accent-fg); }
+.pop .menu .fp-row small { display: inline; padding: 0; font-size: 12px; }
+.itemlist .fl-name { font: 13px var(--f-sans); }
+.itemlist .fl-sample { font-size: 18px; margin: 0 8px; }
+.note.warn { color: #b26a00; }

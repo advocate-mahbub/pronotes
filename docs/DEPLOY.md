@@ -83,6 +83,19 @@ git revert HEAD
 git push
 ```
 
+## iPad থেকে আপডেট (কম্পিউটার ছাড়া)
+
+একবারের প্রস্তুতি: `.github/workflows/apply-update.yml` repo-তে থাকতে হবে (কম্পিউটার থেকে push, বা github.com → Add file → Create new file-এ নাম আর লেখা পেস্ট করে Commit)।
+
+প্রতিবার:
+1. Claude-এর দেওয়া `pronotes-update-….zip` iPad-এর Files-এ সেভ করুন (খুলবেন না)।
+2. Safari → github.com/advocate-mahbub/pronotes (লগইন করা)। repo-র **মূল পাতায়** থাকুন।
+3. **Add file → Upload files → choose your files** → zip বাছুন।
+4. নিচে **Commit directly to the main branch** → **Commit changes**।
+5. **Actions**-এ "Apply update zip" তারপর "Deploy to GitHub Pages" সবুজ ✓ হলে নতুন ভার্সন সাইটে।
+
+zip-এ `.github/` থাকলে workflow বাতিল করে (GitHub workflow ফাইল এভাবে বদলাতে দেয় না)।
+
 ## বসানোর পর পরীক্ষা
 
 - [ ] `https://notes.mahbuburrahman.bd` খোলে, তালার চিহ্ন আছে

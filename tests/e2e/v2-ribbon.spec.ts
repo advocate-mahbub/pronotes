@@ -32,8 +32,11 @@ test('home tab: bold, italic, strike, superscript, colour, size, font, alignment
   await expect(editor(page).locator('span[style*="font-size: 20pt"]')).toHaveText('কমর');
   await page.getByTestId('grow').click();
   await expect(editor(page).locator('span[style*="font-size: 22pt"]')).toHaveText('কমর');
-  await page.getByTestId('font').selectOption('Kalpurush');
-  await expect(editor(page).locator('span[style*="Kalpurush"]')).toHaveText('কমর');
+  // font box: a searchable list; a font the app ships is always usable
+  await page.getByTestId('font').click();
+  await page.getByTestId('font-search').fill('noto sans');
+  await page.getByTestId('fp-Noto Sans Bengali').click();
+  await expect(editor(page).locator('span[style*="Noto Sans Bengali"]')).toHaveText('কমর');
   await page.getByTestId('align').selectOption('center');
   await page.getByTestId('line').selectOption('2');
   await page.getByTestId('indent').click();

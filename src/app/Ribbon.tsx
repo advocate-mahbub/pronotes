@@ -10,6 +10,8 @@ import type { DocKind } from '../storage';
 import { useT } from '../i18n';
 import { Popover } from './ui';
 import { TableInsertMenu, TableDesignTools, TableLayoutTools } from './TableRibbon';
+import { FontPicker, type FontLists } from './FontPicker';
+import { isBijoyFont } from '../bijoy';
 import { load, save } from './prefs';
 import { MARGIN_PRESETS, PAPERS, envelopePage, isEnvelope, paperChoices, normalizePage, type PageSetup, type PaperId, type TextDir } from '../docx-export/page';
 
@@ -27,6 +29,11 @@ interface Props {
   kind: DocKind;
   /** Font families offered (document default first). */
   fonts: string[];
+  fontLists: FontLists;
+  ansiTyping: boolean;
+  ansiFont: string;
+  enFont: string;
+  onToggleAnsi?: () => void;
   /** Document default font and size (pt), shown when the text has no own font/size. */
   defaultFont: string;
   defaultSize: number;
@@ -40,7 +47,7 @@ interface Props {
   onAi: () => void;
   aiOpen: boolean;
   /** Short notice (toast). */
-  say: (msg: string) => void;
+  say: (msg: string, vars?: Record<string, string | number>) => void;
   onWordCount: () => void;
   onFontPanel: () => void;
   onParagraphPanel: () => void;
@@ -89,7 +96,6 @@ export function Ribbon(p: Props) {
 
   // ----- current values -----
   const ts = ed.getAttributes('textStyle');
-  const curFont = String(ts.fontFamily || '').replace(/["']/g, '') || '';
   const curSize = parseFloat(String(ts.fontSize || '')) || p.defaultSize;
   const para = ed.state.selection.$from.parent;
   const align = (para.attrs.textAlign as string | null) || '';
@@ -155,12 +161,26 @@ export function Ribbon(p: Props) {
     ed.view.dispatch(tr);
   };
 
-  const clearFormatting = () =>
+  // Bijoy (ANSI) text keeps its font: without it the letters would show as Latin gibberish
+  const clearFormatting = () => {
+    const { state } = ed;
+    const { from, to } = state.selection;
+    const ts = state.schema.marks.textStyle;
+    const keep: { from: number; to: number; font: string }[] = [];
+    state.doc.nodesBetween(from, to, (n, pos) => {
+      const f = n.isText ? n.marks.find((m) => m.type === ts)?.attrs.fontFamily : null;
+      if (f && isBijoyFont(f, p.ansiFont)) keep.push({ from: Math.max(from, pos), to: Math.min(to, pos + n.nodeSize), font: String(f) });
+    });
     chain()
       .unsetAllMarks()
       .unsetTextAlign()
       .setParagraphFormat({ indL: null, indR: null, first: null, spBefore: null, spAfter: null, lineRule: null, lineVal: null, keepNext: false, keepLines: false, breakBefore: false })
+      .command(({ tr }) => {
+        for (const k of keep) tr.addMark(k.from, k.to, ts.create({ fontFamily: k.font }));
+        return true;
+      })
       .run();
+  };
 
   const setSize = (n: number) => {
     if (!n || n < 1 || n > 400) return;
@@ -253,11 +273,7 @@ export function Ribbon(p: Props) {
           ? PARAGRAPH_STYLES.map((s) => <option key={s.id} value={s.id}>{t(s.label)}</option>)
           : [['p', 'সাধারণ লেখা'], ['h1', 'শিরোনাম ১'], ['h2', 'শিরোনাম ২'], ['h3', 'শিরোনাম ৩']].map(([v, l]) => <option key={v} value={v}>{t(l)}</option>)}
       </select>
-      <select className="sel font" aria-label={t('ফন্ট')} title={t('ফন্ট')} data-testid="font" value={curFont}
-        onChange={(e) => (e.target.value ? chain().setFontFamily(`"${e.target.value}"`).run() : chain().unsetFontFamily().run())}>
-        <option value="">{p.defaultFont} ({t('ডিফল্ট')})</option>
-        {p.fonts.filter((f) => f !== p.defaultFont).map((f) => <option key={f} value={f}>{f}</option>)}
-      </select>
+      <FontPicker ed={ed} lists={p.fontLists} defaultFont={p.defaultFont} ansiTyping={p.ansiTyping} ansiFont={p.ansiFont} enFont={p.enFont} onToggleAnsi={p.onToggleAnsi} say={p.say} />
       <input className="sel size" list="pn-sizes" inputMode="decimal" aria-label={t('ফন্ট সাইজ')} title={t('ফন্ট সাইজ')} data-testid="size"
         key={curSize} defaultValue={curSize}
         onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); setSize(parseFloat((e.target as HTMLInputElement).value)); } }}

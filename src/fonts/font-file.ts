@@ -71,3 +71,48 @@ export function readFontFamily(buf: ArrayBuffer): string | null {
 export function familyFor(buf: ArrayBuffer, fileName: string): string {
   return (readFontFamily(buf) || fileName.replace(/\.(ttf|otf|woff2?|ttc)$/i, '')).replace(/["'\\;{}<>]/g, '').trim() || 'Custom font';
 }
+
+export interface FontStyle {
+  /** CSS font-style for the FontFace. */
+  style: 'normal' | 'italic';
+  /** CSS font-weight (100–900). */
+  weight: number;
+}
+
+/**
+ * Regular, bold or italic: from the OS/2 table (weight class, fsSelection), else the head table
+ * (macStyle), else the file name. A face registered without this would count as "regular", and the
+ * browser could then draw normal text with an italic or bold file of the same family.
+ */
+export function readFontStyle(buf: ArrayBuffer, fileName = ''): FontStyle {
+  const byName = (): FontStyle => ({
+    style: /italic|oblique/i.test(fileName) ? 'italic' : 'normal',
+    weight: /black|heavy/i.test(fileName) ? 900 : /extra ?bold/i.test(fileName) ? 800 : /semi ?bold|demi/i.test(fileName) ? 600 : /bold/i.test(fileName) ? 700 : /light/i.test(fileName) ? 300 : 400,
+  });
+  const kind = fontKind(buf);
+  if (kind !== 'ttf' && kind !== 'otf') return byName();
+  try {
+    const v = new DataView(buf);
+    const numTables = v.getUint16(4);
+    let os2 = -1;
+    let head = -1;
+    for (let i = 0; i < numTables; i++) {
+      const rec = 12 + i * 16;
+      const tag = v.getUint32(rec);
+      if (tag === 0x4f532f32 /* 'OS/2' */) os2 = v.getUint32(rec + 8);
+      if (tag === 0x68656164 /* 'head' */) head = v.getUint32(rec + 8);
+    }
+    if (os2 >= 0 && os2 + 64 <= buf.byteLength) {
+      const weight = v.getUint16(os2 + 4);
+      const fsSelection = v.getUint16(os2 + 62);
+      return { style: fsSelection & 1 ? 'italic' : 'normal', weight: weight >= 100 && weight <= 1000 ? Math.min(900, weight) : fsSelection & 32 ? 700 : 400 };
+    }
+    if (head >= 0 && head + 46 <= buf.byteLength) {
+      const macStyle = v.getUint16(head + 44);
+      return { style: macStyle & 2 ? 'italic' : 'normal', weight: macStyle & 1 ? 700 : 400 };
+    }
+  } catch {
+    /* fall back to the name */
+  }
+  return byName();
+}
