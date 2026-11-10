@@ -7,7 +7,7 @@ import { Extension } from '@tiptap/core';
 import { Plugin, PluginKey } from '@tiptap/pm/state';
 import type { EditorView } from '@tiptap/pm/view';
 import { closeHistory } from '@tiptap/pm/history';
-import { resolveKey, resolveTypedChar, planType, fixNukta, isAnsiKey, type LayoutMap, type ToggleKey, type AnsiKey } from '../bornona-engine';
+import { resolveKey, resolveTypedChar, planType, fixNukta, isAnsiKey, transliterateLowercase, type LayoutMap, type ToggleKey, type AnsiKey } from '../bornona-engine';
 import { typeAnsi, backspaceAnsi, insertEnglishAnsi, type AnsiConfig } from './ansi-typing';
 
 export interface BornonaConfig {
@@ -22,6 +22,7 @@ export interface BornonaConfig {
   /** Experimental Bijoy (ANSI) typing. */
   ansi?: AnsiConfig;
   ansiKey?: AnsiKey;
+  phonetic?: boolean;
 }
 
 export interface BornonaOptions {
@@ -126,6 +127,15 @@ export const BornonaExtension = Extension.create<BornonaOptions>({
           handleKeyDown(view, event) {
             if (view.composing) return false;
             const cfg = opts.getConfig();
+            if (cfg.phonetic && cfg.bangla && !cfg.suspended && !cfg.ansi?.on && /^[a-z]$/i.test(event.key) && !event.ctrlKey && !event.altKey && !event.metaKey) {
+              const before = textBeforeCaret(view);
+              const m = before.match(/[A-Za-z]+$/);
+              const start = view.state.selection.from - (m?.[0].length ?? 0);
+              const word = (m?.[0] ?? '') + event.key;
+              view.dispatch(view.state.tr.delete(start, view.state.selection.from));
+              typeText(view, transliterateLowercase(word), cfg);
+              return true;
+            }
             const ki = {
               code: event.code, key: event.key, shiftKey: event.shiftKey, altKey: event.altKey, ctrlKey: event.ctrlKey,
               metaKey: event.metaKey, altGraph: event.getModifierState?.('AltGraph'), isComposing: event.isComposing,

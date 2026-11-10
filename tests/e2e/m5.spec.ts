@@ -160,7 +160,7 @@ test('custom .avrolayout: import, type with it, survives reload, delete needs tw
   await expect(page.getByTestId('layout-list')).toBeVisible();
   await del.click();
   await expect(page.getByTestId('layout-list')).toHaveCount(0);
-  await expect(page.getByTestId('layout')).toHaveValue('bornona');
+  await expect(page.getByTestId('layout')).toHaveValue('pronotes');
 });
 
 test('bad layout file shows a message', async ({ page }) => {

@@ -33,6 +33,7 @@ export const EN: Record<string, string> = {
   "এই ডকুমেন্টের ধরন বদলান (লেখা যেমন আছে থাকবে):": "Change this document's type (the text stays as it is):",
   "শীঘ্রই": "coming soon",
   "কিবোর্ড লেআউট": "Keyboard layout",
+  "Desktop এবং Mobile/iPad-এর dropdown-এ কোন layout থাকবে তা আলাদাভাবে বেছে নিন।": "Choose separately which layouts appear in the desktop and mobile/iPad dropdowns.",
   "সাথে দেওয়া": "Built in",
   "আপনার যোগ করা": "Added by you",
   "টাইপিং-এর ভাষা": "Typing language",

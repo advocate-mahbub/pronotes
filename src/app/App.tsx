@@ -117,6 +117,7 @@ export function App() {
   const [enFont, setEnFont] = useState(() => load('enFont', 'Times New Roman'));
   const [corrections, setCorrectionsState] = useState('');
   const [customLayouts, setCustomLayouts] = useState<Layout[]>([]);
+  const [layoutsReady, setLayoutsReady] = useState(false);
   const [fonts, setFonts] = useState<FontInfo[]>([]);
   const editorRef = useRef<Editor | null>(null);
   const [wide, setWide] = useState(() => wideQuery?.matches ?? true);
@@ -188,7 +189,7 @@ export function App() {
   const allKeyboardLayouts = useMemo(() => availableLayouts(customLayouts), [customLayouts]);
   const enabledIds = phone ? enabledMobile : enabledDesktop;
   const enabledKeyboardLayouts = useMemo(() => allKeyboardLayouts.filter((l) => !enabledIds.length || enabledIds.includes(l.id)), [allKeyboardLayouts, enabledIds]);
-  useEffect(() => { if (!enabledKeyboardLayouts.some((l) => l.id === layoutId)) setLayoutId(PRONOTES_LAYOUT_ID); }, [enabledKeyboardLayouts, layoutId]);
+  useEffect(() => { if (layoutsReady && !enabledKeyboardLayouts.some((l) => l.id === layoutId)) setLayoutId(PRONOTES_LAYOUT_ID); }, [enabledKeyboardLayouts, layoutId, layoutsReady]);
   const map = layout.map;
 
   useEffect(() => save('layout', layoutId), [layoutId]);
@@ -314,6 +315,7 @@ export function App() {
       bank.current = (await loadBank()) ?? emptyBank();
       setBankVersion((v) => v + 1);
       setCustomLayouts(await loadLayouts());
+      setLayoutsReady(true);
       setCorrectionsState(await loadCorrections());
       setGeminiKeyState(await loadAiKey());
       setPrivateWordsState(await loadPrivateWords());
@@ -621,6 +623,7 @@ export function App() {
   const layoutSelect = (
     <select className="layout" aria-label={t('কিবোর্ড লেআউট')} title={t('কিবোর্ড লেআউট')} data-testid="layout" value={layoutId} onChange={(e) => setLayoutId(e.target.value)}>
       <optgroup label={t('সাথে দেওয়া')}>{enabledKeyboardLayouts.map((l) => <option key={l.id} value={l.id}>{l.name}</option>)}</optgroup>
+      {customLayouts.length > 0 && <optgroup label={t('আপনার যোগ করা')}>{customLayouts.filter((l) => !enabledIds.length || enabledIds.includes(l.id)).map((l) => <option key={l.id} value={l.id}>{l.name}</option>)}</optgroup>}
     </select>
   );
   const sidebar = (
@@ -680,7 +683,7 @@ export function App() {
         {!lawDictionaryOpen && showSide && (wide ? sidebar : <div className="drawer" onClick={(e) => e.target === e.currentTarget && setSideOpen(false)}>{sidebar}</div>)}
         <div className="work">
           {lawDictionaryOpen ? <LawDictionary onClose={() => setLawDictionaryOpen(false)} /> : current && (
-            <Workspace key={current.id + ':' + reloadKey} doc={current} map={map} bangla={bangla} vowelForming={vf} oldReph={oldReph}
+            <Workspace key={current.id + ':' + reloadKey} doc={current} map={map} phonetic={layoutId === 'pronotes-phonetic'} bangla={bangla} vowelForming={vf} oldReph={oldReph}
               kbVisible={kbVisible} coarse={coarse} phone={phone} voiceEngine={voiceEngine === 'auto' ? (geminiKey ? 'ai' : 'device') : voiceEngine} bank={bank.current} bankVersion={bankVersion} onBankChanged={onBankChanged}
               onToggleLanguage={() => setBangla((b) => !b)} onSave={onSave}
               onRename={renameAny}

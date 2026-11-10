@@ -34,6 +34,7 @@ export type SaveState = 'saved' | 'saving' | 'error';
 interface Props {
   doc: Doc;
   map: LayoutMap;
+  phonetic?: boolean;
   bangla: boolean;
   vowelForming: boolean;
   oldReph: boolean;
@@ -113,8 +114,8 @@ export function Workspace(p: Props) {
   const [aiOpen, setAiOpen] = useState(false);
   /** One-time notice before the first live voice session (audio goes to the browser's speech service). */
   const [consentOpen, setConsentOpen] = useState(false);
-  const cfg = useRef<BornonaConfig>({ bangla: p.bangla, map: p.map, vowelForming: p.vowelForming, oldReph: p.oldReph, suspended: false });
-  cfg.current = { bangla: p.bangla, map: p.map, vowelForming: p.vowelForming, oldReph: p.oldReph, suspended: deviceKb, fixChandra: p.fixChandra, toggleKey: p.toggleKey,
+  const cfg = useRef<BornonaConfig>({ bangla: p.bangla, map: p.map, phonetic: p.phonetic, vowelForming: p.vowelForming, oldReph: p.oldReph, suspended: false });
+  cfg.current = { bangla: p.bangla, map: p.map, phonetic: p.phonetic, vowelForming: p.vowelForming, oldReph: p.oldReph, suspended: deviceKb, fixChandra: p.fixChandra, toggleKey: p.toggleKey,
     ansi: { on: p.ansiTyping, bijoyFont: p.ansiFont || 'SutonnyMJ', englishFont: p.enFont || 'Times New Roman' }, ansiKey: p.ansiKey };
   const inputMode = p.coarse && p.kbVisible && !deviceKb ? 'none' : 'text';
   const getConfig = useCallback(() => cfg.current, []);
