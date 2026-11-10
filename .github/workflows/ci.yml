@@ -4,8 +4,8 @@ name: CI
 on:
   push:
     branches: 
-    - main
-    - feature/law-dictionary
+      - main
+      - feature/law-dictionary
   pull_request:
 jobs:
   test:
