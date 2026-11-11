@@ -702,6 +702,7 @@ export function App() {
               output={output} setOutput={setOutput}
               voice={voice} corrections={corrections} autoBijoy={autoBijoy} ansiFont={ansiFont} enFont={enFont}
               onEditor={(e) => { editorRef.current = e; }}
+              onLawDictionary={() => setLawDictionaryOpen(true)}
               toolbarExtra={
                 <>
                   <button type="button" className={'tb' + (showSide ? ' on' : '')} title={t('ডকুমেন্টের তালিকা')} aria-label={t('ডকুমেন্টের তালিকা')}

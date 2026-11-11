@@ -51,6 +51,8 @@ interface Props {
   onRename: (id: string, title: string) => void;
   onSaveState: (s: SaveState) => void;
   toolbarExtra: React.ReactNode;
+  /** Opens the law dictionary (button in the Tools tab). */
+  onLawDictionary?: () => void;
   toolbarRight: React.ReactNode;
   format: DocFormat;
   /** Font families for the font box (document default first). */
@@ -524,7 +526,7 @@ export function Workspace(p: Props) {
         start={p.toolbarExtra} end={<>{share}{p.toolbarRight}</>}
         onFind={(replace) => setFind({ replace })} onConverter={() => setConvOpen((v) => !v)} converterOpen={convOpen}
         onAi={() => setAiOpen((v) => !v)} aiOpen={aiOpen} say={(m, v) => p.say(m, v)}
-        onWordCount={() => setPanel('wc')} onFontPanel={() => setPanel('font')} onParagraphPanel={() => setPanel('para')} />
+        onWordCount={() => setPanel('wc')} onFontPanel={() => setPanel('font')} onParagraphPanel={() => setPanel('para')} onLawDictionary={p.onLawDictionary} />
       {find && <FindBar editor={editor} showReplace={find.replace} getConfig={getConfig} onToggleLanguage={toggleLang}
         onClose={() => { setFind(null); editor.commands.focus(); }} />}
       {panel === 'font' && <FontPanel editor={editor} onClose={() => setPanel(null)} />}

@@ -818,4 +818,11 @@ export const EN: Record<string, string> = {
   "নির্বাচিত লেখা বিজয়ে বদলে {f} বসানো হলো": "Selected text converted to Bijoy, {f} applied",
   "নির্বাচিত বিজয় লেখা ইউনিকোডে বদলে {f} বসানো হলো": "Selected Bijoy text converted to Unicode, {f} applied",
   "{f}: শুধু Italic/Bold ফাইল আছে, সাধারণ (Regular) ফাইল নেই — তাই সাধারণ লেখাও বাঁকা বা মোটা দেখাবে। Regular ফাইলটা যোগ করুন।": "{f}: only Italic/Bold files, no Regular file — so normal text will also look slanted or bold. Add the Regular file.",
+  "সম্পাদনা": "Editing",
+  "খোঁজা ও গণনা": "Find & count",
+  "সহকারী": "Assistants",
+  "⚖ আইনি অভিধান": "⚖ Law dictionary",
+  "পাতা নম্বর ও সেটআপ": "Page numbers & setup",
+  "দেখার ধরন": "Views",
+  "সহায়ক রেখা": "Guides",
 };
