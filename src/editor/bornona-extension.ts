@@ -92,8 +92,10 @@ export function deleteBackward(view: EditorView, joinBackward: () => boolean, cf
   if (!sel.empty) return view.dispatch(state.tr.deleteSelection().scrollIntoView());
   if (sel.$from.parentOffset > 0) {
     const before = textBeforeCaret(view);
-    const cp = before.codePointAt(before.length - 1) ?? 0;
-    const len = cp > 0xffff ? 2 : 1;
+    // the last code unit of an emoji (or any character above U+FFFF) is a low surrogate: delete both halves
+    const last = before.charCodeAt(before.length - 1);
+    const prev = before.charCodeAt(before.length - 2);
+    const len = last >= 0xdc00 && last <= 0xdfff && prev >= 0xd800 && prev <= 0xdbff ? 2 : 1;
     return view.dispatch(state.tr.delete(sel.from - len, sel.from).scrollIntoView());
   }
   joinBackward();

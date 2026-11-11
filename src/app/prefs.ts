@@ -41,11 +41,16 @@ export function allPrefs(): Record<string, unknown> {
   return out;
 }
 
+/** Settings a backup file must not switch on. */
+const NOT_RESTORED = new Set(['voiceConsent', 'aiVoiceConsent']);
+
 /** Writes settings from a backup back; returns how many were written. */
 export function restorePrefs(store: Record<string, unknown>): number {
   let n = 0;
   for (const [k, v] of Object.entries(store)) {
     if (!/^[\w.-]{1,64}$/.test(k) || v === undefined) continue;
+    // agreeing to send voice or text to a service is given on this device, never carried in by a file
+    if (NOT_RESTORED.has(k)) continue;
     try {
       localStorage.setItem(P + k, JSON.stringify(v));
       n++;

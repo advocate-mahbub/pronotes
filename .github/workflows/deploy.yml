@@ -26,6 +26,9 @@ jobs:
       - run: npm run typecheck
       - run: npm test
       - run: npm run build
+      # the browser tests check the built page itself (CSP, home-screen tags, offline): no deploy if they fail
+      - run: npx playwright install --with-deps chromium
+      - run: npx playwright test --project=chromium
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:

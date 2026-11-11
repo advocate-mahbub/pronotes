@@ -13,7 +13,14 @@ const CSP = "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inl
 const cspMeta = (): Plugin => ({
   name: 'pronotes-csp-meta',
   apply: 'build',
-  transformIndexHtml: (html) => (process.env.PRONOTES_PREVIEW ? html : html.replace('<meta charset="utf-8" />', `<meta charset="utf-8" />\n    <meta http-equiv="Content-Security-Policy" content="${CSP}" />`)),
+  transformIndexHtml: (html) => {
+    if (process.env.PRONOTES_PREVIEW) return html;
+    // any spelling of the charset tag (utf-8 / UTF-8, with or without the closing slash)
+    const out = html.replace(/<meta\s+charset=["']?utf-8["']?\s*\/?>/i, (m) => `${m}\n    <meta http-equiv="Content-Security-Policy" content="${CSP}" />`);
+    // never ship a build without the policy: stop the build instead
+    if (out === html) throw new Error('pronotes-csp-meta: <meta charset> not found in index.html, CSP was not added');
+    return out;
+  },
 });
 
 // base './' so the build also works from a sub-folder (e.g. GitHub Pages project site).

@@ -61,16 +61,29 @@ const newId = () => (crypto.randomUUID ? crypto.randomUUID() : Date.now().toStri
 const same = (a: Doc, b: Doc) => a.updatedAt === b.updatedAt && JSON.stringify(a.content) === JSON.stringify(b.content) && a.title === b.title;
 
 /** Word counts: keep the larger count, so restoring the same backup twice does not inflate them. */
-function mergeBankMax(into: WordBank, from: WordBank): number {
+/** Keys that would reach Object.prototype instead of the word list (a hand-edited or hostile backup file). */
+const unsafeKey = (k: string) => k === '__proto__' || k === 'constructor' || k === 'prototype';
+const own = (o: object, k: string) => Object.prototype.hasOwnProperty.call(o, k);
+
+export function mergeBankMax(into: WordBank, from: WordBank): number {
   let added = 0;
-  for (const w in from.w || {}) {
+  for (const w of Object.keys(from.w || {})) {
     const k = fixNukta(w);
-    if (!into.w[k]) added++;
-    into.w[k] = Math.max(into.w[k] || 0, Number(from.w[w]) || 0);
+    if (unsafeKey(k)) continue;
+    if (!own(into.w, k) || !into.w[k]) added++;
+    into.w[k] = Math.max((own(into.w, k) && into.w[k]) || 0, Number(from.w[w]) || 0);
   }
-  for (const p in from.b || {}) {
-    const m = into.b[fixNukta(p)] || (into.b[fixNukta(p)] = {});
-    for (const w in from.b[p]) m[fixNukta(w)] = Math.max(m[fixNukta(w)] || 0, Number(from.b[p][w]) || 0);
+  for (const p of Object.keys(from.b || {})) {
+    const pk = fixNukta(p);
+    const src = from.b[p];
+    if (unsafeKey(pk) || !src || typeof src !== 'object') continue;
+    if (!own(into.b, pk)) into.b[pk] = {};
+    const m = into.b[pk];
+    for (const w of Object.keys(src)) {
+      const wk = fixNukta(w);
+      if (unsafeKey(wk)) continue;
+      m[wk] = Math.max((own(m, wk) && m[wk]) || 0, Number(src[w]) || 0);
+    }
   }
   return added;
 }
