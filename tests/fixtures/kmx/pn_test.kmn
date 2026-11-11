@@ -1,0 +1,35 @@
+store(&VERSION) '10.0'
+store(&NAME) 'PN Test'
+store(&COPYRIGHT) '© Test'
+store(&TARGETS) 'any'
+begin Unicode > use(main)
+
+store(cons) 'কখগ'
+store(kars) 'ািী'
+store(karKeys) 'aiI'
+store(opt_reorder) '1'
+
+group(main) using keys
++ 'k' > 'ক'
++ 'K' > 'খ'
++ 'g' > 'গ'
++ any(karKeys) > index(kars, 1)
+c i-kar typed before the consonant (Bijoy style): deadkey then the consonant
++ 'f' > dk(ikar)
+dk(ikar) + 'k' > 'কি'
+c nul: only at the start
+nul + 'q' > 'শুরু'
++ 'q' > 'ক্যু'
+c options
+if(opt_reorder = '1') + 'z' > 'ON'
++ 'Z' > set(opt_reorder = '0')
+c context with any/index: consonant + 'x' doubles it with hasanta
+any(cons) + 'x' > context '্' index(cons, 1)
+c RALT
++ [RALT K_K] > 'ৎ'
+c backspace rule
+'কি' + [K_BKSP] > 'ক'
+c use another group and match
++ 'm' > 'ম' use(after)
+group(after)
+'ম' > 'মা'
