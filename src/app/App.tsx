@@ -117,6 +117,8 @@ export function App() {
   const [enFont, setEnFont] = useState(() => load('enFont', 'Times New Roman'));
   const [corrections, setCorrectionsState] = useState('');
   const [customLayouts, setCustomLayouts] = useState<Layout[]>([]);
+  /** false until the saved custom layouts are read; until then a stored custom layout id is not "missing" */
+  const [layoutsReady, setLayoutsReady] = useState(false);
   const [fonts, setFonts] = useState<FontInfo[]>([]);
   const editorRef = useRef<Editor | null>(null);
   const [wide, setWide] = useState(() => wideQuery?.matches ?? true);
@@ -191,8 +193,11 @@ export function App() {
   useEffect(() => {
     // Keep an older stored Bornona selection readable for migration/tests, but never
     // add it to the user-facing layout list.
+    // Wait for the saved custom layouts: after a reload the list is empty for a moment, and the
+    // chosen custom layout would otherwise be thrown away.
+    if (!layoutsReady) return;
     if (layoutId !== 'bornona' && !enabledKeyboardLayouts.some((l) => l.id === layoutId)) setLayoutId(PRONOTES_LAYOUT_ID);
-  }, [enabledKeyboardLayouts, layoutId]);
+  }, [enabledKeyboardLayouts, layoutId, layoutsReady]);
   const map = layout.map;
 
   useEffect(() => save('layout', layoutId), [layoutId]);
@@ -318,6 +323,7 @@ export function App() {
       bank.current = (await loadBank()) ?? emptyBank();
       setBankVersion((v) => v + 1);
       setCustomLayouts(await loadLayouts());
+      setLayoutsReady(true);
       setCorrectionsState(await loadCorrections());
       setGeminiKeyState(await loadAiKey());
       setPrivateWordsState(await loadPrivateWords());
@@ -626,7 +632,11 @@ export function App() {
   const showSide = sideOpen;
   const layoutSelect = (
     <select className="layout" aria-label={t('কিবোর্ড লেআউট')} title={t('কিবোর্ড লেআউট')} data-testid="layout" value={layoutId} onChange={(e) => setLayoutId(e.target.value)}>
-      <optgroup label={t('সাথে দেওয়া')}>{enabledKeyboardLayouts.map((l) => <option key={l.id} value={l.id}>{l.name}</option>)}</optgroup>
+      <optgroup label={t('সাথে দেওয়া')}>{enabledKeyboardLayouts.filter((l) => !customLayouts.some((c) => c.id === l.id)).map((l) => <option key={l.id} value={l.id}>{l.name}</option>)}</optgroup>
+      {/* layouts the user imported stay in their own group, as before a22c74e */}
+      {enabledKeyboardLayouts.some((l) => customLayouts.some((c) => c.id === l.id)) && (
+        <optgroup label={t('আপনার যোগ করা')}>{enabledKeyboardLayouts.filter((l) => customLayouts.some((c) => c.id === l.id)).map((l) => <option key={l.id} value={l.id}>{l.name}</option>)}</optgroup>
+      )}
       {/* Compatibility target for older saved/test selections; hidden from normal users. */}
       <option value="bornona" hidden aria-hidden="true">Bornona</option>
     </select>

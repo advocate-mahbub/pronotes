@@ -43,8 +43,10 @@ for (const [name, size] of [['iPad landscape', { width: 1366, height: 1024 }], [
     const page = await ctx.newPage();
     await openLegal(page);
     await page.setViewportSize(size);
-    // on a narrow screen the document list becomes a drawer: close it by tapping beside it
+    // on a narrow screen the document list becomes a drawer, which may open a moment after the
+    // resize: wait for it briefly, then close it by tapping beside it
     const drawer = page.locator('.drawer');
+    await drawer.waitFor({ state: 'visible', timeout: 2000 }).catch(() => {});
     if (await drawer.isVisible()) await drawer.click({ position: { x: size.width - 20, y: size.height / 2 } });
     await expect(drawer).toHaveCount(0);
 
