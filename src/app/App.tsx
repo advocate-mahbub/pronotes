@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { Editor } from '@tiptap/react';
-import { availableLayouts, PRONOTES_LAYOUT_ID, findLayout, fixNukta, parseAvroLayout, type Layout } from '../bornona-engine';
+import { availableLayouts, PRONOTES_LAYOUT_ID, findLayout, fixNukta, type Layout } from '../bornona-engine';
+import { readLayoutFile, LAYOUT_MSG, type NewLayout } from './layout-files';
 import { emptyBank, learnText, mergeBankFile, pruneBank, type WordBank, type WordBankFile, loadDictionary, clearDictionary, resetDictionaryLoad } from '../suggest';
 import {
   listDocs, getDoc, createDoc, saveContent, renameDoc, duplicateDoc, trashDoc, restoreDoc, deleteForever, purgeExpired,
@@ -35,6 +36,18 @@ import './fonts.css';
 import './app.css';
 import { flushAll } from './flush';
 import { applyUpdate, canPromptInstall, checkForUpdate, isAppleDevice, isStandalone, onInstallChange, promptInstall, pwaSupported, startPwa } from './pwa';
+
+/**
+ * Hidden layouts for one kind of device. The first version stored the shown layouts
+ * ("enabledLayouts.*", empty = all); a non-empty one of those is turned into a hidden list once.
+ */
+function hiddenLayoutsPref(kind: 'desktop' | 'mobile'): string[] {
+  const hidden = load<string[] | null>('hiddenLayouts.' + kind, null);
+  if (Array.isArray(hidden)) return hidden;
+  const shown = load<string[]>('enabledLayouts.' + kind, []);
+  if (!Array.isArray(shown) || !shown.length) return [];
+  return availableLayouts().map((l) => l.id).filter((id) => !shown.includes(id));
+}
 
 const coarse = typeof matchMedia === 'function' && matchMedia('(pointer: coarse)').matches;
 const wideQuery = typeof matchMedia === 'function' ? matchMedia('(min-width: 1000px)') : null;
@@ -82,8 +95,10 @@ export function App() {
     else document.documentElement.dataset.theme = theme;
   }, [theme]);
   const [layoutId, setLayoutId] = useState(() => load('layout', PRONOTES_LAYOUT_ID));
-  const [enabledDesktop, setEnabledDesktop] = useState<string[]>(() => load('enabledLayouts.desktop', []));
-  const [enabledMobile, setEnabledMobile] = useState<string[]>(() => load('enabledLayouts.mobile', []));
+  // Layouts hidden from the layout box, separately for computers and touch devices (phone, iPad).
+  // Stored as "hidden" so that an empty list means "show all" and newly added layouts show up.
+  const [hiddenDesktop, setHiddenDesktop] = useState<string[]>(() => hiddenLayoutsPref('desktop'));
+  const [hiddenMobile, setHiddenMobile] = useState<string[]>(() => hiddenLayoutsPref('mobile'));
   const [bangla, setBangla] = useState(() => load('bangla', true));
   const [vf, setVf] = useState(() => load('vf', true));
   const [oldReph, setOldReph] = useState(() => load('oldReph', false));
@@ -117,6 +132,8 @@ export function App() {
   const [enFont, setEnFont] = useState(() => load('enFont', 'Times New Roman'));
   const [corrections, setCorrectionsState] = useState('');
   const [customLayouts, setCustomLayouts] = useState<Layout[]>([]);
+  /** false until the saved custom layouts are read; until then a stored custom layout id is not "missing" */
+  const [layoutsReady, setLayoutsReady] = useState(false);
   const [fonts, setFonts] = useState<FontInfo[]>([]);
   const editorRef = useRef<Editor | null>(null);
   const [wide, setWide] = useState(() => wideQuery?.matches ?? true);
@@ -186,14 +203,25 @@ export function App() {
   const bank = useRef<WordBank>(emptyBank());
   const layout = useMemo(() => findLayout(layoutId, customLayouts), [layoutId, customLayouts]);
   const allKeyboardLayouts = useMemo(() => availableLayouts(customLayouts), [customLayouts]);
-  const enabledIds = phone ? enabledMobile : enabledDesktop;
-  const enabledKeyboardLayouts = useMemo(() => allKeyboardLayouts.filter((l) => !enabledIds.length || enabledIds.includes(l.id)), [allKeyboardLayouts, enabledIds]);
-  useEffect(() => { if (!enabledKeyboardLayouts.some((l) => l.id === layoutId)) setLayoutId(PRONOTES_LAYOUT_ID); }, [enabledKeyboardLayouts, layoutId]);
+  // an iPad is a touch device: it uses the "Mobile / iPad" list, whatever its width
+  const hiddenIds = coarse || phone ? hiddenMobile : hiddenDesktop;
+  const enabledKeyboardLayouts = useMemo(() => {
+    const shown = allKeyboardLayouts.filter((l) => !hiddenIds.includes(l.id));
+    return shown.length ? shown : allKeyboardLayouts;
+  }, [allKeyboardLayouts, hiddenIds]);
+  useEffect(() => {
+    // Keep an older stored Bornona selection readable for migration/tests, but never
+    // add it to the user-facing layout list.
+    // Wait for the saved custom layouts: after a reload the list is empty for a moment, and the
+    // chosen custom layout would otherwise be thrown away.
+    if (!layoutsReady) return;
+    if (layoutId !== 'bornona' && !enabledKeyboardLayouts.some((l) => l.id === layoutId)) setLayoutId(enabledKeyboardLayouts[0]?.id ?? PRONOTES_LAYOUT_ID);
+  }, [enabledKeyboardLayouts, layoutId, layoutsReady]);
   const map = layout.map;
 
   useEffect(() => save('layout', layoutId), [layoutId]);
-  useEffect(() => save('enabledLayouts.desktop', enabledDesktop), [enabledDesktop]);
-  useEffect(() => save('enabledLayouts.mobile', enabledMobile), [enabledMobile]);
+  useEffect(() => save('hiddenLayouts.desktop', hiddenDesktop), [hiddenDesktop]);
+  useEffect(() => save('hiddenLayouts.mobile', hiddenMobile), [hiddenMobile]);
   useEffect(() => save('bangla', bangla), [bangla]);
   useEffect(() => save('vf', vf), [vf]);
   useEffect(() => save('oldReph', oldReph), [oldReph]);
@@ -314,6 +342,7 @@ export function App() {
       bank.current = (await loadBank()) ?? emptyBank();
       setBankVersion((v) => v + 1);
       setCustomLayouts(await loadLayouts());
+      setLayoutsReady(true);
       setCorrectionsState(await loadCorrections());
       setGeminiKeyState(await loadAiKey());
       setPrivateWordsState(await loadPrivateWords());
@@ -472,16 +501,25 @@ export function App() {
 
   // ---------- custom layouts ----------
   const addLayout = async (file: File) => {
+    let got: NewLayout[];
     try {
-      const L: Layout = { ...parseAvroLayout(await file.text()), id: 'custom-' + Date.now() };
-      const next = [...customLayouts, L];
-      await saveLayouts(next);
-      setCustomLayouts(next);
-      setLayoutId(L.id);
-      say('{name} লেআউট যোগ হলো', { name: L.name });
-    } catch {
-      say('ফাইলটা Avro লেআউট (.avrolayout) হিসেবে পড়া গেল না');
+      got = await readLayoutFile(file);
+    } catch (e) {
+      return say(e instanceof Error && e.message ? e.message : LAYOUT_MSG.unknown);
     }
+    const stamp = Date.now();
+    const added: Layout[] = got.map(({ notes: _n, ...l }, i) => ({ ...l, id: 'custom-' + stamp + (i ? '-' + i : '') }));
+    const next = [...customLayouts, ...added];
+    // Update the UI immediately; IndexedDB persistence must not block the
+    // active selection (especially on mobile and in browser automation).
+    setCustomLayouts(next);
+    setLayoutId(added[0].id);
+    await saveLayouts(next);
+    let msg = tr('{name} লেআউট যোগ হলো', { name: added.map((l) => l.name).join(', ') });
+    if (added.some((l) => l.kmx?.enc === 'ansi')) msg += ' ' + tr('এই কিবোর্ড বিজয় (ANSI)-তে লেখে: ইউনিকোড ডকুমেন্টে লিখলে ইউনিকোডে বদলে বসবে।');
+    const notes = [...new Set(got.flatMap((l) => l.notes))];
+    if (notes.length) msg += ' ' + tr('যা চলবে না: {list}', { list: notes.map((n) => tr(n)).join('; ') });
+    say(msg);
   };
   const deleteLayout = async (id: string) => {
     const next = customLayouts.filter((l) => l.id !== id);
@@ -620,7 +658,13 @@ export function App() {
   const showSide = sideOpen;
   const layoutSelect = (
     <select className="layout" aria-label={t('কিবোর্ড লেআউট')} title={t('কিবোর্ড লেআউট')} data-testid="layout" value={layoutId} onChange={(e) => setLayoutId(e.target.value)}>
-      <optgroup label={t('সাথে দেওয়া')}>{enabledKeyboardLayouts.map((l) => <option key={l.id} value={l.id}>{l.name}</option>)}</optgroup>
+      <optgroup label={t('সাথে দেওয়া')}>{enabledKeyboardLayouts.filter((l) => !customLayouts.some((c) => c.id === l.id)).map((l) => <option key={l.id} value={l.id}>{l.name}</option>)}</optgroup>
+      {/* layouts the user imported stay in their own group, as before a22c74e */}
+      {enabledKeyboardLayouts.some((l) => customLayouts.some((c) => c.id === l.id)) && (
+        <optgroup label={t('আপনার যোগ করা')}>{enabledKeyboardLayouts.filter((l) => customLayouts.some((c) => c.id === l.id)).map((l) => <option key={l.id} value={l.id}>{l.name}</option>)}</optgroup>
+      )}
+      {/* Compatibility target for older saved/test selections; hidden from normal users. */}
+      <option value="bornona" hidden aria-hidden="true">Bornona</option>
     </select>
   );
   const sidebar = (
@@ -680,7 +724,7 @@ export function App() {
         {!lawDictionaryOpen && showSide && (wide ? sidebar : <div className="drawer" onClick={(e) => e.target === e.currentTarget && setSideOpen(false)}>{sidebar}</div>)}
         <div className="work">
           {lawDictionaryOpen ? <LawDictionary onClose={() => setLawDictionaryOpen(false)} /> : current && (
-            <Workspace key={current.id + ':' + reloadKey} doc={current} map={map} bangla={bangla} vowelForming={vf} oldReph={oldReph}
+            <Workspace key={current.id + ':' + reloadKey} doc={current} map={map} rules={layout.kmx} bangla={bangla} vowelForming={vf} oldReph={oldReph}
               kbVisible={kbVisible} coarse={coarse} phone={phone} voiceEngine={voiceEngine === 'auto' ? (geminiKey ? 'ai' : 'device') : voiceEngine} bank={bank.current} bankVersion={bankVersion} onBankChanged={onBankChanged}
               onToggleLanguage={() => setBangla((b) => !b)} onSave={onSave}
               onRename={renameAny}
@@ -694,6 +738,7 @@ export function App() {
               output={output} setOutput={setOutput}
               voice={voice} corrections={corrections} autoBijoy={autoBijoy} ansiFont={ansiFont} enFont={enFont}
               onEditor={(e) => { editorRef.current = e; }}
+              onLawDictionary={() => setLawDictionaryOpen(true)}
               toolbarExtra={
                 <>
                   <button type="button" className={'tb' + (showSide ? ' on' : '')} title={t('ডকুমেন্টের তালিকা')} aria-label={t('ডকুমেন্টের তালিকা')}
@@ -711,8 +756,8 @@ export function App() {
 
       {settingsOpen && (
         <Settings vf={vf} setVf={setVf} oldReph={oldReph} setOldReph={setOldReph}
-          keyboardLayouts={allKeyboardLayouts} enabledDesktop={enabledDesktop} setEnabledDesktop={setEnabledDesktop}
-          enabledMobile={enabledMobile} setEnabledMobile={setEnabledMobile}
+          keyboardLayouts={allKeyboardLayouts} hiddenDesktop={hiddenDesktop} setHiddenDesktop={setHiddenDesktop}
+          hiddenMobile={hiddenMobile} setHiddenMobile={setHiddenMobile}
           customLayouts={customLayouts} onAddLayout={addLayout} onDeleteLayout={deleteLayout}
           voice={voice} setVoice={setVoice} voiceEngine={voiceEngine} setVoiceEngine={setVoiceEngine} voiceNote={voiceNote} corrections={corrections} setCorrections={setCorrections}
           format={format} setFormat={setFormat} fonts={fonts} onAddFont={addFont} onDeleteFont={deleteFont}

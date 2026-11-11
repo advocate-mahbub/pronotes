@@ -26,7 +26,7 @@ const clean = (f: unknown) => String(f ?? '').replace(/["']/g, '').split(',')[0]
 const fontOf = (marks: readonly Mark[]) => marks.find((m) => m.type.name === 'textStyle')?.attrs.fontFamily;
 
 /** The Bijoy font to type in: the one at the caret when it is a Bijoy font (chosen in the font box), else the setting. */
-function bijoyFontAt(view: EditorView, cfg: AnsiConfig): string {
+export function bijoyFontAt(view: EditorView, cfg: AnsiConfig): string {
   const { state } = view;
   const marks = state.storedMarks ?? state.selection.$from.marks();
   const f = fontOf(marks);
@@ -34,7 +34,7 @@ function bijoyFontAt(view: EditorView, cfg: AnsiConfig): string {
 }
 
 /** Marks for new text: the marks at the caret with the font set to `font`. */
-function marksWithFont(view: EditorView, font: string): readonly Mark[] {
+export function marksWithFont(view: EditorView, font: string): readonly Mark[] {
   const { state } = view;
   const base = state.storedMarks ?? state.selection.$from.marks();
   const ts = state.schema.marks.textStyle;

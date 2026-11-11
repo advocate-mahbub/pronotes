@@ -470,7 +470,7 @@ export const TableTools = Extension.create({
           if (mode !== 'fixed' || widthsTwips)
             t.node.descendants((n, p) => {
               if (n.type.name === 'tableCell' || n.type.name === 'tableHeader') {
-                let colwidth = null;
+                let colwidth: number[] | null = null;
                 if (mode === 'fixed' && widthsTwips) {
                   const col = t.map.colCount(p);
                   colwidth = Array.from({ length: n.attrs.colspan }, (_, k) => Math.round((widthsTwips[col + k] ?? 1440) / 15));

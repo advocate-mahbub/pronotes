@@ -7,8 +7,9 @@ import { Extension } from '@tiptap/core';
 import { Plugin, PluginKey } from '@tiptap/pm/state';
 import type { EditorView } from '@tiptap/pm/view';
 import { closeHistory } from '@tiptap/pm/history';
-import { resolveKey, resolveTypedChar, planType, fixNukta, isAnsiKey, type LayoutMap, type ToggleKey, type AnsiKey } from '../bornona-engine';
+import { resolveKey, resolveTypedChar, planType, fixNukta, isAnsiKey, isToggleKey, type LayoutMap, type ToggleKey, type AnsiKey, type KmxKeyboard } from '../bornona-engine';
 import { typeAnsi, backspaceAnsi, insertEnglishAnsi, type AnsiConfig } from './ansi-typing';
+import { typeRulesKey, rulesKeyFromEvent, rulesKeyForChar } from './rules-typing';
 
 export interface BornonaConfig {
   bangla: boolean;
@@ -22,6 +23,22 @@ export interface BornonaConfig {
   /** Experimental Bijoy (ANSI) typing. */
   ansi?: AnsiConfig;
   ansiKey?: AnsiKey;
+  /** Keyman keyboard with rules: keys run its rules instead of `map`. */
+  rules?: KmxKeyboard;
+}
+
+/** The rules keyboard to type with now, if any. */
+const rulesOn = (cfg: BornonaConfig) => (cfg.rules && cfg.bangla && !cfg.suspended ? cfg.rules : null);
+
+/** Type the letters of `latin` (from a touch keyboard) through the rules. Returns false if one is not a key. */
+function typeRulesText(view: EditorView, latin: string, cfg: BornonaConfig): boolean {
+  const keys = [...latin].map(rulesKeyForChar);
+  if (keys.some((k) => !k)) return false;
+  const chars = [...latin];
+  keys.forEach((k, i) => {
+    if (!typeRulesKey(view, cfg.rules!, k!, cfg.ansi)) view.dispatch(view.state.tr.insertText(chars[i]));
+  });
+  return true;
 }
 
 export interface BornonaOptions {
@@ -88,12 +105,16 @@ export function insertPlainText(view: EditorView, text: string): void {
 export function deleteBackward(view: EditorView, joinBackward: () => boolean, cfg?: BornonaConfig): void {
   const { state } = view;
   const sel = state.selection;
+  const kb = cfg && rulesOn(cfg);
+  if (kb && typeRulesKey(view, kb, { code: 'Backspace', shift: false, alt: false }, cfg!.ansi)) return;
   if (cfg?.ansi?.on && backspaceAnsi(view, cfg.ansi)) return;
   if (!sel.empty) return view.dispatch(state.tr.deleteSelection().scrollIntoView());
   if (sel.$from.parentOffset > 0) {
     const before = textBeforeCaret(view);
-    const cp = before.codePointAt(before.length - 1) ?? 0;
-    const len = cp > 0xffff ? 2 : 1;
+    // the last code unit of an emoji (or any character above U+FFFF) is a low surrogate: delete both halves
+    const last = before.charCodeAt(before.length - 1);
+    const prev = before.charCodeAt(before.length - 2);
+    const len = last >= 0xdc00 && last <= 0xdfff && prev >= 0xd800 && prev <= 0xdbff ? 2 : 1;
     return view.dispatch(state.tr.delete(sel.from - len, sel.from).scrollIntoView());
   }
   joinBackward();
@@ -134,6 +155,22 @@ export const BornonaExtension = Extension.create<BornonaOptions>({
               opts.onToggleAnsi();
               return true;
             }
+            const kb = rulesOn(cfg);
+            if (kb) {
+              if (isToggleKey(ki, cfg.toggleKey)) {
+                opts.onToggleLanguage();
+                return true;
+              }
+              const k = rulesKeyFromEvent(ki);
+              if (k) {
+                if (typeRulesKey(view, kb, k, cfg.ansi)) {
+                  if (k.code !== 'Backspace') opts.onKey(k.code);
+                  return true;
+                }
+                // AltGr with nothing on it types nothing
+                if (k.alt) return true;
+              }
+            }
             const ansi = cfg.ansi?.on && !cfg.suspended ? cfg.ansi : null;
             if (ansi && event.key === 'Backspace' && !event.ctrlKey && !event.altKey && !event.metaKey) return backspaceAnsi(view, ansi);
             if (event.key === 'Enter' && !event.isComposing && !ansi) opts.onWordDone(textBeforeCaret(view));
@@ -160,6 +197,9 @@ export const BornonaExtension = Extension.create<BornonaOptions>({
           },
           handleTextInput(view, _from, _to, text) {
             const cfg = opts.getConfig();
+            if (rulesOn(cfg) && composeFrom < 0 && !view.composing && text.length <= 64 && /^[\x20-\x7e]+$/.test(text)) {
+              if (typeRulesText(view, text, cfg)) return true;
+            }
             // several letters at once (a phone keyboard's suggestion or autocorrect): type each through the layout
             if (composeFrom < 0 && !view.composing && text.length > 1 && text.length <= 64 && cfg.bangla && !cfg.suspended && !cfg.ansi?.on && /^[\x20-\x7e]+$/.test(text)) {
               const out = [...text].map((ch) => (ch === ' ' ? ' ' : resolveTypedChar(ch, { bangla: true, map: cfg.map, suspended: false })));
@@ -212,6 +252,11 @@ export const BornonaExtension = Extension.create<BornonaOptions>({
                 if (to <= from || to - from > 64) return;
                 const latin = view.state.doc.textBetween(from, to, '');
                 if (!/^[\x21-\x7e]+$/.test(latin)) return;
+                if (rulesOn(cfg)) {
+                  view.dispatch(view.state.tr.delete(from, to));
+                  typeRulesText(view, latin, cfg);
+                  return;
+                }
                 const out = [...latin].map((ch) => resolveTypedChar(ch, { bangla: true, map: cfg.map, suspended: false }));
                 if (out.some((x) => x === null)) return;
                 view.dispatch(view.state.tr.delete(from, to));

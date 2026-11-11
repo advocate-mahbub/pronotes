@@ -1,4 +1,5 @@
 import builtin from './builtin-layouts.json';
+import type { KmxKeyboard } from './kmx';
 
 /**
  * A layout maps a physical key code to its characters:
@@ -11,7 +12,12 @@ export interface Layout {
   id: string;
   name: string;
   dev: string;
+  /** For a Keyman keyboard with rules: what each key types on its own (on-screen keyboard labels). */
   map: LayoutMap;
+  /** Where the layout came from (added by the user). */
+  format?: 'avro' | 'openbangla' | 'kmx';
+  /** Keyman keyboard with context rules: typing runs these rules instead of the map. */
+  kmx?: KmxKeyboard;
 }
 
 /** Bornona, National (Jatiya), Probhat, Munir Optima (uni), Avro Easy — identical to v8's BUILTIN_LAYOUTS. */

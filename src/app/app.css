@@ -236,18 +236,24 @@ button, select, .chip, .key, summary { touch-action: manipulation; }
 .ribbon-body { container-type: inline-size; }
 .ribbon-row { display: flex; align-items: center; gap: 3px; padding: 4px 6px; overflow-x: auto; scrollbar-width: none; }
 .ribbon-row::-webkit-scrollbar { display: none; }
-.ribbon-row > *, .sec-group > * { flex: none; }
+.ribbon-row > * { flex: none; }
 .ribbon .sep { width: 1px; height: 28px; background: var(--line); flex: none; margin: 0 2px; }
 .ribbon .tb { min-width: 40px; min-height: 40px; padding: 0 6px; font-size: 15px; }
 .ribbon .tb:disabled { opacity: .45; cursor: not-allowed; }
 .sel { min-height: 40px; border: 1px solid var(--line); border-radius: 8px; background: var(--bg); color: var(--fg); font: 14px var(--f-sans); padding: 0 6px; flex: none; }
 .sel.style { width: 150px; } .sel.font { width: 132px; } .sel.size { width: 56px; text-align: center; } .sel.align { width: 64px; } .sel.line { width: 64px; }
-.sec-group { display: contents; }
-.more-wrap { display: none; }
-@container (max-width: 1080px) {
-  .sec-group, .sep.sec { display: none; }
-  .more-wrap { display: inline-flex; }
-}
+/* Named tool groups (Ribbon.tsx); which tools sit in "⋯" is decided in code (NARROW_RIBBON). */
+.rgroup { position: relative; flex: none; display: flex; flex-direction: column; align-items: center; padding: 0 6px; }
+.rgroup + .rgroup::before { content: ""; position: absolute; left: 0; top: 6px; bottom: 18px; width: 1px; background: var(--line); }
+.rgroup-items { display: flex; align-items: center; gap: 3px; }
+.rgroup-items > * { flex: none; }
+.rgroup-label { font-size: 10.5px; line-height: 14px; color: var(--muted); white-space: nowrap; user-select: none; pointer-events: none; }
+.ribbon.narrow .rgroup-label { display: none; }
+.wide-only { display: contents; }
+.ribbon.narrow .wide-only { display: none; }
+.ribbon.narrow .rgroup + .rgroup::before { bottom: 6px; }
+.ribbon .tb { white-space: nowrap; }
+.fp-label { display: inline-block; max-width: 116px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; vertical-align: middle; }
 .more-grid { display: flex; flex-wrap: wrap; gap: 4px; max-width: 340px; }
 .more-grid .sep { display: none; }
 .ab-color { border-bottom: 4px solid; padding: 0 2px; line-height: 1; }
@@ -617,3 +623,128 @@ button, select, .chip, .key, summary { touch-action: manipulation; }
 .itemlist .fl-name { font: 13px var(--f-sans); }
 .itemlist .fl-sample { font-size: 18px; margin: 0 8px; }
 .note.warn { color: #b26a00; }
+
+/* ==========================================================================
+   Liquid Glass (iPadOS / iOS 26 style)
+   Translucent, blurred chrome with a light rim and soft depth; controls are capsules.
+   Only the chrome is glass: the page, the keyboard and text stay solid for legibility.
+   Falls back to solid surfaces when the browser cannot blur, when Reduce Transparency
+   or Increase Contrast is on, and in print.
+   ========================================================================== */
+:root {
+  --glass-bg: rgba(255, 252, 246, .64);
+  --glass-strong: rgba(255, 253, 249, .86);
+  --glass-rim: rgba(15, 42, 79, .12);
+  --glass-hi: inset 0 1px 0 rgba(255, 255, 255, .9), inset 0 -1px 0 rgba(255, 255, 255, .3);
+  --glass-shadow: 0 10px 30px rgba(11, 27, 51, .10), 0 1px 3px rgba(11, 27, 51, .06);
+  --glass-blur: blur(24px) saturate(180%);
+  --glass-pill: rgba(15, 42, 79, .07);
+  --glass-pill-on: rgba(200, 164, 93, .24);
+  --r-glass: 22px;
+  --r-ctl: 12px;
+  --glass-ease: cubic-bezier(.2, .8, .2, 1);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --glass-bg: rgba(14, 26, 44, .60); --glass-strong: rgba(24, 38, 62, .84); --glass-rim: rgba(255, 255, 255, .10);
+    --glass-hi: inset 0 1px 0 rgba(255, 255, 255, .12), inset 0 -1px 0 rgba(0, 0, 0, .25);
+    --glass-shadow: 0 12px 34px rgba(0, 0, 0, .45), 0 1px 3px rgba(0, 0, 0, .3);
+    --glass-pill: rgba(255, 255, 255, .07); --glass-pill-on: rgba(200, 164, 93, .26);
+  }
+}
+:root[data-theme="dark"] {
+  --glass-bg: rgba(14, 26, 44, .60); --glass-strong: rgba(24, 38, 62, .84); --glass-rim: rgba(255, 255, 255, .10);
+  --glass-hi: inset 0 1px 0 rgba(255, 255, 255, .12), inset 0 -1px 0 rgba(0, 0, 0, .25);
+  --glass-shadow: 0 12px 34px rgba(0, 0, 0, .45), 0 1px 3px rgba(0, 0, 0, .3);
+  --glass-pill: rgba(255, 255, 255, .07); --glass-pill-on: rgba(200, 164, 93, .26);
+}
+
+/* a soft light field behind the glass, so the material has something to refract */
+.app { background:
+  radial-gradient(1100px 520px at 0% -8%, color-mix(in srgb, var(--gold) 16%, transparent), transparent 62%),
+  radial-gradient(900px 480px at 100% 0%, color-mix(in srgb, var(--accent) 10%, transparent), transparent 60%),
+  var(--bg); }
+
+.ribbon, .side, .pop, .modal .box, .findbar, .conv {
+  background: var(--glass-bg);
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
+  border: 1px solid var(--glass-rim);
+  box-shadow: var(--glass-hi), var(--glass-shadow);
+}
+.ribbon { border-radius: var(--r-glass); }
+.side { border-radius: var(--r-glass); }
+.drawer .side { border-radius: 0 var(--r-glass) var(--r-glass) 0; background: var(--glass-strong); }
+.pop { border-radius: 18px; padding: 10px; }
+.modal { background: rgba(5, 10, 18, .30); -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px); }
+.modal .box { background: var(--glass-strong); border-radius: 26px; }
+.toast { border-radius: 999px; -webkit-backdrop-filter: var(--glass-blur); backdrop-filter: var(--glass-blur);
+  background: color-mix(in srgb, var(--fg) 86%, transparent); }
+
+/* tabs: a capsule track; the chosen tab is a raised glass pill */
+.ribbon-tabs { border-bottom: 0; gap: 4px; padding: 6px 8px 2px; }
+.rtab { min-height: 36px; padding: 0 14px; border: 0; border-radius: 999px; transition: background-color .25s var(--glass-ease), color .25s var(--glass-ease), box-shadow .25s var(--glass-ease); }
+.rtab:hover { background: var(--glass-pill); }
+.rtab[aria-selected="true"] { background: var(--glass-strong); color: var(--fg); box-shadow: var(--glass-hi), 0 1px 6px rgba(11, 27, 51, .12); }
+.rtab.ctx { color: var(--gold); }
+.rtab.ctx[aria-selected="true"] { color: var(--fg); box-shadow: var(--glass-hi), 0 0 0 1.5px var(--gold); }
+.ribbon-row { padding: 4px 6px 6px; }
+
+/* controls: rounded, quiet until pressed; "on" is a tinted pill */
+.ribbon .tb, .pop .tb { border-radius: var(--r-ctl); transition: background-color .2s var(--glass-ease), transform .12s var(--glass-ease); }
+.ribbon .tb:hover { background: var(--glass-pill); border-color: transparent; }
+.ribbon .tb:active { transform: scale(.94); }
+.ribbon .tb.on, .pop .tb.on { background: var(--glass-pill-on); border-color: transparent; box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--gold) 70%, transparent); }
+.sel { border-radius: var(--r-ctl); background: var(--glass-strong); border-color: var(--glass-rim); }
+.rgroup + .rgroup::before { background: var(--glass-rim); }
+.pop .menu button { border-radius: 10px; }
+
+/* top bar buttons as small glass capsules */
+.top .tb:not(.lang) { border-radius: 999px; background: var(--glass-bg); border: 1px solid var(--glass-rim);
+  -webkit-backdrop-filter: var(--glass-blur); backdrop-filter: var(--glass-blur); box-shadow: var(--glass-hi); }
+.top .tb.on:not(.lang) { background: var(--glass-pill-on); }
+
+/* fallbacks: solid surfaces */
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  :root, :root[data-theme="dark"], :root:not([data-theme="light"]) { --glass-bg: var(--sheet); --glass-strong: var(--sheet); }
+}
+@media (prefers-reduced-transparency: reduce) {
+  :root, :root[data-theme="dark"], :root:not([data-theme="light"]) { --glass-bg: var(--sheet); --glass-strong: var(--sheet); --glass-blur: none; }
+  .modal { -webkit-backdrop-filter: none; backdrop-filter: none; background: rgba(5, 10, 18, .5); }
+}
+@media (prefers-contrast: more) {
+  :root, :root[data-theme="dark"], :root:not([data-theme="light"]) { --glass-bg: var(--sheet); --glass-strong: var(--sheet); --glass-blur: none; --glass-rim: var(--fg); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .rtab, .ribbon .tb, .pop .tb { transition: none; }
+  .ribbon .tb:active { transform: none; }
+}
+@media print {
+  .app { background: none; }
+}
+
+/* Font box: fits inside its popover (the popover is 360px wide including its own padding), long names wrap. */
+.pop .menu.font-picker { width: min(340px, calc(100vw - 34px)); min-width: 0; box-sizing: border-box; }
+.font-picker > * { min-width: 0; max-width: 100%; box-sizing: border-box; }
+.font-picker .fp-search { width: 100%; }
+.font-picker .seg button { min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pop .menu .fp-row { width: 100%; box-sizing: border-box; }
+.fp-name, .fp-sample { max-width: 100%; overflow-wrap: anywhere; }
+
+/* Layout lists in Settings: the whole row is the tap target; on touch screens 44px high with a larger box. */
+.settings .grid2 fieldset label.layout-check { cursor: pointer; -webkit-tap-highlight-color: transparent; touch-action: manipulation; }
+.settings .grid2 fieldset label.layout-check span { min-width: 0; overflow-wrap: anywhere; }
+.settings .grid2 fieldset label.layout-check input:disabled + span { color: var(--muted); }
+@media (pointer: coarse) {
+  .settings .grid2 fieldset label.layout-check { min-height: 44px; }
+  .settings .grid2 fieldset label.layout-check input[type="checkbox"] { width: 22px; height: 22px; min-height: 22px; }
+}
+
+/* Settings pairs (label + dropdown/number) in a narrow panel: the label sits above its box and the box fills
+   the column, so a long font name ("SutonnyOMJ (এই ডিভাইসে নেই)") is cut with … instead of running out of the panel. */
+.settings .grid2 > label:has(> select), .settings .grid2 > label:has(> input:not([type="checkbox"]):not([type="radio"])) {
+  flex-direction: column; align-items: stretch; gap: 4px; min-width: 0;
+}
+.settings .grid2 > label > select, .settings .grid2 > label > input:not([type="checkbox"]):not([type="radio"]) {
+  width: 100%; min-width: 0; max-width: 100%; height: auto; min-height: 36px; margin: 0; box-sizing: border-box; text-overflow: ellipsis;
+}
