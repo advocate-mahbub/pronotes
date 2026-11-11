@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { EditorContent, useEditor, type Editor } from '@tiptap/react';
-import { fixNukta, type LayoutMap, type KmxKeyboard } from '../bornona-engine';
+import { fixNukta, type LayoutMap } from '../bornona-engine';
 import { editorExtensions, insertPlainText, textBeforeCaret, type BornonaConfig } from '../editor';
 import { bijoyRuns, convertBijoyPaste, runsToClipboardHtml, isBijoyFont, type Run } from '../bijoy';
 import { VoiceController, VoiceDeduper, cleanVoice, decideVoice, detectVoiceEnv, voiceInsertText } from '../voice';
@@ -34,8 +34,7 @@ export type SaveState = 'saved' | 'saving' | 'error';
 interface Props {
   doc: Doc;
   map: LayoutMap;
-  /** Keyman keyboard with rules (the chosen layout), if any. */
-  rules?: KmxKeyboard;
+  phonetic?: boolean;
   bangla: boolean;
   vowelForming: boolean;
   oldReph: boolean;
@@ -53,8 +52,6 @@ interface Props {
   onRename: (id: string, title: string) => void;
   onSaveState: (s: SaveState) => void;
   toolbarExtra: React.ReactNode;
-  /** Opens the law dictionary (button in the Tools tab). */
-  onLawDictionary?: () => void;
   toolbarRight: React.ReactNode;
   format: DocFormat;
   /** Font families for the font box (document default first). */
@@ -117,9 +114,9 @@ export function Workspace(p: Props) {
   const [aiOpen, setAiOpen] = useState(false);
   /** One-time notice before the first live voice session (audio goes to the browser's speech service). */
   const [consentOpen, setConsentOpen] = useState(false);
-  const cfg = useRef<BornonaConfig>({ bangla: p.bangla, map: p.map, vowelForming: p.vowelForming, oldReph: p.oldReph, suspended: false });
-  cfg.current = { bangla: p.bangla, map: p.map, vowelForming: p.vowelForming, oldReph: p.oldReph, suspended: deviceKb, fixChandra: p.fixChandra, toggleKey: p.toggleKey,
-    ansi: { on: p.ansiTyping, bijoyFont: p.ansiFont || 'SutonnyMJ', englishFont: p.enFont || 'Times New Roman' }, ansiKey: p.ansiKey, rules: p.rules };
+  const cfg = useRef<BornonaConfig>({ bangla: p.bangla, map: p.map, phonetic: p.phonetic, vowelForming: p.vowelForming, oldReph: p.oldReph, suspended: false });
+  cfg.current = { bangla: p.bangla, map: p.map, phonetic: p.phonetic, vowelForming: p.vowelForming, oldReph: p.oldReph, suspended: deviceKb, fixChandra: p.fixChandra, toggleKey: p.toggleKey,
+    ansi: { on: p.ansiTyping, bijoyFont: p.ansiFont || 'SutonnyMJ', englishFont: p.enFont || 'Times New Roman' }, ansiKey: p.ansiKey };
   const inputMode = p.coarse && p.kbVisible && !deviceKb ? 'none' : 'text';
   const getConfig = useCallback(() => cfg.current, []);
 
@@ -528,7 +525,7 @@ export function Workspace(p: Props) {
         start={p.toolbarExtra} end={<>{share}{p.toolbarRight}</>}
         onFind={(replace) => setFind({ replace })} onConverter={() => setConvOpen((v) => !v)} converterOpen={convOpen}
         onAi={() => setAiOpen((v) => !v)} aiOpen={aiOpen} say={(m, v) => p.say(m, v)}
-        onWordCount={() => setPanel('wc')} onFontPanel={() => setPanel('font')} onParagraphPanel={() => setPanel('para')} onLawDictionary={p.onLawDictionary} />
+        onWordCount={() => setPanel('wc')} onFontPanel={() => setPanel('font')} onParagraphPanel={() => setPanel('para')} />
       {find && <FindBar editor={editor} showReplace={find.replace} getConfig={getConfig} onToggleLanguage={toggleLang}
         onClose={() => { setFind(null); editor.commands.focus(); }} />}
       {panel === 'font' && <FontPanel editor={editor} onClose={() => setPanel(null)} />}
@@ -541,7 +538,7 @@ export function Workspace(p: Props) {
           ['--doc-font' as string]: `"${pg.lang === 'en' && legal ? p.format.fontEn : p.format.font}"`, ['--doc-size' as string]: p.format.size + 'pt', ['--doc-title' as string]: p.format.titleSize + 'pt', ['--doc-line' as string]: p.format.lineSpacing } as React.CSSProperties}>
         {(() => {
           const input = (
-            <input ref={titleRef} className="title" data-testid="title" aria-label={t('ড্রাফটের নাম')} title={t('ড্রাফটের নাম (চাপলে বদলানো যায়)')} value={title}
+            <input ref={titleRef} className="title" data-testid="title" aria-label={t('ড্রাফটের নাম')} title={t('ড্রাফটের নাম (চাপলে বদলানো যায়)')} value={title}
               onChange={(e) => setTitle(e.target.value)} onBlur={commitTitle}
               onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); commitTitle(); editor.commands.focus(); } }} />
           );
