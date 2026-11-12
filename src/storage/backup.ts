@@ -61,7 +61,7 @@ const newId = () => (crypto.randomUUID ? crypto.randomUUID() : Date.now().toStri
 const same = (a: Doc, b: Doc) => a.updatedAt === b.updatedAt && JSON.stringify(a.content) === JSON.stringify(b.content) && a.title === b.title;
 
 /** Word counts: keep the larger count, so restoring the same backup twice does not inflate them. */
-function mergeBankMax(into: WordBank, from: WordBank): number {
+export function mergeBankMax(into: WordBank, from: WordBank): number {
   let added = 0;
   for (const w in from.w || {}) {
     const k = fixNukta(w);

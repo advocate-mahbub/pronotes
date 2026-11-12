@@ -3,10 +3,10 @@
  * Keyman (.kmx, or a .kmp package that holds .kmx files). The kind is read from the file's content,
  * not its name. Nothing leaves the device.
  */
-import { parseAvroLayout, parseOpenBanglaLayout, parseKMX, kmxIsSimple, kmxKeyLabels, fixNukta, type Layout } from '../bornona-engine';
+import { parseAvroLayout, parseOpenBanglaLayout, parseKMX, kmxIsSimple, kmxKeyLabels, fixNukta, type Layout, type KmxKeyboard } from '../bornona-engine';
 import { toUnicode } from '../bijoy';
 
-export type NewLayout = Omit<Layout, 'id'> & { notes: string[] };
+export type NewLayout = Omit<Layout, 'id'> & { notes: string[]; format?: 'avro' | 'openbangla' | 'kmx'; kmx?: KmxKeyboard };
 
 /** Messages for the user (Bangla; translated by the interface). */
 export const LAYOUT_MSG = {
