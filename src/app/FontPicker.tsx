@@ -85,7 +85,7 @@ export function FontPicker({ ed, lists, defaultFont, ansiTyping, ansiFont, enFon
         });
         ed.view.dispatch(closeHistory(tr));
         ed.commands.focus();
-        if (n) say('বিজয় লেখা ইউনিকোডে ফিরিয়ে ডকুমেন্টের ফন্ট বসানো হলো');
+        if (n) say('বিজয় লেখা ইউনিকোডে ফিরিয়ে ডকুমেন্টের ফন্ট বসানো হলো');
         return;
       }
       if (ansiTyping) onToggleAnsi?.();
@@ -97,7 +97,7 @@ export function FontPicker({ ed, lists, defaultFont, ansiTyping, ansiFont, enFon
       // typing from here: the font kind decides how Bangla is written
       if (f.ansi !== ansiTyping) {
         onToggleAnsi?.();
-        say(f.ansi ? 'এখন থেকে বিজয় (ANSI)-তে লেখা হবে, {f} ফন্টে' : 'এখন থেকে ইউনিকোডে লেখা হবে, {f} ফন্টে', { f: f.name });
+        say(f.ansi ? 'এখন থেকে বিজয় (ANSI)-তে লেখা হবে, {f} ফন্টে' : 'এখন থেকে ইউনিকোডে লেখা হবে, {f} ফন্টে', { f: f.name });
       }
       ed.chain().focus().setFontFamily(cssFamily(f.name)).run();
       return;
@@ -120,7 +120,7 @@ export function FontPicker({ ed, lists, defaultFont, ansiTyping, ansiFont, enFon
       tr.addMark(s, e, ts.create({ ...(old?.attrs ?? {}), fontFamily: cssFamily(f.name) }));
     });
     ed.view.dispatch(closeHistory(tr));
-    if (n) say(f.ansi ? 'নির্বাচিত লেখা বিজয়ে বদলে {f} বসানো হলো' : 'নির্বাচিত বিজয় লেখা ইউনিকোডে বদলে {f} বসানো হলো', { f: f.name });
+    if (n) say(f.ansi ? 'নির্বাচিত লেখা বিজয়ে বদলে {f} বসানো হলো' : 'নির্বাচিত বিজয় লেখা ইউনিকোডে বদলে {f} বসানো হলো', { f: f.name });
   };
 
   return (
@@ -129,10 +129,10 @@ export function FontPicker({ ed, lists, defaultFont, ansiTyping, ansiFont, enFon
         <div className="menu font-picker" data-testid="font-picker">
           <div className="seg small" role="tablist">
             <button type="button" role="tab" aria-pressed={kind === 'uni'} data-testid="fp-tab-uni" onClick={() => setTab('uni')}>{t('ইউনিকোড')}</button>
-            <button type="button" role="tab" aria-pressed={kind === 'ansi'} data-testid="fp-tab-ansi" onClick={() => setTab('ansi')}>{t('বিজয় (ANSI)')}</button>
+            <button type="button" role="tab" aria-pressed={kind === 'ansi'} data-testid="fp-tab-ansi" onClick={() => setTab('ansi')}>{t('বিজয় (ANSI)')}</button>
           </div>
           <input className="fp-search" type="search" data-testid="font-search" value={q} onChange={(e) => setQ(e.target.value)}
-            placeholder={t('ফন্ট খুঁজুন: নাম বা বাংলায় (সুতন্নী, নিকোশ…)')} aria-label={t('ফন্ট খুঁজুন')}
+            placeholder={t('ফন্ট খুঁজুন: নাম বা বাংলায় (সুতন্নী, নিকোশ…)')} aria-label={t('ফন্ট খুঁজুন')}
             autoComplete="off" autoCorrect="off" autoCapitalize="off" spellCheck={false} lang="bn" />
           <div className="fp-list" role="listbox">
             {kind === 'uni' && !q && (
@@ -148,9 +148,9 @@ export function FontPicker({ ed, lists, defaultFont, ansiTyping, ansiFont, enFon
                 {f.available && <span className="fp-sample" style={{ fontFamily: cssFamily(f.name) + ', serif' }}>{f.ansi ? SAMPLE_BIJOY : SAMPLE}</span>}
               </button>
             ))}
-            {!shown.length && <p className="note">{t('এই নামে কোনো ফন্ট পাওয়া গেল না')}</p>}
+            {!shown.length && <p className="note">{t('এই নামে কোনো ফন্ট পাওয়া গেল না')}</p>}
           </div>
-          {kind === 'ansi' && <p className="note">{t('বিজয় ফন্ট ProNotes-এর সাথে আসে না (লাইসেন্স)। কম্পিউটারে ইনস্টল থাকলে বা Settings → ফন্ট-এ "ANSI" হিসেবে যোগ করলে এখানে চালু দেখাবে।')}</p>}
+          {kind === 'ansi' && <p className="note">{t('বিজয় ফন্ট ProNotes-এর সাথে আসে না (লাইসেন্স)। কম্পিউটারে ইনস্টল থাকলে বা Settings → ফন্ট-এ "ANSI" হিসেবে যোগ করলে এখানে চালু দেখাবে।')}</p>}
         </div>
       )}
     </Popover>

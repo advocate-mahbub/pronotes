@@ -2,8 +2,8 @@
  * Bornona typing in plain <input>/<textarea> boxes (draft title, find and replace, …), with the same
  * engine as the editor. The on-screen keyboard types into the box that has focus.
  */
-import { resolveKey, resolveTypedChar, planType, fixNukta, isToggleKey } from '../bornona-engine';
-import { rulesKeyFromEvent, rulesKeyForChar, typeRulesKeyBox, type BornonaConfig } from '../editor';
+import { resolveKey, resolveTypedChar, planType, fixNukta } from '../bornona-engine';
+import type { BornonaConfig } from '../editor';
 
 type Box = HTMLInputElement | HTMLTextAreaElement;
 let active: Box | null = null;
@@ -15,15 +15,6 @@ function setValue(el: Box, value: string, caret: number) {
   Object.getOwnPropertyDescriptor(proto, 'value')!.set!.call(el, value);
   el.setSelectionRange(caret, caret);
   el.dispatchEvent(new Event('input', { bubbles: true }));
-}
-
-/** The rules keyboard to type with in a box now, if any. */
-const rulesOn = (cfg: BornonaConfig) => (cfg.rules && cfg.bangla && !cfg.suspended ? cfg.rules : null);
-
-/** One key of a rules keyboard into the box (on-screen keyboard). Returns false if nothing was typed. */
-export function typeKeyIntoBox(el: Box, key: { code: string; shift: boolean; alt: boolean }, cfg: BornonaConfig): boolean {
-  const kb = rulesOn(cfg);
-  return kb ? typeRulesKeyBox(el, kb, key, setValue) : false;
 }
 
 /** Type `out` into the box at its caret (vowel forming and reph like the editor). */
@@ -49,17 +40,6 @@ export function backspaceBox(el: Box) {
 export function attachBornona(el: Box, getConfig: () => BornonaConfig, onToggleLanguage: () => void): () => void {
   const key = (ev: KeyboardEvent) => {
     const cfg = getConfig();
-    const kb = rulesOn(cfg);
-    if (kb) {
-      const ki = { code: ev.code, key: ev.key, shiftKey: ev.shiftKey, altKey: ev.altKey, ctrlKey: ev.ctrlKey, metaKey: ev.metaKey, altGraph: ev.getModifierState?.('AltGraph'), isComposing: ev.isComposing };
-      if (isToggleKey(ki, cfg.toggleKey)) {
-        ev.preventDefault();
-        return onToggleLanguage();
-      }
-      const k = rulesKeyFromEvent(ki);
-      if (k && k.code !== 'Space' && (typeRulesKeyBox(el, kb, k, setValue) || k.alt)) ev.preventDefault();
-      return;
-    }
     const a = resolveKey(
       { code: ev.code, key: ev.key, shiftKey: ev.shiftKey, altKey: ev.altKey, ctrlKey: ev.ctrlKey, metaKey: ev.metaKey, altGraph: ev.getModifierState?.('AltGraph'), isComposing: ev.isComposing },
       { bangla: cfg.bangla, map: cfg.map, suspended: cfg.suspended, toggleKey: cfg.toggleKey },
@@ -72,12 +52,6 @@ export function attachBornona(el: Box, getConfig: () => BornonaConfig, onToggleL
   const before = (ev: InputEvent) => {
     if (ev.inputType !== 'insertText' || !ev.data) return;
     const cfg = getConfig();
-    const kb = rulesOn(cfg);
-    if (kb) {
-      const k = ev.data.length === 1 ? rulesKeyForChar(ev.data) : null;
-      if (k && k.code !== 'Space' && typeRulesKeyBox(el, kb, k, setValue)) ev.preventDefault();
-      return;
-    }
     const r = resolveTypedChar(ev.data, { bangla: cfg.bangla, map: cfg.map, suspended: cfg.suspended });
     if (!r) return;
     ev.preventDefault();

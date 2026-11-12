@@ -5,7 +5,7 @@ iPad-এ, internet ছাড়াও চলে এমন বাংলা আইন
 
 > অবস্থা: **v2.0, ধাপ ৫** — M6 পর্যন্ত সব + ribbon, দুই ধরনের ডকুমেন্ট, অ্যাপের ভাষা, আলো/অন্ধকার (ধাপ ১) + পাতা সেটআপ, Print Layout,
 > Ruler, Gridlines (ধাপ ২) + শেয়ার/Export: .docx, .doc, বিজয় ANSI, .txt, .md, .html, .png, PDF; কপি ইউনিকোড ⇄ ANSI (ধাপ ৩) + Converter (টাকা কথায়, সংখ্যা, ভাঙা লেখা ঠিক), বিজয়ে টাইপ (পরীক্ষামূলক), খাম (ধাপ ৪) + AI সহকারী: Claude (কপি-পেস্ট) ও Gemini ফ্রি API, নাম লুকিয়ে (ধাপ ৫)।
-> পরের ধাপ: টেবিলের সরঞ্জাম, তারপর টাইটেল চার্ট (v2.2)। সাইটে বসানো: `main`-এ push হলে GitHub Pages-এ ওঠে — `docs/DEPLOY.md` দেখুন।
+> পরের ধাপ: টেবিলের সরঞ্জাম, তারপর টাইটেল চার্ট (v2.2)। সাইটে বসানো এখনো হয়নি — `docs/DEPLOY.md` দেখুন।
 
 ## চালানো
 
@@ -21,7 +21,7 @@ npm run test:e2e     # ব্রাউজার test (প্রথমবার: 
 
 ## GitHub ও সাইটে বসানো
 
-- GitHub-এ repo বানিয়ে তোলা (এখন public, decision 46): [`docs/GITHUB.md`](docs/GITHUB.md)
+- GitHub-এ private repo বানিয়ে তোলা: [`docs/GITHUB.md`](docs/GITHUB.md)
 - সাইটে বসানো (GitHub Pages → `notes.mahbuburrahman.bd`): [`docs/DEPLOY.md`](docs/DEPLOY.md)
 - বসানোর পর iPad-এ পরীক্ষা: [`docs/ipad-checklist.md`](docs/ipad-checklist.md)
 - প্রতিটা push-এ GitHub টাইপ, unit test ও build পরীক্ষা করে: `.github/workflows/ci.yml`
@@ -53,7 +53,7 @@ npm run test:e2e     # ব্রাউজার test (প্রথমবার: 
 - বাংলা লেখা সবসময় Unicode; য় ড় ঢ় এক অক্ষরে (U+09DF/09DC/09DD)। কোথাও `normalize('NFC')` চালাবেন না।
 - সোর্স ফাইলে কোনো "Unicode normalise" টুল চালাবেন না: `src/bornona-engine/normalize.ts`-এর ভেতরে ইচ্ছাকৃতভাবে ভাঙা রূপ লেখা আছে।
 - মক্কেলের আসল তথ্য repo-তে বা test-এ রাখবেন না।
-- লাইসেন্স: `LICENSES/THIRD_PARTY.md` দেখুন। repo এখন public (decision 46); লেআউট ও শব্দ-তালিকার অনুমতি এখনো যাচাই হয়নি।
+- লাইসেন্স: `LICENSES/THIRD_PARTY.md` দেখুন। লেআউটের অনুমতি যাচাই না হওয়া পর্যন্ত repo private।
 
 ## লাইসেন্স
 

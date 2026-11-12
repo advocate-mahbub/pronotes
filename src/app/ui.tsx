@@ -1,4 +1,3 @@
-import { createPortal } from 'react-dom';
 /** Small shared UI pieces: a popover that is never clipped by a scrolling toolbar, and a panel sheet. */
 import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react';
 import { useT } from '../i18n';
@@ -50,13 +49,11 @@ export function Popover({ label, title, testid, className, active, children, dis
         onPointerDown={(e) => e.preventDefault()} onClick={() => setOpen((o) => !o)}>
         {label}
       </button>
-      {/* in <body>: a glass (backdrop-filter) toolbar would otherwise become the panel's frame and clip it */}
-      {open && createPortal(
+      {open && (
         <div ref={panel} className="pop" role="menu" style={{ left: pos.left, top: pos.top }} data-testid={testid ? testid + '-menu' : undefined}
           onPointerDown={(e) => { if ((e.target as HTMLElement).tagName !== 'INPUT' && (e.target as HTMLElement).tagName !== 'SELECT') e.preventDefault(); }}>
           {children(() => setOpen(false))}
-        </div>,
-        document.body,
+        </div>
       )}
     </>
   );
@@ -69,8 +66,7 @@ export function Sheet({ title, onClose, children, testid, footer }: { title: str
     document.addEventListener('keydown', esc);
     return () => document.removeEventListener('keydown', esc);
   }, [onClose]);
-  // in <body>: a glass (backdrop-filter) toolbar or panel would otherwise become the dialog's frame
-  return createPortal(
+  return (
     <div className="modal sheet-wrap" role="dialog" aria-modal="true" aria-label={title} data-testid={testid}
       onPointerDown={(e) => e.target === e.currentTarget && onClose()}>
       <div className="box sheet">
@@ -81,8 +77,7 @@ export function Sheet({ title, onClose, children, testid, footer }: { title: str
         <div className="sheet-body">{children}</div>
         {footer && <div className="row sheet-foot">{footer}</div>}
       </div>
-    </div>,
-    document.body,
+    </div>
   );
 }
 

@@ -1,7 +1,7 @@
 /**
  * Bangla word list for suggestions (owner's decision 56): words.txt from
  * github.com/habibullahnaiem/bangla-spellcheck-dict, cleaned (affixes, multi-word entries,
- * superscripts and non-Bangla entries removed; য়/ড়/ঢ় precomposed), one word per line, sorted.
+ * superscripts and non-Bangla entries removed; য়/ড়/ঢ় precomposed), one word per line, sorted.
  * Shipped as public/dict/bn-words.txt and loaded after the app starts; the owner's own words
  * always rank above it.
  */

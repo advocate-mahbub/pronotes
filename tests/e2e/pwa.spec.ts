@@ -129,10 +129,8 @@ test('new version: notice appears, the open draft is saved, then the app reloads
     await expect(page.getByTestId('update-banner')).toHaveCount(0);
     await page.getByTestId('check-update').click();
     await expect(page.getByTestId('update-banner')).toBeVisible({ timeout: 15_000 });
-    // caret after the text: click the paragraph itself (a click on the empty page can land
-    // before the text), then End
-    await editor(page).locator('p').first().click();
-    await page.keyboard.press('End');
+    await editor(page).click();
+    await page.keyboard.press('ControlOrMeta+End'); // caret after the text, wherever the click landed
     await page.keyboard.press('KeyR');
     // update right after typing, before the autosave timer: the text must still be kept
     await Promise.all([page.waitForEvent('load'), page.getByTestId('update-now').click()]);

@@ -26,17 +26,17 @@ export function SuggestionBar({ editor, bank, version }: { editor: Editor; bank:
     view.dispatch(view.state.tr.insertText(w + ' ', from - prefix.length, from).scrollIntoView());
   };
 
+  // Do not reserve a dock row while there is nothing actionable to suggest.
+  // The previous hint made the mobile editor lose a permanent strip of space.
+  if (words.length === 0) return null;
+
   return (
     <div className="sug" aria-label={t('শব্দের পরামর্শ')} data-testid="suggestions">
-      {words.length === 0 ? (
-        <span className="hint">{t('লিখতে শুরু করুন, শব্দের পরামর্শ এখানে আসবে')}</span>
-      ) : (
-        words.map((w) => (
+      {words.map((w) => (
           <button key={w} type="button" className="chip" tabIndex={-1} onPointerDown={(e) => { e.preventDefault(); pick(w); }}>
             {w}
           </button>
-        ))
-      )}
+        ))}
     </div>
   );
 }

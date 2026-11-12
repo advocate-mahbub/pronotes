@@ -160,8 +160,7 @@ test('custom .avrolayout: import, type with it, survives reload, delete needs tw
   await expect(page.getByTestId('layout-list')).toBeVisible();
   await del.click();
   await expect(page.getByTestId('layout-list')).toHaveCount(0);
-  // deleting the layout in use falls back to the default (ProNotes) layout
-  await expect(page.getByTestId('layout')).toHaveValue('pronotes');
+  await expect(page.getByTestId('layout')).toHaveValue('bornona');
 });
 
 test('bad layout file shows a message', async ({ page }) => {

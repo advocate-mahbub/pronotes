@@ -49,19 +49,18 @@ test('new draft, rename, switch between drafts; undo stays per draft', async ({ 
 });
 
 test('duplicate, trash, restore, delete forever (with confirmation)', async ({ page }) => {
-  // the ⋯ menu opens in <body> (ui.tsx Popover), not inside the row
   const cur = () => page.locator('.docs li.cur');
   await start(page);
   await typeKeys(page, ['KeyD', 'KeyL']);
   await page.keyboard.press('Control+s');
   await expect(status(page)).toHaveClass(/saved/);
   await cur().getByTestId('doc-menu').click();
-  await page.getByTestId('doc-menu-menu').getByTestId('dup').click();
+  await cur().getByTestId('dup').click();
   await expect(rows(page)).toHaveCount(2);
   await expect(page.getByTestId('title')).toHaveValue(/\(কপি\)$/);
   await expect(editor(page)).toHaveText('দল');
   await cur().getByTestId('doc-menu').click();
-  await page.getByTestId('doc-menu-menu').getByTestId('trash').click();
+  await cur().getByTestId('trash').click();
   await expect(rows(page)).toHaveCount(1);
   await page.getByTestId('view-trash').click();
   await expect(rows(page)).toHaveCount(1);
@@ -71,7 +70,7 @@ test('duplicate, trash, restore, delete forever (with confirmation)', async ({ p
   await page.getByTestId('view-docs').click();
   await expect(rows(page)).toHaveCount(2);
   await cur().getByTestId('doc-menu').click();
-  await page.getByTestId('doc-menu-menu').getByTestId('trash').click();
+  await cur().getByTestId('trash').click();
   await page.getByTestId('view-trash').click();
   await rows(page).first().getByTestId('delete').click();
   await expect(rows(page)).toHaveCount(1); // not deleted until confirmed

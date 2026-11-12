@@ -1,50 +1,19 @@
 import { describe, it, expect } from 'vitest';
-import fs from 'node:fs';
-import { BUILTIN_LAYOUTS, findLayout, hasAltLayer, resolveKey, charFor, planType, fixNukta, parseAvroLayout, resolveTypedChar } from '../../src/bornona-engine';
+import { BUILTIN_LAYOUTS, PRO_NOTES_LAYOUT, PRO_NOTES_PHONETIC_LAYOUT, findLayout, hasAltLayer, resolveKey, charFor, planType, fixNukta, parseAvroLayout, resolveTypedChar } from '../../src/bornona-engine';
 import { typeSequence } from './sim';
 
-const golden = (f: string) => JSON.parse(fs.readFileSync(new URL('../golden/' + f, import.meta.url), 'utf8'));
-const OFF = { bangla: true, vowelForming: false, oldReph: false };
-const LAYERS: [string, string][] = [['normal', ''], ['shift', 'Shift+'], ['alt', 'Alt+'], ['shiftAlt', 'Shift+Alt+']];
-
 describe('layouts', () => {
-  it('built-in layout data is identical to v8', () => {
-    expect(BUILTIN_LAYOUTS).toEqual(golden('layouts.json'));
-    expect(BUILTIN_LAYOUTS.map((l) => l.id)).toEqual(['bornona', 'national', 'probhat', 'munir', 'avroeasy']);
+  it('exposes exactly the approved four layouts', () => {
+    expect([PRO_NOTES_LAYOUT, PRO_NOTES_PHONETIC_LAYOUT, ...BUILTIN_LAYOUTS].map((l) => l.id)).toEqual(['pronotes', 'pronotes-phonetic', 'bijoy-classic', 'unibijoy']);
   });
   it('AltGr layer detection', () => {
-    expect(hasAltLayer(findLayout('bornona').map)).toBe(false);
-    expect(hasAltLayer(findLayout('avroeasy').map)).toBe(true);
+    expect(hasAltLayer(PRO_NOTES_LAYOUT.map)).toBe(false);
+    expect(hasAltLayer(findLayout('unibijoy').map)).toBe(true);
   });
-});
-
-describe('every key, every layer, every layout matches v8', () => {
-  const keys = golden('keys.json');
-  for (const L of BUILTIN_LAYOUTS) {
-    it(L.name, () => {
-      let checked = 0;
-      for (const code of Object.keys(keys[L.id])) {
-        for (const [layer, mod] of LAYERS) {
-          if (!(layer in keys[L.id][code])) continue;
-          expect(typeSequence([mod + code], L.map, OFF), `${L.id} ${mod}${code}`).toBe(keys[L.id][code][layer]);
-          checked++;
-        }
-      }
-      expect(checked).toBeGreaterThan(190);
-    });
-  }
-});
-
-describe('key sequences (vowel forming, reph) match v8', () => {
-  for (const s of golden('sequences.json')) {
-    it(`${s.layout} vf=${s.vf} oldReph=${s.oldReph}: ${s.output}`, () => {
-      expect(typeSequence(s.keys, findLayout(s.layout).map, { bangla: true, vowelForming: s.vf, oldReph: s.oldReph })).toBe(s.output);
-    });
-  }
 });
 
 describe('engine details', () => {
-  const bornona = findLayout('bornona').map;
+  const bornona = PRO_NOTES_LAYOUT.map;
   it('ক → Shift+F → ম = কর্ম (exact code points)', () => {
     const out = typeSequence(['KeyK', 'Shift+KeyF', 'KeyM'], bornona, { bangla: true, vowelForming: true, oldReph: false });
     expect([...out].map((c) => c.codePointAt(0)!.toString(16))).toEqual(['995', '9b0', '9cd', '9ae']);

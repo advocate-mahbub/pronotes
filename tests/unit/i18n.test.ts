@@ -6,8 +6,7 @@ import { translate } from '../../src/i18n';
 import { ERRORS_FOR_I18N, decideVoice } from '../../src/voice';
 import { PASTE_MSG_HTML, PASTE_MSG_TEXT } from '../../src/bijoy';
 import { PARAGRAPH_STYLES, TABLE_STYLES, QUICK_TABLES } from '../../src/editor';
-import { ANSI_KEYS, KMX_NOTES } from '../../src/bornona-engine';
-import { LAYOUT_MSG } from '../../src/app/layout-files';
+import { ANSI_KEYS } from '../../src/bornona-engine';
 import { fixBrokenBangla } from '../../src/convert';
 import { TASKS, KIND_LABEL, AI_ERROR_TEXT } from '../../src/ai';
 
@@ -37,7 +36,6 @@ export function uiKeys(): string[] {
   for (const s of [...TABLE_STYLES, ...QUICK_TABLES]) keys.add(s.label);
   for (const x of [...TASKS.map((x) => x.label), ...Object.values(KIND_LABEL), ...Object.values(AI_ERROR_TEXT)]) keys.add(x);
   for (const k of ANSI_KEYS) if (BN.test(k.label)) keys.add(k.label);
-  for (const m of [...Object.values(LAYOUT_MSG), ...Object.values(KMX_NOTES)]) keys.add(m);
   for (const c of fixBrokenBangla('অামার ​েকাট  |', { pipeAsDari: true }).changes) keys.add(c);
   keys.add(fixBrokenBangla('য\u09BC').changes[0]);
   for (const m of [...ERRORS_FOR_I18N, PASTE_MSG_HTML, PASTE_MSG_TEXT]) keys.add(m);

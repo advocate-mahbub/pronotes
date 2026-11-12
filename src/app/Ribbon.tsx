@@ -1,9 +1,8 @@
 /**
- * Word-like ribbon: tabs (Home, Insert, Page, View, Tools; Table tabs while the caret is in a table).
- * Every tab is made of named groups (docs/ribbon-plan.md). On a narrow ribbon (iPad portrait) the
- * less-used Home tools move into "⋯"; find/replace always sit there (their main place is Tools).
+ * Word-like ribbon: tabs (Home, Insert, Tools, Table when the caret is in a table) and their tools.
+ * Less-used Home tools move into "⋯" when the ribbon is narrow (iPad portrait).
  */
-import { useEffect, useLayoutEffect, useReducer, useRef, useState, type ReactNode } from 'react';
+import { useEffect, useReducer, useRef, useState, type ReactNode } from 'react';
 import type { Editor } from '@tiptap/react';
 import type { Mark } from '@tiptap/pm/model';
 import { PARAGRAPH_STYLES, FONT_SIZES, stepFontSize, marksShown, type ParagraphStyle } from '../editor';
@@ -61,12 +60,7 @@ interface Props {
   pages: number;
   /** current zoom in percent (for the zoom box) */
   zoomPct: number;
-  /** Opens the law dictionary (Tools tab); left out, the button is not shown. */
-  onLawDictionary?: () => void;
 }
-
-/** At or below this width (px) the less-used Home tools go into "⋯" (iPad portrait is 768–834). */
-export const NARROW_RIBBON = 1080;
 
 const COLORS = ['#000000', '#444444', '#c62828', '#d84315', '#f9a825', '#2e7d32', '#1565c0', '#6a1b9a'];
 const HIGHLIGHTS = ['#fff59d', '#c5e1a5', '#b3e5fc', '#f8bbd0', '#ffcc80', '#e0e0e0'];
@@ -115,26 +109,6 @@ export function Ribbon(p: Props) {
       {label}
     </button>
   );
-
-  /** A named group of tools (label already translated); the name shows under the group on a wide ribbon. */
-  const group = (label: string, children: ReactNode, testid?: string) => (
-    <div className="rgroup" role="group" aria-label={label} data-testid={testid}>
-      <div className="rgroup-items">{children}</div>
-      <span className="rgroup-label" aria-hidden="true">{label}</span>
-    </div>
-  );
-
-  // ----- ribbon width: wide shows every Home tool, narrow moves the less-used ones into "⋯" -----
-  // (the row copies stay in the page and are only hidden, so the editor keeps focus logic and tests stable)
-  const navRef = useRef<HTMLElement>(null);
-  const [narrow, setNarrow] = useState(() => typeof window !== 'undefined' && window.innerWidth - 24 <= NARROW_RIBBON);
-  useLayoutEffect(() => {
-    const el = navRef.current;
-    if (!el || typeof ResizeObserver === 'undefined') return;
-    const ro = new ResizeObserver(([e]) => setNarrow(e.contentRect.width <= NARROW_RIBBON));
-    ro.observe(el);
-    return () => ro.disconnect();
-  }, []);
 
   // ----- format painter -----
   const painter = useRef<Painter | null>(null);
@@ -243,9 +217,16 @@ export function Ribbon(p: Props) {
     return toParagraph().setParagraphStyle(v as ParagraphStyle).run();
   };
 
-  // ----- Home: colour and highlight (front), less-used tools (front when wide, else in "⋯") -----
-  const colorTools = (
+  const secondary = (
     <>
+      {btn('🖌', t('ফরম্যাট কপি (Format Painter): একবার চাপুন, তারপর যে লেখায় বসাতে চান সেটা সিলেক্ট করুন'), painting, startPainter, 'painter')}
+      {btn('🔍', t('খুঁজুন (Ctrl+F)'), false, () => p.onFind(false), 'find-open')}
+      {btn('⇄', t('খুঁজে বদলান (Ctrl+H)'), false, () => p.onFind(true), 'replace-open')}
+      {btn('▣', t('সব সিলেক্ট'), false, () => chain().selectAll().run(), 'select-all')}
+      <span className="sep" />
+      {btn(<s>ক</s>, t('কাটা দাগ'), ed.isActive('strike'), () => chain().toggleStrike().run(), 'strike')}
+      {btn(<>x<sup>2</sup></>, t('ঊর্ধ্বলিপি'), ed.isActive('superscript'), () => chain().toggleSuperscript().run(), 'sup')}
+      {btn(<>x<sub>2</sub></>, t('নিম্নলিপি'), ed.isActive('subscript'), () => chain().toggleSubscript().run(), 'sub')}
       <Popover label={<span className="ab-color" style={{ borderColor: (ts.color as string) || 'currentColor' }}>A</span>} title={t('লেখার রং')} testid="color">
         {(close) => (
           <div className="swatches">
@@ -266,13 +247,6 @@ export function Ribbon(p: Props) {
           </div>
         )}
       </Popover>
-    </>
-  );
-  const moreFont = (
-    <>
-      {btn(<s>ক</s>, t('কাটা দাগ'), ed.isActive('strike'), () => chain().toggleStrike().run(), 'strike')}
-      {btn(<>x<sup>2</sup></>, t('ঊর্ধ্বলিপি'), ed.isActive('superscript'), () => chain().toggleSuperscript().run(), 'sup')}
-      {btn(<>x<sub>2</sub></>, t('নিম্নলিপি'), ed.isActive('subscript'), () => chain().toggleSubscript().run(), 'sub')}
       <Popover label="Aa" title={t('বড়-ছোট হাতের অক্ষর (ইংরেজি)')} testid="case">
         {(close) => (
           <div className="menu">
@@ -283,115 +257,74 @@ export function Ribbon(p: Props) {
         )}
       </Popover>
       {btn('⌫A', t('ফরম্যাট মুছুন'), false, clearFormatting, 'clear-format')}
-      {btn(t('ফন্ট…'), t('ফন্টের বিস্তারিত (Scale, Spacing, Position…)'), false, p.onFontPanel, 'font-panel')}
-    </>
-  );
-  const morePara = (
-    <>
+      <span className="sep" />
       {btn('↥', t('অনুচ্ছেদের আগে ফাঁক (১২ pt) যোগ/বাদ'), para.attrs.spBefore != null, () => chain().setParagraphFormat({ spBefore: para.attrs.spBefore != null ? null : 12 }).run(), 'sp-before')}
       {btn('↧', t('অনুচ্ছেদের পরে ফাঁক (১২ pt) যোগ/বাদ'), para.attrs.spAfter != null, () => chain().setParagraphFormat({ spAfter: para.attrs.spAfter != null ? null : 12 }).run(), 'sp-after')}
       {btn('¶', t('ফরম্যাট চিহ্ন দেখান/লুকান'), marksShown(ed.state), () => chain().toggleFormattingMarks().run(), 'marks')}
+      {btn(t('ফন্ট…'), t('ফন্টের বিস্তারিত (Scale, Spacing, Position…)'), false, p.onFontPanel, 'font-panel')}
       {btn(t('অনুচ্ছেদ…'), t('অনুচ্ছেদের বিস্তারিত (Indent, লাইনের ফাঁক…)'), false, p.onParagraphPanel, 'para-panel')}
     </>
   );
-  const moreEdit = (
-    <>
-      {btn('🖌', t('ফরম্যাট কপি (Format Painter): একবার চাপুন, তারপর যে লেখায় বসাতে চান সেটা সিলেক্ট করুন'), painting, startPainter, 'painter')}
-      {btn('▣', t('সব সিলেক্ট'), false, () => chain().selectAll().run(), 'select-all')}
-    </>
-  );
-  /** Find and replace: main place is Tools; on Home only inside "⋯" (one front button per job). */
-  const findTools = (
-    <>
-      {btn('🔍', t('খুঁজুন (Ctrl+F)'), false, () => p.onFind(false), 'find-open')}
-      {btn('⇄', t('খুঁজে বদলান (Ctrl+H)'), false, () => p.onFind(true), 'replace-open')}
-    </>
-  );
 
-  const styleNames: Record<string, string> = legal
-    ? Object.fromEntries(PARAGRAPH_STYLES.map((x) => [x.id, x.label]))
-    : { p: 'সাধারণ লেখা', h1: 'শিরোনাম ১', h2: 'শিরোনাম ২', h3: 'শিরোনাম ৩' };
-  const styleTitle = t('স্টাইল') + ': ' + t(styleNames[styleValue] ?? '');
   const home = (
     <>
-      {group(t('স্টাইল'), (
-        <select className="sel style" aria-label={t('স্টাইল')} title={styleTitle} data-testid="pstyle" value={styleValue} onChange={(e) => setStyle(e.target.value)}>
-          {Object.entries(styleNames).map(([v, l]) => <option key={v} value={v}>{t(l)}</option>)}
-        </select>
-      ))}
-      {group(t('ফন্ট'), (
+      <select className="sel style" aria-label={t('স্টাইল')} title={t('স্টাইল')} data-testid="pstyle" value={styleValue} onChange={(e) => setStyle(e.target.value)}>
+        {legal
+          ? PARAGRAPH_STYLES.map((s) => <option key={s.id} value={s.id}>{t(s.label)}</option>)
+          : [['p', 'সাধারণ লেখা'], ['h1', 'শিরোনাম ১'], ['h2', 'শিরোনাম ২'], ['h3', 'শিরোনাম ৩']].map(([v, l]) => <option key={v} value={v}>{t(l)}</option>)}
+      </select>
+      <FontPicker ed={ed} lists={p.fontLists} defaultFont={p.defaultFont} ansiTyping={p.ansiTyping} ansiFont={p.ansiFont} enFont={p.enFont} onToggleAnsi={p.onToggleAnsi} say={p.say} />
+      <input className="sel size" list="pn-sizes" inputMode="decimal" aria-label={t('ফন্ট সাইজ')} title={t('ফন্ট সাইজ')} data-testid="size"
+        key={curSize} defaultValue={curSize}
+        onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); setSize(parseFloat((e.target as HTMLInputElement).value)); } }}
+        onBlur={(e) => { const n = parseFloat(e.target.value); if (n && n !== curSize) setSize(n); }} />
+      <datalist id="pn-sizes">{FONT_SIZES.map((s) => <option key={s} value={s} />)}</datalist>
+      {btn('A+', t('ফন্ট বড়'), false, () => setSize(stepFontSize(curSize, 1)), 'grow')}
+      {btn('A−', t('ফন্ট ছোট'), false, () => setSize(stepFontSize(curSize, -1)), 'shrink')}
+      <span className="sep" />
+      {btn(<b>B</b>, t('গাঢ় (Ctrl/⌘+B)'), ed.isActive('bold'), () => chain().toggleBold().run(), 'bold')}
+      {btn(<i>I</i>, t('তির্যক (Ctrl/⌘+I)'), ed.isActive('italic'), () => chain().toggleItalic().run(), 'italic')}
+      {btn(<u>U</u>, t('নিচে দাগ (Ctrl/⌘+U)'), ed.isActive('underline'), () => chain().toggleUnderline().run(), 'underline')}
+      <span className="sep" />
+      <select className="sel align" aria-label={t('সারিবদ্ধতা')} title={t('সারিবদ্ধতা')} data-testid="align" value={align}
+        onChange={(e) => (e.target.value ? chain().setTextAlign(e.target.value).run() : chain().unsetTextAlign().run())}>
+        <option value="">{t('সারি: স্টাইল অনুযায়ী')}</option>
+        <option value="left">⯇ {t('বামে')}</option>
+        <option value="center">↔ {t('মাঝে')}</option>
+        <option value="right">⯈ {t('ডানে')}</option>
+        <option value="justify">☰ {t('দুই পাশ সমান')}</option>
+      </select>
+      <select className="sel line" aria-label={t('লাইনের ফাঁক')} title={t('লাইনের ফাঁক')} data-testid="line" value={lineVal ?? ''}
+        onChange={(e) => chain().setParagraphFormat(e.target.value ? { lineRule: 'auto', lineVal: Number(e.target.value) } : { lineRule: null, lineVal: null }).run()}>
+        <option value="">↕ {t('ডিফল্ট')}</option>
+        {LINE_SPACINGS.map((v) => <option key={v} value={v}>↕ {v}</option>)}
+      </select>
+      {btn('⇤', t('Indent কমান'), false, () => chain().indentLess().run(), 'outdent')}
+      {btn('⇥', t('Indent বাড়ান'), false, () => chain().indentMore().run(), 'indent')}
+      {legal ? (
+        btn('১।', t('নম্বর দেওয়া অনুচ্ছেদ'), para.attrs.pstyle === 'numbered', () => toParagraph().setParagraphStyle(para.attrs.pstyle === 'numbered' ? 'normal' : 'numbered').run(), 'numbered')
+      ) : (
         <>
-          <FontPicker ed={ed} lists={p.fontLists} defaultFont={p.defaultFont} ansiTyping={p.ansiTyping} ansiFont={p.ansiFont} enFont={p.enFont} onToggleAnsi={p.onToggleAnsi} say={p.say} />
-          <input className="sel size" list="pn-sizes" inputMode="decimal" aria-label={t('ফন্ট সাইজ')} title={t('ফন্ট সাইজ')} data-testid="size"
-            key={curSize} defaultValue={curSize}
-            onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); setSize(parseFloat((e.target as HTMLInputElement).value)); } }}
-            onBlur={(e) => { const n = parseFloat(e.target.value); if (n && n !== curSize) setSize(n); }} />
-          <datalist id="pn-sizes">{FONT_SIZES.map((s) => <option key={s} value={s} />)}</datalist>
-          {btn('A+', t('ফন্ট বড়'), false, () => setSize(stepFontSize(curSize, 1)), 'grow')}
-          {btn('A−', t('ফন্ট ছোট'), false, () => setSize(stepFontSize(curSize, -1)), 'shrink')}
-          {btn(<b>B</b>, t('গাঢ় (Ctrl/⌘+B)'), ed.isActive('bold'), () => chain().toggleBold().run(), 'bold')}
-          {btn(<i>I</i>, t('তির্যক (Ctrl/⌘+I)'), ed.isActive('italic'), () => chain().toggleItalic().run(), 'italic')}
-          {btn(<u>U</u>, t('নিচে দাগ (Ctrl/⌘+U)'), ed.isActive('underline'), () => chain().toggleUnderline().run(), 'underline')}
-          {colorTools}
-          <span className="wide-only">{moreFont}</span>
+          {btn('•', t('বুলেট তালিকা'), ed.isActive('bulletList'), () => chain().toggleBulletList().run(), 'bullets')}
+          {btn('1.', t('নম্বর তালিকা'), ed.isActive('orderedList'), () => chain().toggleOrderedList().run(), 'ordered')}
+          {btn('☐', t('চেকলিস্ট'), ed.isActive('taskList'), () => chain().toggleTaskList().run(), 'tasks')}
         </>
-      ))}
-      {group(t('অনুচ্ছেদ'), (
-        <>
-          <select className="sel align" aria-label={t('সারিবদ্ধতা')} title={t('সারিবদ্ধতা')} data-testid="align" value={align}
-            onChange={(e) => (e.target.value ? chain().setTextAlign(e.target.value).run() : chain().unsetTextAlign().run())}>
-            <option value="">{t('সারি: স্টাইল অনুযায়ী')}</option>
-            <option value="left">⯇ {t('বামে')}</option>
-            <option value="center">↔ {t('মাঝে')}</option>
-            <option value="right">⯈ {t('ডানে')}</option>
-            <option value="justify">☰ {t('দুই পাশ সমান')}</option>
-          </select>
-          <select className="sel line" aria-label={t('লাইনের ফাঁক')} title={t('লাইনের ফাঁক')} data-testid="line" value={lineVal ?? ''}
-            onChange={(e) => chain().setParagraphFormat(e.target.value ? { lineRule: 'auto', lineVal: Number(e.target.value) } : { lineRule: null, lineVal: null }).run()}>
-            <option value="">↕ {t('ডিফল্ট')}</option>
-            {LINE_SPACINGS.map((v) => <option key={v} value={v}>↕ {v}</option>)}
-          </select>
-          {btn('⇤', t('Indent কমান'), false, () => chain().indentLess().run(), 'outdent')}
-          {btn('⇥', t('Indent বাড়ান'), false, () => chain().indentMore().run(), 'indent')}
-          {legal ? (
-            btn('১।', t('নম্বর দেওয়া অনুচ্ছেদ'), para.attrs.pstyle === 'numbered', () => toParagraph().setParagraphStyle(para.attrs.pstyle === 'numbered' ? 'normal' : 'numbered').run(), 'numbered')
-          ) : (
-            <>
-              {btn('•', t('বুলেট তালিকা'), ed.isActive('bulletList'), () => chain().toggleBulletList().run(), 'bullets')}
-              {btn('1.', t('নম্বর তালিকা'), ed.isActive('orderedList'), () => chain().toggleOrderedList().run(), 'ordered')}
-              {btn('☐', t('চেকলিস্ট'), ed.isActive('taskList'), () => chain().toggleTaskList().run(), 'tasks')}
-            </>
-          )}
-          <span className="wide-only">{morePara}</span>
-        </>
-      ))}
-      {group(t('সম্পাদনা'), (
-        <>
-          <span className="wide-only">{moreEdit}</span>
-          <Popover label="⋯" title={t('আরও')} testid="more">
-            {() => (
-              <div className="more-grid">
-                {narrow && <>{moreFont}{morePara}{moreEdit}</>}
-                {findTools}
-              </div>
-            )}
-          </Popover>
-        </>
-      ))}
+      )}
+      <span className="sep sec" />
+      <span className="sec-group">{secondary}</span>
+      <span className="more-wrap">
+        <Popover label="⋯" title={t('আরও')} testid="more">
+          {() => <div className="more-grid">{secondary}</div>}
+        </Popover>
+      </span>
     </>
   );
 
   const insert = (
     <>
-      {group(t('টেবিল'), (
-        <>
       {legal && btn(t('তফসিল'), t('তফসিলের টেবিল (৪ কলাম)'), false, () => chain().insertTable({ rows: 3, cols: 4, withHeaderRow: true }).run(), 'table-add')}
       <TableInsertMenu ed={ed} say={p.say} />
-        </>
-      ))}
-      {group(t('পাতা'), btn(t('পাতা ভাঙা'), t('নতুন পাতা (Ctrl/⌘+Enter)'), false, () => chain().setPageBreak().run(), 'page-break'))}
-      {group(t('লেখা'), (
-        <>
+      {btn(t('পাতা ভাঙা'), t('নতুন পাতা (Ctrl/⌘+Enter)'), false, () => chain().setPageBreak().run(), 'page-break')}
       <Popover label="Ω" title={t('বিশেষ চিহ্ন')} testid="symbols">
         {(close) => (
           <div className="swatches sym">
@@ -409,26 +342,15 @@ export function Ribbon(p: Props) {
           </div>
         )}
       </Popover>
-        </>
-      ))}
     </>
   );
 
   const tools = (
     <>
-      {group(t('খোঁজা ও গণনা'), (
-        <>
-          {btn(t('খুঁজুন ও বদলান'), t('খুঁজে বদলান (Ctrl+H)'), false, () => p.onFind(true), 'tools-find')}
-          {btn(t('শব্দ গণনা'), t('শব্দ ও অক্ষর গণনা'), false, p.onWordCount, 'word-count')}
-        </>
-      ))}
-      {group(t('বাংলা'), btn('Converter', t('Converter: ইউনিকোড ⇄ বিজয়'), p.converterOpen, p.onConverter, 'bijoy-toggle'))}
-      {group(t('সহকারী'), (
-        <>
-          {btn('✦ AI', t('AI সহকারী'), p.aiOpen, p.onAi, 'ai')}
-          {p.onLawDictionary && btn(t('⚖ আইনি অভিধান'), 'ProNotes Law Dictionary', false, p.onLawDictionary, 'tools-dictionary')}
-        </>
-      ))}
+      {btn(t('খুঁজুন ও বদলান'), t('খুঁজে বদলান (Ctrl+H)'), false, () => p.onFind(true), 'tools-find')}
+      {btn('Converter', t('Converter: ইউনিকোড ⇄ বিজয়'), p.converterOpen, p.onConverter, 'bijoy-toggle')}
+      {btn('✦ AI', t('AI সহকারী'), p.aiOpen, p.onAi, 'ai')}
+      {btn(t('শব্দ গণনা'), t('শব্দ ও অক্ষর গণনা'), false, p.onWordCount, 'word-count')}
     </>
   );
 
@@ -441,8 +363,6 @@ export function Ribbon(p: Props) {
   const marginId = MARGIN_PRESETS.find((x) => JSON.stringify(x.m) === JSON.stringify(pg.margins))?.id ?? 'custom';
   const pageTab = (
     <>
-      {group(t('কাগজ'), (
-        <>
       <select className="sel paper" aria-label={t('কাগজের মাপ')} title={t('কাগজের মাপ')} data-testid="paper" value={pg.paper}
         onChange={(e) => {
           const id = e.target.value as PaperId;
@@ -467,9 +387,7 @@ export function Ribbon(p: Props) {
           </div>
         )}
       </Popover>
-        </>
-      ))}
-      {group(t('মার্জিন'), (
+      <span className="sep" />
       <Popover label={t('মার্জিন ▾')} title={t('মার্জিন')} testid="margins">
         {(close) => (
           <div className="menu">
@@ -480,15 +398,10 @@ export function Ribbon(p: Props) {
           </div>
         )}
       </Popover>
-      ))}
-      {group(t('ভাষা'), (
       <select className="sel lang" aria-label={t('ডকুমেন্টের ভাষা')} title={t('ডকুমেন্টের ভাষা')} data-testid="doc-lang" value={pg.lang} onChange={(e) => setPg({ lang: e.target.value as PageSetup['lang'] })}>
         <option value="bn">{t('ডকুমেন্ট: বাংলা')}</option>
         <option value="en">{t('ডকুমেন্ট: English')}</option>
       </select>
-      ))}
-      {group(t('পাতা নম্বর ও সেটআপ'), (
-        <>
       <Popover label={t('পাতা নম্বর ▾')} title={t('পাতা নম্বর')} testid="page-numbers">
         {(close) => (
           <div className="menu">
@@ -506,8 +419,6 @@ export function Ribbon(p: Props) {
         )}
       </Popover>
       {btn(t('পাতা সেটআপ…'), t('পাতা সেটআপ'), false, p.onPageSheet, 'page-setup')}
-        </>
-      ))}
     </>
   );
 
@@ -519,15 +430,10 @@ export function Ribbon(p: Props) {
   const ZOOMS = [50, 75, 90, 100, 125, 150, 200];
   const viewTab = (
     <>
-      {group(t('দেখার ধরন'), (
-        <>
       {btn(t('Print Layout'), t('পাতা আলাদা আলাদা দেখান'), v.layout === 'print', () => p.setView({ ...v, layout: 'print' }), 'layout-print')}
       {btn(t('Web Layout'), t('একটানা পাতা'), v.layout === 'web', () => p.setView({ ...v, layout: 'web' }), 'layout-web')}
       {v.layout === 'print' && <span className="pages" data-testid="page-count">{t('{n} পাতা', { n: p.pages })}</span>}
-        </>
-      ))}
-      {group(t('সহায়ক রেখা'), (
-        <>
+      <span className="sep" />
       {btn(t('Ruler'), t('মাপকাঠি দেখান/লুকান'), v.ruler, () => p.setView({ ...v, ruler: !v.ruler }), 'ruler-toggle')}
       {v.ruler && btn(v.rulerUnit === 'cm' ? t('সেমি') : t('ইঞ্চি'), t('Ruler-এর একক'), false, () => p.setView({ ...v, rulerUnit: v.rulerUnit === 'cm' ? 'in' : 'cm' }), 'ruler-unit')}
       {btn(t('Gridlines'), t('Gridlines দেখান/লুকান'), g.on, () => setGrid({ on: !g.on }), 'grid-toggle')}
@@ -568,10 +474,7 @@ export function Ribbon(p: Props) {
           </div>
         )}
       </Popover>
-        </>
-      ))}
-      {group(t('Zoom'), (
-        <>
+      <span className="sep" />
       {btn('−', t('ছোট করে দেখুন'), false, () => zoomTo(Math.max(25, ([...ZOOMS].reverse().find((z) => z < p.zoomPct - 1) ?? 25))), 'zoom-out')}
       <select className="sel zoom" aria-label="Zoom" title="Zoom" data-testid="zoom" value={typeof v.zoom === 'number' ? String(v.zoom) : v.zoom}
         onChange={(e) => zoomTo(/^\d+$/.test(e.target.value) ? Number(e.target.value) : (e.target.value as 'width' | 'page'))}>
@@ -582,8 +485,6 @@ export function Ribbon(p: Props) {
       </select>
       {btn('+', t('বড় করে দেখুন'), false, () => zoomTo(Math.min(300, ZOOMS.find((z) => z > p.zoomPct + 1) ?? 300)), 'zoom-in')}
       {btn('100%', t('আসল মাপ'), v.zoom === 100, () => zoomTo(100), 'zoom-100')}
-        </>
-      ))}
     </>
   );
 
@@ -592,7 +493,7 @@ export function Ribbon(p: Props) {
     : [['home', 'হোম'], ['insert', 'ঢোকান'], ['tools', 'টুলস']];
   if (inTable) tabs.push(['tdesign', 'টেবিল ডিজাইন'], ['table', 'টেবিল লেআউট']);
   return (
-    <nav ref={navRef} className={'ribbon glass' + (collapsed ? ' collapsed' : '') + (narrow ? ' narrow' : '')} aria-label={t('লেখার সরঞ্জাম')}>
+    <nav className={'ribbon' + (collapsed ? ' collapsed' : '')} aria-label={t('লেখার সরঞ্জাম')}>
       <div className="ribbon-tabs" role="tablist">
         {p.start}
         {tabs.map(([id, label]) => (
