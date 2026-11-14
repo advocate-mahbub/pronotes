@@ -8,6 +8,8 @@ import {
 import { rulesStep, rulesKeyFromEvent, rulesKeyForChar, type RulesSession } from '../../src/editor/rules-typing';
 import { readLayoutFile } from '../../src/app/layout-files';
 import { toBijoy } from '../../src/bijoy';
+import legacyLayouts from '../../src/bornona-engine/builtin-layouts.json';
+import type { Layout } from '../../src/bornona-engine';
 
 const FIX = path.join(__dirname, '../fixtures/kmx');
 const bytes = (f: string) => {
@@ -160,7 +162,7 @@ describe('keys from events and touch keyboards', () => {
 
 describe('OpenBangla .json', () => {
   // the same shape as OpenBangla Keyboard's data/*.json ("fixed", version 2), with the keys of Probhat
-  const probhat = BUILTIN_LAYOUTS.find((l) => l.id === 'probhat')!;
+  const probhat = (legacyLayouts as Layout[]).find((l) => l.id === 'probhat')!;
   const name: Record<string, string> = { '`': 'Grave', '~': 'Tilde', '!': 'Exclaim', '@': 'At', '#': 'Hash', $: 'Dollar', '%': 'Percent', '^': 'Circum', '&': 'Ampersand', '*': 'Asterisk', '(': 'ParenLeft', ')': 'ParenRight', '-': 'Minus', _: 'UnderScore', '=': 'Equals', '+': 'Plus', '[': 'BracketLeft', ']': 'BracketRight', '{': 'BraceLeft', '}': 'BraceRight', '\\': 'BackSlash', '|': 'Bar', ';': 'Semicolon', ':': 'Colon', "'": 'Apostrophe', '"': 'Quote', ',': 'Comma', '<': 'Less', '.': 'Period', '>': 'Greater', '/': 'Slash', '?': 'Question' };
   const US: Record<string, string> = { Backquote: '`~', Digit1: '1!', Digit2: '2@', Digit3: '3#', Digit4: '4$', Digit5: '5%', Digit6: '6^', Digit7: '7&', Digit8: '8*', Digit9: '9(', Digit0: '0)', Minus: '-_', Equal: '=+', BracketLeft: '[{', BracketRight: ']}', Backslash: '\\|', Semicolon: ';:', Quote: '\'"', Comma: ',<', Period: '.>', Slash: '/?' };
   const layout: Record<string, string> = {};

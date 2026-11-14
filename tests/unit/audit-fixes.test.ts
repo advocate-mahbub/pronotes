@@ -16,6 +16,15 @@ describe('backup restore is safe against hand-edited files', () => {
     expect(mergeBankMax(into, { w: { দলিল: 2 }, b: {} } as never)).toBe(0);
     expect((into as { w: Record<string, number> }).w['দলিল']).toBe(5);
   });
+
+  it('ignores malformed nested bank values instead of assigning properties to primitives', () => {
+    const into = { w: {}, b: { existing: 7 } } as never;
+    const from = JSON.parse('{"w":{"valid":3,"__proto__":9},"b":{"existing":{"polluted":4},"bad":7}}');
+    expect(() => mergeBankMax(into, from)).not.toThrow();
+    expect((into as { w: Record<string, number> }).w.valid).toBe(3);
+    expect((into as { b: Record<string, unknown> }).b.existing).toEqual({ polluted: 4 });
+    expect(({} as Record<string, unknown>).polluted).toBeUndefined();
+  });
 });
 
 describe('restorePrefs', () => {
