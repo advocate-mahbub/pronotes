@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg"
+     xmlns:xlink="http://www.w3.org/1999/xlink"
+     width="110" height="116" viewBox="0 0 110 116"
+     role="img" aria-labelledby="title desc">
+  <title id="title">ProNotes Monochrome Black</title>
+  <desc id="desc">ProNotes folded-paper P mark, using the corrected reference proportions.</desc>
+  
+<defs>
+  <path id="page" d="M0 31 H70 V116 H0 Z"/>
+  <path id="fold" d="M26 84 H70 V116 Z"/>
+  <path id="p" d="M26 0 H58
+    C87 0 110 18.8 110 42
+    C110 65.2 87 84 58 84
+    H26 Z"/>
+</defs>
+
+  
+    <g transform="translate(0 0) scale(1)">
+      <use href="#page" xlink:href="#page" fill="#D0D0D0"/>
+      <use href="#fold" xlink:href="#fold" fill="#777777"/>
+      <use href="#p" xlink:href="#p" fill="#111111"/>
+    </g>
+</svg>

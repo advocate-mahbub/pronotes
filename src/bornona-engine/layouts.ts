@@ -25,9 +25,15 @@ export interface Layout {
 const legacy = builtin as Layout[];
 const fixed = legacy.find((l) => l.id === 'national') ?? legacy[0];
 const bornona = legacy.find((l) => l.id === 'bornona') ?? fixed;
+const probhat = legacy.find((l) => l.id === 'probhat');
+if (!probhat) {
+  throw new Error('Built-in layout catalogue is missing the required Probhat layout');
+}
+
 export const BUILTIN_LAYOUTS: Layout[] = [
   { ...fixed, id: 'bijoy-classic', name: 'Bijoy Classic', dev: 'Ananda Computers' },
   approvedUniBijoy as Layout,
+  probhat,
 ];
 export const PRONOTES_LAYOUT_ID = 'pronotes';
 export const PRO_NOTES_LAYOUT: Layout = (() => {
