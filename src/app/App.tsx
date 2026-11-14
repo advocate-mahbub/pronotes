@@ -626,7 +626,12 @@ export function App() {
   const sidebar = (
     <Sidebar top={
       <>
-        <div className="side-brand">ProNotes</div>
+        <div className="side-brand">
+          <picture>
+            <source media="(prefers-color-scheme: dark)" srcSet="./branding/brand-dark.svg" />
+            <img className="brand-logo" src={theme === 'dark' ? './branding/brand-dark.svg' : './branding/brand-light.svg'} alt="ProNotes" />
+          </picture>
+        </div>
         {phone && <label className="side-layout">{t('কিবোর্ড লেআউট')}{layoutSelect}</label>}
       </>
     } docs={docs} trash={trash} folders={folders} currentId={current?.id ?? null} view={view} setView={setView} kindIcon={KIND_ICON} kindLabel={KIND_LABEL}
@@ -660,7 +665,10 @@ export function App() {
     <div className={'app' + (!lawDictionaryOpen && showSide && wide ? ' with-side' : '')}>
       <header className="top">
         <div className="brand" id="title-slot">
-          {!current && <span className="name">ProNotes</span>}
+          {!current && <picture className="brand-picture">
+            <source media="(prefers-color-scheme: dark)" srcSet="./branding/brand-dark.svg" />
+            <img className="brand-logo" src={theme === 'dark' ? './branding/brand-dark.svg' : './branding/brand-light.svg'} alt="ProNotes" />
+          </picture>}
         </div>
         {/* quiet: a small ✓ when saved; words only while saving fails */}
         <span className={'status ' + saveState} data-testid="save-status" role="status" title={statusText}>{statusText}</span>
