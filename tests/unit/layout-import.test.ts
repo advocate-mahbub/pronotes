@@ -80,7 +80,9 @@ describe('Keyman .kmx', () => {
     const kb = parseKMX(bytes('bangla_probhat.kmx'));
     expect(kmxIsSimple(kb)).toBe(true);
     const map = kmxKeyLabels(kb);
-    const ours = BUILTIN_LAYOUTS.find((l) => l.id === 'probhat')!.map;
+    const builtinProbhat = BUILTIN_LAYOUTS.find((l) => l.id === 'probhat');
+    expect(builtinProbhat, 'the built-in catalogue must retain the Probhat layout').toBeDefined();
+    const ours = builtinProbhat!.map;
     for (const code of ['KeyK', 'KeyA', 'KeyZ', 'KeyR', 'Digit1', 'Slash']) expect(map[code][0], code).toBe(ours[code][0]);
     expect(map.KeyZ[0]).toBe('য়'); // য় precomposed
     expect(map.KeyR[1]).toBe('ড়');
