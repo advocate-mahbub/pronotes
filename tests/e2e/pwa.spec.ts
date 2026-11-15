@@ -29,7 +29,8 @@ test('manifest, icons and Apple home-screen tags are in place', async ({ page, r
   for (const i of m.icons) expect((await request.get(i.src)).status()).toBe(200);
   expect(await page.locator('link[rel=apple-touch-icon]').count()).toBe(1);
   expect(await page.locator('meta[name=apple-mobile-web-app-capable]').getAttribute('content')).toBe('yes');
-  expect(await page.locator('.top .brand img.brand-logo').getAttribute('alt')).toBe('ProNotes');
+  // the logo sits in the document list (the header shows it only while no document is open)
+  expect(await page.locator('img.brand-logo').first().getAttribute('alt')).toBe('ProNotes');
   expect((await request.get('./branding/brand-light.svg')).status()).toBe(200);
   expect((await request.get('./branding/brand-dark.svg')).status()).toBe(200);
 });
@@ -132,8 +133,10 @@ test('new version: notice appears, the open draft is saved, then the app reloads
     await expect(page.getByTestId('update-banner')).toHaveCount(0);
     await page.getByTestId('check-update').click();
     await expect(page.getByTestId('update-banner')).toBeVisible({ timeout: 15_000 });
-    await editor(page).click();
-    await page.keyboard.press('ControlOrMeta+End'); // caret after the text, wherever the click landed
+    // caret after the text: click the paragraph itself (a click on the empty page can land
+    // before the text), then End
+    await editor(page).locator('p').first().click();
+    await page.keyboard.press('End');
     await page.keyboard.press('KeyR');
     // update right after typing, before the autosave timer: the text must still be kept
     await Promise.all([page.waitForEvent('load'), page.getByTestId('update-now').click()]);

@@ -22,5 +22,6 @@ test('Bangla dictionary: its words appear after two letters, can be turned off i
   await page.keyboard.press('End');
   await page.keyboard.insertText('া');
   await page.keyboard.press('Backspace');
-  await expect(page.locator('.sug')).not.toContainText('উসকানি');
+  // with nothing to suggest the bar is not shown at all
+  await expect(page.locator('.sug', { hasText: 'উসকানি' })).toHaveCount(0);
 });

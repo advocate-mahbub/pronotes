@@ -4,6 +4,7 @@ import { DEFAULT_FORMAT, type DocFormat } from '../docx-export/format';
 import { ENGLISH_FONTS, LOCAL_ANSI, LOCAL_UNI, WEB_FONTS, isFontAvailable } from '../fonts';
 import { TOGGLE_KEYS, ANSI_KEYS, type Layout, type ToggleKey, type AnsiKey } from '../bornona-engine';
 import type { VoicePrefs } from './prefs-types';
+import { LAYOUT_ACCEPT } from './layout-files';
 import { useT, type UiLang } from '../i18n';
 
 export interface FontInfo {
@@ -18,10 +19,11 @@ export interface FontInfo {
 
 interface Props {
   keyboardLayouts: Layout[];
-  enabledDesktop: string[];
-  setEnabledDesktop: (v: string[]) => void;
-  enabledMobile: string[];
-  setEnabledMobile: (v: string[]) => void;
+  /** Layouts hidden from the layout box on computers / on touch devices (phone, iPad). */
+  hiddenDesktop: string[];
+  setHiddenDesktop: (v: string[]) => void;
+  hiddenMobile: string[];
+  setHiddenMobile: (v: string[]) => void;
   vf: boolean;
   setVf: (v: boolean) => void;
   oldReph: boolean;
@@ -146,6 +148,8 @@ export interface AppInfo {
   onPersist: () => void;
 }
 
+const FORMAT_NAME = { avro: 'Avro', openbangla: 'OpenBangla', kmx: 'Keyman' } as const;
+
 /** Hidden file input + button. */
 function FileButton(p: { label: string; accept: string; testid: string; onFile: (f: File) => void; primary?: boolean }) {
   const ref = useRef<HTMLInputElement>(null);
@@ -192,11 +196,11 @@ export function Settings(p: Props) {
   const [withKey, setWithKey] = useState(false);
   // families that have only italic or bold files: normal text would be drawn slanted or heavy
   const noRegular = [...new Set(p.fonts.map((f) => f.family))].filter((fam) => !p.fonts.some((f) => f.family === fam && !f.italic && (f.weight ?? 400) < 600));
-  const layoutEnabled = (list: string[], id: string) => !list.length || list.includes(id);
-  const setLayoutEnabled = (platform: 'desktop' | 'mobile', id: string, checked: boolean) => {
-    const current = platform === 'desktop' ? p.enabledDesktop : p.enabledMobile;
-    const next = checked ? [...new Set([...current, id])] : current.filter((x) => x !== id);
-    if (platform === 'desktop') p.setEnabledDesktop(next); else p.setEnabledMobile(next);
+  const hiddenOf = (platform: 'desktop' | 'mobile') => (platform === 'desktop' ? p.hiddenDesktop : p.hiddenMobile);
+  const setLayoutShown = (platform: 'desktop' | 'mobile', id: string, shown: boolean) => {
+    const current = hiddenOf(platform);
+    const next = shown ? current.filter((x) => x !== id) : [...new Set([...current, id])];
+    if (platform === 'desktop') p.setHiddenDesktop(next); else p.setHiddenMobile(next);
   };
 
   return (
@@ -208,22 +212,28 @@ export function Settings(p: Props) {
         <p className="note">{t('Desktop এবং Mobile/iPad-এর dropdown-এ কোন layout থাকবে তা আলাদাভাবে বেছে নিন।')}</p>
         <div className="grid2" data-testid="enabled-layouts">
           {(['desktop', 'mobile'] as const).map((platform) => {
-            const list = platform === 'desktop' ? p.enabledDesktop : p.enabledMobile;
+            const hidden = hiddenOf(platform);
+            const shownCount = p.keyboardLayouts.filter((l) => !hidden.includes(l.id)).length;
             return <fieldset key={platform}><legend>{platform === 'desktop' ? t('Desktop / PC') : t('Mobile / iPad')}</legend>
-              {p.keyboardLayouts.map((l) => <label key={l.id}><input type="checkbox" data-testid={'layout-enabled-' + platform + '-' + l.id}
-                checked={layoutEnabled(list, l.id)} onChange={(e) => setLayoutEnabled(platform, l.id, e.target.checked)} /> {l.name}</label>)}
+              {p.keyboardLayouts.map((l) => {
+                const shown = !hidden.includes(l.id);
+                // at least one layout stays in the box
+                return <label key={l.id} className="layout-check"><input type="checkbox" data-testid={'layout-enabled-' + platform + '-' + l.id}
+                  checked={shown} disabled={shown && shownCount <= 1} onChange={(e) => setLayoutShown(platform, l.id, e.target.checked)} /> <span>{l.name}</span></label>;
+              })}
             </fieldset>;
           })}
         </div>
-        <p className="note">{t('অন্য কোনো Avro লেআউট (.avrolayout) ব্যবহার করতে চাইলে ফাইলটা যোগ করুন। এটা শুধু এই ডিভাইসে থাকে (ব্যাকআপে যায়)।')}</p>
+        <p className="note">{t('অন্য লেআউট যোগ করা যায়: Avro (.avrolayout), OpenBangla (.json), Keyman (.kmx বা .kmp)। ফাইলটা শুধু এই ডিভাইসে থাকে (ব্যাকআপে যায়)।')}</p>
         <div className="row">
-          <FileButton label={t('লেআউট যোগ করুন (.avrolayout)')} accept=".avrolayout,.xml,text/xml" testid="layout-add" onFile={p.onAddLayout} />
+          <FileButton label={t('লেআউট যোগ করুন')} accept={LAYOUT_ACCEPT} testid="layout-add" onFile={p.onAddLayout} />
         </div>
         {p.customLayouts.length > 0 && (
           <ul className="itemlist" data-testid="layout-list">
             {p.customLayouts.map((l) => (
               <li key={l.id}>
-                <span>{l.name}</span><small>{(l.dev || '').slice(0, 30)}</small>
+                <span>{l.name}</span>
+                <small>{FORMAT_NAME[l.format ?? 'avro']}{l.kmx ? ' · ' + t(l.kmx.enc === 'ansi' ? 'রুল, বিজয়' : 'রুল') : ''}{l.dev ? ' · ' + l.dev.slice(0, 30) : ''}</small>
                 <ArmedButton label={t('মুছুন')} armedLabel={t('নিশ্চিত?')} testid={'layout-del-' + l.id} onConfirm={() => p.onDeleteLayout(l.id)} />
               </li>
             ))}

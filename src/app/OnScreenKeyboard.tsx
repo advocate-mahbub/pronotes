@@ -1,9 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
 import type { Editor } from '@tiptap/react';
 import { ROWS, US, charFor, hasAltLayer, type LayoutMap } from '../bornona-engine';
-import { typeText, deleteBackward, textBeforeCaret, type BornonaConfig } from '../editor';
+import { typeText, deleteBackward, textBeforeCaret, typeRulesKey, type BornonaConfig } from '../editor';
 import { useT } from '../i18n';
-import { activeBornonaBox, backspaceBox, typeIntoBox } from './bornona-input';
+import { activeBornonaBox, backspaceBox, typeIntoBox, typeKeyIntoBox } from './bornona-input';
 
 const ZW: Record<string, string> = { [String.fromCharCode(0x200c)]: 'ZWNJ', [String.fromCharCode(0x200d)]: 'ZWJ' };
 const MARKS = 'ািীুূৃেৈোৌ্ঁংঃৗৄৢৣ';
@@ -54,7 +54,14 @@ export function OnScreenKeyboard({ editor, map, bangla, getConfig, onToggleLangu
   const press = (code: string) => {
     const view = editor.view;
     const box = activeBornonaBox();
-    const back = box ? () => backspaceBox(box) : () => deleteBackward(view, () => editor.commands.joinBackward(), getConfig());
+    const cfg = getConfig();
+    const kb = cfg.rules && cfg.bangla && !cfg.suspended ? cfg.rules : null;
+    /** A key through the Keyman rules (when that keyboard is chosen). */
+    const rulesKey = (k: { code: string; shift: boolean; alt: boolean }) =>
+      Boolean(kb) && (box ? typeKeyIntoBox(box, k, getConfig()) : typeRulesKey(view, kb!, k, getConfig().ansi));
+    const back = box
+      ? () => rulesKey({ code: 'Backspace', shift: false, alt: false }) || backspaceBox(box)
+      : () => deleteBackward(view, () => editor.commands.joinBackward(), getConfig());
     const type = (s: string) => (box ? typeIntoBox(box, s, getConfig()) : typeText(view, s, getConfig()));
     switch (code) {
       case '#Shift': {
@@ -80,12 +87,16 @@ export function OnScreenKeyboard({ editor, map, bangla, getConfig, onToggleLangu
         editor.commands.enter();
         return;
       case '#Space':
+        if (rulesKey({ code: 'Space', shift: false, alt: false })) return;
         return type(' ');
       case '#Dari':
         return type(bangla ? '।' : '.');
     }
-    const out = charFor(map, code, sh, al, bangla);
-    if (out) type(out);
+    if (kb) rulesKey({ code, shift: sh, alt: al });
+    else {
+      const out = charFor(map, code, sh, al, bangla);
+      if (out) type(out);
+    }
     if (shift === 1) setShift(0);
     if (alt) setAlt(false);
   };

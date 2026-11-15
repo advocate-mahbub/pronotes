@@ -55,7 +55,8 @@ test('live voice (mocked engine): interim text, spoken punctuation, new paragrap
   await page.evaluate(() => (window as never as { __sr: { say: (t: string, f: boolean) => void } }).__sr.say('আমি বাদী দাঁড়ি নতুন লাইন জমির পরিমাণ 25 শতাংশ', true));
   expect(await paras(page)).toEqual(['আমি বাদী।', 'জমির পরিমাণ ২৫ শতাংশ ']);
   await page.getByTestId('voice-stop').click();
-  await expect(page.getByTestId('suggestions')).toBeVisible();
+  // the voice bar closes (the suggestion bar comes back only when there is something to suggest)
+  await expect(page.getByTestId('voice-bar')).toHaveCount(0);
   // shown only once
   await page.getByTestId('mic').click();
   await expect(page.getByTestId('voice-consent')).toHaveCount(0);
@@ -104,7 +105,9 @@ test('pasting Bijoy text converts it to Unicode (setting on), leaves it when off
   await section(page, 'ইউনিকোড ⇄ বিজয়');
   await page.getByTestId('auto-bijoy').uncheck();
   await page.getByTestId('settings').click();
-  await editor(page).click();
+  await expect(page.getByTestId('settings-panel')).toBeHidden();
+  await editor(page).locator('p').last().click();
+  await page.keyboard.press('ControlOrMeta+End'); // caret after the text, wherever the click landed
   await page.keyboard.press('Enter');
   await paste('Avgvi');
   expect((await paras(page))[2]).toBe('Avgvi');
@@ -160,7 +163,8 @@ test('custom .avrolayout: import, type with it, survives reload, delete needs tw
   await expect(page.getByTestId('layout-list')).toBeVisible();
   await del.click();
   await expect(page.getByTestId('layout-list')).toHaveCount(0);
-  await expect(page.getByTestId('layout')).toHaveValue('bornona');
+  // deleting the layout in use falls back to the default (ProNotes) layout
+  await expect(page.getByTestId('layout')).toHaveValue('pronotes');
 });
 
 test('bad layout file shows a message', async ({ page }) => {

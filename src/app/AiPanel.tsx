@@ -1,3 +1,4 @@
+import { createPortal } from 'react-dom';
 /**
  * AI assistant. Two ways to use it:
  *  1. Claude (your own subscription): the masked text and instruction are copied; paste them in the
@@ -182,7 +183,8 @@ export function AiPanel(p: Props) {
         </div>
       )}
 
-      {confirmSend && (
+      {/* in <body>: the glass panel would otherwise become the dialog's frame */}
+      {confirmSend && createPortal(
         <div className="modal" role="dialog" aria-modal="true" aria-labelledby="ai-c-title" data-testid="ai-confirm">
           <div className="box">
             <h2 id="ai-c-title">{t('Gemini-তে পাঠাবেন?')}</h2>
@@ -193,7 +195,8 @@ export function AiPanel(p: Props) {
               <button type="button" className="btn" data-testid="ai-confirm-cancel" onClick={() => setConfirmSend(false)}>{t('বাতিল')}</button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body,
       )}
     </section>
   );

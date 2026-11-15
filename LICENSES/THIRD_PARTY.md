@@ -33,6 +33,14 @@ users upload their own licensed copy in the app.
 - ProNotes-এ রাখার সিদ্ধান্ত মালিকের (decision 56)। অনুমতি যাচাই হয়নি; নির্মাতার কাছ থেকে লিখিত লাইসেন্স পেলে এখানে যোগ করুন।
 - ProNotes-এর "সর্বস্বত্ব সংরক্ষিত" লাইসেন্স এই তালিকায় খাটে না।
 
+## পরীক্ষার ফাইল: Keyman কিবোর্ড (`tests/fixtures/kmx/`)
+
+- `bangla_probhat.kmx`: keymanapp/keyboards-এর `release/b/bangla_probhat` সোর্স থেকে কম্পাইল করা। MIT License, © 2007-2018 Arun Sarkar।
+- `basic_kbdinben.kmx`: keymanapp/keyboards-এর `release/basic/basic_kbdinben` থেকে কম্পাইল করা। MIT License, © 2009-2020 SIL International।
+- `pn_test.kmn` / `pn_test.kmx`: ProNotes-এর নিজের পরীক্ষার কিবোর্ড।
+- শুধু পরীক্ষায় লাগে, অ্যাপের সাথে যায় না। কম্পাইল: `@keymanapp/kmc` 18.0.255 (npm, MIT)।
+- OpenBangla Keyboard-এর লেআউট ফাইল (GPL-3.0) রিপোতে রাখা হয়নি; পরীক্ষা নিজে বানানো একই ধাঁচের ফাইল দিয়ে।
+
 ## Craft অ্যাপস (`/apps/<id>/<version>/`, তালিকা: `src/craft/apps.json`)
 | জিনিস | লাইসেন্স | কোথায় |
 |---|---|---|
