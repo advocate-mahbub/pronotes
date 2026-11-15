@@ -1,0 +1,31 @@
+--- a/pronotes/src/bornona-engine/layouts.ts
++++ b/pronotes/src/bornona-engine/layouts.ts
+@@ -25,9 +25,15 @@
+ const legacy = builtin as Layout[];
+ const fixed = legacy.find((l) => l.id === 'national') ?? legacy[0];
+ const bornona = legacy.find((l) => l.id === 'bornona') ?? fixed;
++const probhat = legacy.find((l) => l.id === 'probhat');
++if (!probhat) {
++  throw new Error('Built-in layout catalogue is missing the required Probhat layout');
++}
++
+ export const BUILTIN_LAYOUTS: Layout[] = [
+   { ...fixed, id: 'bijoy-classic', name: 'Bijoy Classic', dev: 'Ananda Computers' },
+   approvedUniBijoy as Layout,
++  probhat,
+ ];
+ export const PRONOTES_LAYOUT_ID = 'pronotes';
+ export const PRO_NOTES_LAYOUT: Layout = (() => {
+--- a/pronotes-main/tests/unit/layout-import.test.ts
++++ b/pronotes-main/tests/unit/layout-import.test.ts
+@@ -80,7 +80,9 @@
+     const kb = parseKMX(bytes('bangla_probhat.kmx'));
+     expect(kmxIsSimple(kb)).toBe(true);
+     const map = kmxKeyLabels(kb);
+-    const ours = BUILTIN_LAYOUTS.find((l) => l.id === 'probhat')!.map;
++    const builtinProbhat = BUILTIN_LAYOUTS.find((l) => l.id === 'probhat');
++    expect(builtinProbhat, 'the built-in catalogue must retain the Probhat layout').toBeDefined();
++    const ours = builtinProbhat!.map;
+     for (const code of ['KeyK', 'KeyA', 'KeyZ', 'KeyR', 'Digit1', 'Slash']) expect(map[code][0], code).toBe(ours[code][0]);
+     expect(map.KeyZ[0]).toBe('য়'); // য় precomposed
+     expect(map.KeyR[1]).toBe('ড়');
