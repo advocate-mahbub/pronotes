@@ -37,7 +37,7 @@ export default defineConfig({
         display: 'standalone',
         orientation: 'any',
         background_color: '#f5efe3',
-        theme_color: '#0f2a4f',
+        theme_color: '#0B1F4B',
         icons: [
           { src: 'icons/icon-192.png', sizes: '192x192', type: 'image/png' },
           { src: 'icons/icon-512.png', sizes: '512x512', type: 'image/png' },
@@ -46,7 +46,7 @@ export default defineConfig({
       },
       workbox: {
         // everything the app needs offline, fonts included (woff2 only; every current browser uses it)
-        globPatterns: ['**/*.{js,css,html,png,woff2}', 'dict/*.txt'],
+        globPatterns: ['**/*.{js,css,html,png,svg,woff2}', 'dict/*.txt'],
         maximumFileSizeToCacheInBytes: 5 * 1024 * 1024, // the Bangla word list is ~4 MB (≈0.6 MB compressed)
         navigateFallback: 'index.html',
         cleanupOutdatedCaches: true,

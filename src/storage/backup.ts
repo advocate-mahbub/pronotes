@@ -61,16 +61,51 @@ const newId = () => (crypto.randomUUID ? crypto.randomUUID() : Date.now().toStri
 const same = (a: Doc, b: Doc) => a.updatedAt === b.updatedAt && JSON.stringify(a.content) === JSON.stringify(b.content) && a.title === b.title;
 
 /** Word counts: keep the larger count, so restoring the same backup twice does not inflate them. */
+const DANGEROUS_KEYS = new Set(['__proto__', 'constructor', 'prototype']);
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  value !== null && typeof value === 'object' && !Array.isArray(value);
+const safeEntries = (value: unknown): [string, unknown][] => {
+  if (!isRecord(value)) return [];
+  return Object.entries(value).filter(([key]) => !DANGEROUS_KEYS.has(key));
+};
+const safeCount = (value: unknown): number => {
+  const n = Number(value);
+  return Number.isFinite(n) && n > 0 ? n : 0;
+};
+
+/**
+ * Merge untrusted backup word-bank data without mutating prototypes. Malformed nested
+ * values are ignored; valid counts are merged by maximum so repeated restores are idempotent.
+ */
 export function mergeBankMax(into: WordBank, from: WordBank): number {
+  if (!isRecord(into) || !isRecord(from)) return 0;
+  if (!isRecord(into.w)) into.w = {};
+  if (!isRecord(into.b)) into.b = {};
   let added = 0;
-  for (const w in from.w || {}) {
-    const k = fixNukta(w);
-    if (!into.w[k]) added++;
-    into.w[k] = Math.max(into.w[k] || 0, Number(from.w[w]) || 0);
+
+  for (const [word, rawCount] of safeEntries(from.w)) {
+    const key = fixNukta(word);
+    if (!key || DANGEROUS_KEYS.has(key)) continue;
+    const current = safeCount(into.w[key]);
+    const incoming = safeCount(rawCount);
+    if (!Object.prototype.hasOwnProperty.call(into.w, key) && incoming > 0) added++;
+    into.w[key] = Math.max(current, incoming);
   }
-  for (const p in from.b || {}) {
-    const m = into.b[fixNukta(p)] || (into.b[fixNukta(p)] = {});
-    for (const w in from.b[p]) m[fixNukta(w)] = Math.max(m[fixNukta(w)] || 0, Number(from.b[p][w]) || 0);
+
+  for (const [previous, rawNext] of safeEntries(from.b)) {
+    const p = fixNukta(previous);
+    if (!p || DANGEROUS_KEYS.has(p) || !isRecord(rawNext)) continue;
+    let target = into.b[p];
+    if (!isRecord(target)) {
+      target = {};
+      into.b[p] = target;
+    }
+    for (const [next, rawCount] of safeEntries(rawNext)) {
+      const w = fixNukta(next);
+      if (!w || DANGEROUS_KEYS.has(w)) continue;
+      const current = safeCount(target[w]);
+      target[w] = Math.max(current, safeCount(rawCount));
+    }
   }
   return added;
 }
