@@ -1,28 +1,8 @@
-diff -ruN /tmp/probhat-public-catalogue-repair/original/pronotes-main/PROBHAT-CATALOGUE-EXPOSURE-REPAIR.md /tmp/probhat-public-catalogue-repair/pronotes-main/PROBHAT-CATALOGUE-EXPOSURE-REPAIR.md
---- /tmp/probhat-public-catalogue-repair/original/pronotes-main/PROBHAT-CATALOGUE-EXPOSURE-REPAIR.md	1970-01-01 00:00:00.000000000 +0000
-+++ /tmp/probhat-public-catalogue-repair/pronotes-main/PROBHAT-CATALOGUE-EXPOSURE-REPAIR.md	2026-11-14 04:51:09.128113739 +0000
-@@ -0,0 +1,17 @@
-+# ProNotes Probhat catalogue exposure repair
-+
-+## Root cause
-+The previous fix added the historical `probhat` mapping to `BUILTIN_LAYOUTS`. That catalogue is intentionally limited to the four approved public layouts: `pronotes`, `pronotes-phonetic`, `bijoy-classic`, and `unibijoy`. Adding `probhat` fixed the importer test by violating the public catalogue contract, causing `engine.test.ts` to fail.
-+
-+## Correct repair
-+- Removed `probhat` from the public `BUILTIN_LAYOUTS` catalogue.
-+- Kept the historical Probhat source mapping in `builtin-layouts.json` for the OpenBangla import compatibility test only.
-+- Made the legacy test fixture lookup explicit so a missing source fixture produces a clear assertion rather than an undefined `.map` crash.
-+- Did not expose Probhat through `availableLayouts()` or `findLayout()`.
-+
-+## Verification
-+Static source review confirms the public catalogue contains only the two approved built-in entries, which combine with the two ProNotes layouts to make exactly four. Automated tests/typecheck/build were not run in this environment. Run:
-+`npm test -- tests/unit/engine.test.ts tests/unit/layout-import.test.ts`
-+`npm run typecheck`
-+`npm test`
-+`npm run build`
-diff -ruN /tmp/probhat-public-catalogue-repair/original/pronotes-main/src/bornona-engine/layouts.ts /tmp/probhat-public-catalogue-repair/pronotes-main/src/bornona-engine/layouts.ts
---- /tmp/probhat-public-catalogue-repair/original/pronotes-main/src/bornona-engine/layouts.ts	2026-11-14 04:51:09.202344185 +0000
-+++ /tmp/probhat-public-catalogue-repair/pronotes-main/src/bornona-engine/layouts.ts	2026-11-14 04:51:09.127710703 +0000
-@@ -25,15 +25,9 @@
+diff --git a/src/bornona-engine/layouts.ts b/src/bornona-engine/layouts.ts
+index 6934993..e23e2cb 100644
+--- a/src/bornona-engine/layouts.ts
++++ b/src/bornona-engine/layouts.ts
+@@ -25,15 +25,9 @@ export interface Layout {
  const legacy = builtin as Layout[];
  const fixed = legacy.find((l) => l.id === 'national') ?? legacy[0];
  const bornona = legacy.find((l) => l.id === 'bornona') ?? fixed;
@@ -38,10 +18,32 @@ diff -ruN /tmp/probhat-public-catalogue-repair/original/pronotes-main/src/bornon
  ];
  export const PRONOTES_LAYOUT_ID = 'pronotes';
  export const PRO_NOTES_LAYOUT: Layout = (() => {
-diff -ruN /tmp/probhat-public-catalogue-repair/original/pronotes-main/tests/unit/layout-import.test.ts /tmp/probhat-public-catalogue-repair/pronotes-main/tests/unit/layout-import.test.ts
---- /tmp/probhat-public-catalogue-repair/original/pronotes-main/tests/unit/layout-import.test.ts	2026-11-14 04:51:09.158798359 +0000
-+++ /tmp/probhat-public-catalogue-repair/pronotes-main/tests/unit/layout-import.test.ts	2026-11-14 04:51:09.127836192 +0000
-@@ -164,11 +164,13 @@
+diff --git a/tests/unit/layout-import.test.ts b/tests/unit/layout-import.test.ts
+index efa0db4..a919728 100644
+--- a/tests/unit/layout-import.test.ts
++++ b/tests/unit/layout-import.test.ts
+@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs';
+ import path from 'node:path';
+ import { describe, it, expect } from 'vitest';
+ import {
+-  parseKMX, kmxProcess, ctxText, kmxIsSimple, kmxKeyLabels, newRunState, parseOpenBanglaLayout, BUILTIN_LAYOUTS,
++  parseKMX, kmxProcess, ctxText, kmxIsSimple, kmxKeyLabels, newRunState, parseOpenBanglaLayout,
+   type CtxItem, type KmxKeyboard,
+ } from '../../src/bornona-engine';
+ import { rulesStep, rulesKeyFromEvent, rulesKeyForChar, type RulesSession } from '../../src/editor/rules-typing';
+@@ -80,8 +80,9 @@ describe('Keyman .kmx', () => {
+     const kb = parseKMX(bytes('bangla_probhat.kmx'));
+     expect(kmxIsSimple(kb)).toBe(true);
+     const map = kmxKeyLabels(kb);
+-    const builtinProbhat = BUILTIN_LAYOUTS.find((l) => l.id === 'probhat');
+-    expect(builtinProbhat, 'the built-in catalogue must retain the Probhat layout').toBeDefined();
++    // Probhat is not one of the four public layouts; its key map stays in builtin-layouts.json as a test reference
++    const builtinProbhat = (legacyLayouts as Layout[]).find((l) => l.id === 'probhat');
++    expect(builtinProbhat, 'builtin-layouts.json must keep the Probhat source mapping').toBeDefined();
+     const ours = builtinProbhat!.map;
+     for (const code of ['KeyK', 'KeyA', 'KeyZ', 'KeyR', 'Digit1', 'Slash']) expect(map[code][0], code).toBe(ours[code][0]);
+     expect(map.KeyZ[0]).toBe('য়'); // য় precomposed
+@@ -164,11 +165,13 @@ describe('keys from events and touch keyboards', () => {
  
  describe('OpenBangla .json', () => {
    // the same shape as OpenBangla Keyboard's data/*.json ("fixed", version 2), with the keys of Probhat
@@ -57,7 +59,7 @@ diff -ruN /tmp/probhat-public-catalogue-repair/original/pronotes-main/tests/unit
      if (code.startsWith('Numpad')) {
        layout['Num' + code.slice(6)] = v[0];
        continue;
-@@ -186,7 +188,7 @@
+@@ -186,7 +189,7 @@ describe('OpenBangla .json', () => {
      expect(L.name).toBe('Probhat');
      expect(L.dev).toBe('Shabab Mustafa');
      const pad = (v: string[] = []) => [...v, '', '', ''].slice(0, code4(v)).join('|');
