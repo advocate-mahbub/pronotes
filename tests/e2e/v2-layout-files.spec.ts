@@ -107,13 +107,13 @@ test.describe('layout lists in Settings (touch screen)', () => {
     await section(page, 'কিবোর্ড ও টাইপিং');
     const box = page.getByTestId('layout');
     const ids = await box.locator('optgroup').first().locator('option').evaluateAll((o) => o.map((x) => (x as HTMLOptionElement).value));
-    const probhat = page.getByTestId('layout-enabled-mobile-probhat');
-    await probhat.tap();
-    await expect(probhat).not.toBeChecked();
-    await expect(box.locator('option[value="probhat"]')).toHaveCount(0);
+    const unibijoy = page.getByTestId('layout-enabled-mobile-unibijoy');
+    await unibijoy.tap();
+    await expect(unibijoy).not.toBeChecked();
+    await expect(box.locator('option[value="unibijoy"]')).toHaveCount(0);
     // the desktop list is separate
-    await expect(page.getByTestId('layout-enabled-desktop-probhat')).toBeChecked();
-    for (const id of ids.filter((x) => x !== 'probhat' && x !== 'pronotes')) await page.getByTestId('layout-enabled-mobile-' + id).tap();
+    await expect(page.getByTestId('layout-enabled-desktop-unibijoy')).toBeChecked();
+    for (const id of ids.filter((x) => x !== 'unibijoy' && x !== 'pronotes')) await page.getByTestId('layout-enabled-mobile-' + id).tap();
     const last = page.getByTestId('layout-enabled-mobile-pronotes');
     await expect(last).toBeChecked();
     await expect(last).toBeDisabled();
@@ -122,6 +122,6 @@ test.describe('layout lists in Settings (touch screen)', () => {
     await expect(box).toHaveValue(/^custom-/);
     await page.reload();
     await expect(page.getByTestId('layout')).toHaveValue(/^custom-/);
-    await expect(page.getByTestId('layout').locator('option[value="probhat"]')).toHaveCount(0);
+    await expect(page.getByTestId('layout').locator('option[value="unibijoy"]')).toHaveCount(0);
   });
 });

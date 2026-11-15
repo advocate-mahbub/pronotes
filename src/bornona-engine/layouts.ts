@@ -1,5 +1,6 @@
 import builtin from './builtin-layouts.json';
 import approvedUniBijoy from './approved-unibijoy.json';
+import type { KmxKeyboard } from './kmx';
 
 /**
  * A layout maps a physical key code to its characters:
@@ -12,7 +13,12 @@ export interface Layout {
   id: string;
   name: string;
   dev: string;
+  /** For a Keyman keyboard with rules: what each key types on its own (on-screen keyboard labels). */
   map: LayoutMap;
+  /** Where the layout came from (added by the user). */
+  format?: 'avro' | 'openbangla' | 'kmx';
+  /** Keyman keyboard with context rules: typing runs these rules instead of the map. */
+  kmx?: KmxKeyboard;
 }
 
 /**
@@ -25,15 +31,9 @@ export interface Layout {
 const legacy = builtin as Layout[];
 const fixed = legacy.find((l) => l.id === 'national') ?? legacy[0];
 const bornona = legacy.find((l) => l.id === 'bornona') ?? fixed;
-const probhat = legacy.find((l) => l.id === 'probhat');
-if (!probhat) {
-  throw new Error('Built-in layout catalogue is missing the required Probhat layout');
-}
-
 export const BUILTIN_LAYOUTS: Layout[] = [
   { ...fixed, id: 'bijoy-classic', name: 'Bijoy Classic', dev: 'Ananda Computers' },
   approvedUniBijoy as Layout,
-  probhat,
 ];
 export const PRONOTES_LAYOUT_ID = 'pronotes';
 export const PRO_NOTES_LAYOUT: Layout = (() => {
@@ -55,7 +55,8 @@ export function availableLayouts(custom: Layout[] = []): Layout[] {
 }
 
 export function findLayout(id: string, custom: Layout[] = []): Layout {
-  return [PRO_NOTES_LAYOUT, PRO_NOTES_PHONETIC_LAYOUT, ...BUILTIN_LAYOUTS, ...custom].find((l) => l.id === id) ?? PRO_NOTES_LAYOUT;
+  // the historical v8 layouts (e.g. a stored "bornona") stay readable, but are never offered in the layout box
+  return [PRO_NOTES_LAYOUT, PRO_NOTES_PHONETIC_LAYOUT, ...BUILTIN_LAYOUTS, ...custom, ...legacy].find((l) => l.id === id) ?? PRO_NOTES_LAYOUT;
 }
 
 /** True when the layout uses the AltGr layers (shows the AltGr key on the on-screen keyboard). */

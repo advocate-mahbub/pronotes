@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { describe, it, expect } from 'vitest';
 import {
-  parseKMX, kmxProcess, ctxText, kmxIsSimple, kmxKeyLabels, newRunState, parseOpenBanglaLayout, BUILTIN_LAYOUTS,
+  parseKMX, kmxProcess, ctxText, kmxIsSimple, kmxKeyLabels, newRunState, parseOpenBanglaLayout,
   type CtxItem, type KmxKeyboard,
 } from '../../src/bornona-engine';
 import { rulesStep, rulesKeyFromEvent, rulesKeyForChar, type RulesSession } from '../../src/editor/rules-typing';
@@ -80,8 +80,9 @@ describe('Keyman .kmx', () => {
     const kb = parseKMX(bytes('bangla_probhat.kmx'));
     expect(kmxIsSimple(kb)).toBe(true);
     const map = kmxKeyLabels(kb);
-    const builtinProbhat = BUILTIN_LAYOUTS.find((l) => l.id === 'probhat');
-    expect(builtinProbhat, 'the built-in catalogue must retain the Probhat layout').toBeDefined();
+    // Probhat is not one of the four public layouts; its key map stays in builtin-layouts.json as a test reference
+    const builtinProbhat = (legacyLayouts as Layout[]).find((l) => l.id === 'probhat');
+    expect(builtinProbhat, 'builtin-layouts.json must keep the Probhat source mapping').toBeDefined();
     const ours = builtinProbhat!.map;
     for (const code of ['KeyK', 'KeyA', 'KeyZ', 'KeyR', 'Digit1', 'Slash']) expect(map[code][0], code).toBe(ours[code][0]);
     expect(map.KeyZ[0]).toBe('য়'); // য় precomposed
@@ -164,11 +165,13 @@ describe('keys from events and touch keyboards', () => {
 
 describe('OpenBangla .json', () => {
   // the same shape as OpenBangla Keyboard's data/*.json ("fixed", version 2), with the keys of Probhat
-  const probhat = (legacyLayouts as Layout[]).find((l) => l.id === 'probhat')!;
+  const probhat = (legacyLayouts as Layout[]).find((l) => l.id === 'probhat');
+  expect(probhat, 'legacy import fixture must retain the Probhat source mapping').toBeDefined();
+  const probhatMap = probhat!.map;
   const name: Record<string, string> = { '`': 'Grave', '~': 'Tilde', '!': 'Exclaim', '@': 'At', '#': 'Hash', $: 'Dollar', '%': 'Percent', '^': 'Circum', '&': 'Ampersand', '*': 'Asterisk', '(': 'ParenLeft', ')': 'ParenRight', '-': 'Minus', _: 'UnderScore', '=': 'Equals', '+': 'Plus', '[': 'BracketLeft', ']': 'BracketRight', '{': 'BraceLeft', '}': 'BraceRight', '\\': 'BackSlash', '|': 'Bar', ';': 'Semicolon', ':': 'Colon', "'": 'Apostrophe', '"': 'Quote', ',': 'Comma', '<': 'Less', '.': 'Period', '>': 'Greater', '/': 'Slash', '?': 'Question' };
   const US: Record<string, string> = { Backquote: '`~', Digit1: '1!', Digit2: '2@', Digit3: '3#', Digit4: '4$', Digit5: '5%', Digit6: '6^', Digit7: '7&', Digit8: '8*', Digit9: '9(', Digit0: '0)', Minus: '-_', Equal: '=+', BracketLeft: '[{', BracketRight: ']}', Backslash: '\\|', Semicolon: ';:', Quote: '\'"', Comma: ',<', Period: '.>', Slash: '/?' };
   const layout: Record<string, string> = {};
-  for (const [code, v] of Object.entries(probhat.map)) {
+  for (const [code, v] of Object.entries(probhatMap)) {
     if (code.startsWith('Numpad')) {
       layout['Num' + code.slice(6)] = v[0];
       continue;
@@ -186,7 +189,7 @@ describe('OpenBangla .json', () => {
     expect(L.name).toBe('Probhat');
     expect(L.dev).toBe('Shabab Mustafa');
     const pad = (v: string[] = []) => [...v, '', '', ''].slice(0, code4(v)).join('|');
-    for (const [code, v] of Object.entries(probhat.map)) expect(pad(L.map[code]), code).toBe(pad(v));
+    for (const [code, v] of Object.entries(probhatMap)) expect(pad(L.map[code]), code).toBe(pad(v));
   });
   it('refuses phonetic layouts and other JSON', () => {
     expect(() => parseOpenBanglaLayout(JSON.stringify({ info: { type: 'phonetic' }, layout: {} }))).toThrow();

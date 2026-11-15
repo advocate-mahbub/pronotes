@@ -19,8 +19,12 @@ async function open(page: Page, opts: { layout?: string; vf?: boolean; oldReph?:
 }
 
 test.describe('Tiptap editor types exactly like v8 (golden sequences)', () => {
+  // Only the four approved layouts are offered; "bornona" stays selectable (hidden) for these checks.
+  // The other v8 layouts in sequences.json are no longer part of the app.
+  const OFFERED = new Set(['bornona', 'pronotes', 'pronotes-phonetic', 'bijoy-classic', 'unibijoy']);
   for (const s of sequences) {
     test(`${s.layout} vf=${s.vf} oldReph=${s.oldReph} → ${s.output}`, async ({ page }) => {
+      test.skip(!OFFERED.has(s.layout), `${s.layout} is not one of the approved layouts`);
       await open(page, { layout: s.layout, vf: s.vf, oldReph: s.oldReph });
       for (const k of s.keys) await page.keyboard.press(k);
       expect(await text(page)).toBe(s.output);
