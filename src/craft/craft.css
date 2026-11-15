@@ -1,0 +1,28 @@
+/* "অ্যাপস" workspace (src/craft). Uses ProNotes' colours; every class starts with craft- so nothing else changes. */
+.craft { flex: 1; min-height: 0; display: flex; flex-direction: column; gap: 10px; padding: 10px; overflow: auto; }
+.craft-running { overflow: hidden; padding: 6px; gap: 6px; }
+.craft-bar { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.craft-bar .btn.on { background: var(--accent-soft); }
+.craft-spacer { flex: 1; }
+.craft-status { font-size: 13px; color: var(--muted); }
+.craft-status.ready { color: #2e7d32; }
+.craft-status.dirty, .craft-status.slow { color: #b26a00; }
+.craft-status.failed, .craft-status.missing { color: #c62828; }
+.craft-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 10px; }
+.craft-card { display: flex; flex-direction: column; align-items: flex-start; gap: 4px; min-height: 96px; padding: 14px; text-align: left;
+  border: 1px solid var(--line); border-radius: 12px; background: var(--sheet); color: var(--fg); cursor: pointer; font: 500 15px var(--f-sans); }
+.craft-card strong { font-size: 17px; }
+.craft-card small, .craft-note, .craft-files small { color: var(--muted); font-size: 12px; }
+.craft-card:hover, .craft-card:focus-visible { border-color: var(--gold); }
+.craft-h { margin: 8px 0 0; font: 600 15px var(--f-sans); }
+.craft-note { margin: 0; }
+.craft-error { margin: 0; padding: 8px 10px; border-radius: 8px; background: #fdecea; color: #8a1c1c; font-size: 14px; }
+.craft-files { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.craft-files li { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; padding: 8px; border: 1px solid var(--line); border-radius: 8px; background: var(--sheet); }
+.craft-files .craft-empty { color: var(--muted); font-size: 14px; }
+.craft-file-name { flex: 1 1 160px; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 500; }
+.craft-file-actions { display: flex; gap: 4px; }
+.craft-stage { flex: 1; min-height: 0; display: flex; gap: 6px; }
+.craft-side { width: 300px; flex: none; overflow: auto; }
+.craft-frame { flex: 1; min-width: 0; width: 100%; height: 100%; border: 1px solid var(--line); border-radius: 8px; background: #e6e6e6; }
+@media (max-width: 700px) { .craft-side { position: absolute; z-index: 5; width: min(320px, 90vw); max-height: 70%; background: var(--bg); padding: 6px; border-radius: 8px; box-shadow: 0 6px 24px rgba(0,0,0,.2); } }

@@ -28,6 +28,8 @@ import { DEFAULT_FORMAT, type DocFormat } from '../docx-export/format';
 import { Sidebar } from './Sidebar';
 import { Workspace, type SaveState } from './Workspace';
 import { LawDictionary } from './LawDictionary';
+import { CraftWorkspace } from '../craft/CraftWorkspace';
+import { craftApp } from '../craft/bridge';
 import { load, save, allPrefs, restorePrefs } from './prefs';
 import { I18nContext, setUiLangGlobal, translate, tr, type UiLang } from '../i18n';
 import { LOCAL_UNI, WEB_FONTS, ENGLISH_FONTS, isFontAvailable } from '../fonts';
@@ -92,6 +94,12 @@ export function App() {
   const [kbPhone, setKbPhone] = useState(() => load('kbPhone', false));
   const [sideOpen, setSideOpen] = useState(() => load('side', true));
   const [lawDictionaryOpen, setLawDictionaryOpen] = useState(false);
+  // Craft apps workspace; ?app=wordcraft (the /word/ address) opens straight into that app
+  const [craftStart] = useState(() => (typeof location === 'undefined' ? null : new URLSearchParams(location.search).get('app')));
+  const [craftOpen, setCraftOpen] = useState(() => !!craftApp(craftStart));
+  useEffect(() => {
+    if (craftStart) history.replaceState(null, '', location.pathname + location.hash);
+  }, [craftStart]);
   const [format, setFormat] = useState<DocFormat>(() => ({ ...DEFAULT_FORMAT, ...load<Partial<DocFormat>>('format', {}) }));
   const [voice, setVoice] = useState<VoicePrefs>(() => ({ ...DEFAULT_VOICE_PREFS, ...load<Partial<VoicePrefs>>('voice', {}) }));
   const [autoBijoy, setAutoBijoy] = useState(() => load('autoBijoy', true));
@@ -626,7 +634,12 @@ export function App() {
   const sidebar = (
     <Sidebar top={
       <>
-        <div className="side-brand">ProNotes</div>
+        <div className="side-brand">
+          <picture>
+            <source media="(prefers-color-scheme: dark)" srcSet="./branding/brand-dark.svg" />
+            <img className="brand-logo" src={theme === 'dark' ? './branding/brand-dark.svg' : './branding/brand-light.svg'} alt="ProNotes" />
+          </picture>
+        </div>
         {phone && <label className="side-layout">{t('কিবোর্ড লেআউট')}{layoutSelect}</label>}
       </>
     } docs={docs} trash={trash} folders={folders} currentId={current?.id ?? null} view={view} setView={setView} kindIcon={KIND_ICON} kindLabel={KIND_LABEL}
@@ -657,10 +670,13 @@ export function App() {
 
   return (
     <I18nContext.Provider value={i18n}>
-    <div className={'app' + (!lawDictionaryOpen && showSide && wide ? ' with-side' : '')}>
+    <div className={'app' + (!lawDictionaryOpen && !craftOpen && showSide && wide ? ' with-side' : '')}>
       <header className="top">
         <div className="brand" id="title-slot">
-          {!current && <span className="name">ProNotes</span>}
+          {!current && <picture className="brand-picture">
+            <source media="(prefers-color-scheme: dark)" srcSet="./branding/brand-dark.svg" />
+            <img className="brand-logo" src={theme === 'dark' ? './branding/brand-dark.svg' : './branding/brand-light.svg'} alt="ProNotes" />
+          </picture>}
         </div>
         {/* quiet: a small ✓ when saved; words only while saving fails */}
         <span className={'status ' + saveState} data-testid="save-status" role="status" title={statusText}>{statusText}</span>
@@ -669,7 +685,8 @@ export function App() {
           title={t(bangla ? 'টাইপ: বাংলা — চাপলে English' : 'টাইপ: English — চাপলে বাংলা')}
           aria-label={t(bangla ? 'টাইপ: বাংলা — চাপলে English' : 'টাইপ: English — চাপলে বাংলা')}
           onPointerDown={(e) => e.preventDefault()} onClick={() => setBangla((b) => !b)}>{bangla ? 'বা' : 'e'}</button>
-        <button type="button" className={'tb' + (lawDictionaryOpen ? ' on' : '')} title="ProNotes Law Dictionary" aria-label="ProNotes Law Dictionary" data-testid="law-dictionary-toggle" onClick={() => setLawDictionaryOpen((v) => !v)}>⚖</button>
+        <button type="button" className={'tb' + (lawDictionaryOpen ? ' on' : '')} title="ProNotes Law Dictionary" aria-label="ProNotes Law Dictionary" data-testid="law-dictionary-toggle" onClick={() => { setCraftOpen(false); setLawDictionaryOpen((v) => !v); }}>⚖</button>
+        <button type="button" className={'tb' + (craftOpen ? ' on' : '')} title={t('অ্যাপস: Word, PDF, Sheet, Slides')} aria-label={t('অ্যাপস: Word, PDF, Sheet, Slides')} data-testid="craft-toggle" onClick={() => { setLawDictionaryOpen(false); setCraftOpen((v) => !v); }}>▦</button>
         <button type="button" className="tb theme" data-testid="theme" data-theme-mode={theme} title={t(themeLabel[theme])} aria-label={t(themeLabel[theme])}
           onClick={() => setTheme(themeNext[theme])}>{THEME_ICON[theme]}</button>
         <button type="button" className={'tb' + (settingsOpen ? ' on' : '')} title={t('সেটিংস')} aria-label={t('সেটিংস')} data-testid="settings"
@@ -677,9 +694,9 @@ export function App() {
       </header>
 
       <div className="body">
-        {!lawDictionaryOpen && showSide && (wide ? sidebar : <div className="drawer" onClick={(e) => e.target === e.currentTarget && setSideOpen(false)}>{sidebar}</div>)}
+        {!lawDictionaryOpen && !craftOpen && showSide && (wide ? sidebar : <div className="drawer" onClick={(e) => e.target === e.currentTarget && setSideOpen(false)}>{sidebar}</div>)}
         <div className="work">
-          {lawDictionaryOpen ? <LawDictionary onClose={() => setLawDictionaryOpen(false)} /> : current && (
+          {craftOpen ? <CraftWorkspace initialApp={craftStart} onClose={() => setCraftOpen(false)} say={say} /> : lawDictionaryOpen ? <LawDictionary onClose={() => setLawDictionaryOpen(false)} /> : current && (
             <Workspace key={current.id + ':' + reloadKey} doc={current} map={map} phonetic={layoutId === 'pronotes-phonetic'} bangla={bangla} vowelForming={vf} oldReph={oldReph}
               kbVisible={kbVisible} coarse={coarse} phone={phone} voiceEngine={voiceEngine === 'auto' ? (geminiKey ? 'ai' : 'device') : voiceEngine} bank={bank.current} bankVersion={bankVersion} onBankChanged={onBankChanged}
               onToggleLanguage={() => setBangla((b) => !b)} onSave={onSave}

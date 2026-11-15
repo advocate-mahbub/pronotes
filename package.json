@@ -16,7 +16,10 @@
     "test:e2e": "playwright test",
     "golden": "node tools/gen-golden.mjs",
     "preview:file": "node tools/make-preview.mjs",
-    "icons": "node tools/make-icons.mjs"
+    "icons": "node tools/make-icons.mjs",
+    "craft:fetch": "node tools/fetch-craft-apps.mjs public",
+    "craft:dist": "node tools/fetch-craft-apps.mjs dist",
+    "craft:check": "node tools/check-craft-updates.mjs"
   },
   "dependencies": {
     "@fontsource/hind-siliguri": "5.3.0",

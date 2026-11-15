@@ -45,6 +45,8 @@ export function allPrefs(): Record<string, unknown> {
 export function restorePrefs(store: Record<string, unknown>): number {
   let n = 0;
   for (const [k, v] of Object.entries(store)) {
+    // Consent is a user decision, never an importable preference. Backup files are untrusted.
+    if (/consent$/i.test(k)) continue;
     if (!/^[\w.-]{1,64}$/.test(k) || v === undefined) continue;
     try {
       localStorage.setItem(P + k, JSON.stringify(v));

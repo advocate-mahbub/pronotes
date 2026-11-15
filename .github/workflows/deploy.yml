@@ -26,6 +26,13 @@ jobs:
       - run: npm run typecheck
       - run: npm test
       - run: npm run build
+      # Craft apps (src/craft/apps.json): official web zips, checked against their SHA-256, into dist/apps/
+      - uses: actions/cache@v4
+        with:
+          path: .craft-cache
+          key: craft-${{ hashFiles('src/craft/apps.json') }}
+          restore-keys: craft-
+      - run: npm run craft:dist
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:

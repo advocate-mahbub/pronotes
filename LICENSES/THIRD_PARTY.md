@@ -32,3 +32,11 @@ users upload their own licensed copy in the app.
 - লাইসেন্স: repo-তে ঘোষণা নেই। repo-র নোট: "শব্দ-বানান তথ্যগত (factual) ডেটা। hunspell bn_BD: LGPL/GPL/MPL ট্রাই-লাইসেন্স।" শব্দের উৎস হিসেবে আরও আছে Banan Andolon অ্যাপ ও বাংলা একাডেমি আধুনিক বাংলা অভিধানের শিরোনাম-শব্দ।
 - ProNotes-এ রাখার সিদ্ধান্ত মালিকের (decision 56)। অনুমতি যাচাই হয়নি; নির্মাতার কাছ থেকে লিখিত লাইসেন্স পেলে এখানে যোগ করুন।
 - ProNotes-এর "সর্বস্বত্ব সংরক্ষিত" লাইসেন্স এই তালিকায় খাটে না।
+
+## Craft অ্যাপস (`/apps/<id>/<version>/`, তালিকা: `src/craft/apps.json`)
+| জিনিস | লাইসেন্স | কোথায় |
+|---|---|---|
+| WordCraft, PdfCraft, GridCraft, DeckCraft — ArtCraft দলের অফিসিয়াল web build (storytold/…) | MIT অথবা Apache-2.0 (কোড); ভেতরের ফন্ট SIL OFL 1.1 | deploy-এর সময় GitHub release থেকে নামিয়ে SHA-256 মিলিয়ে **অপরিবর্তিত** অবস্থায় রাখা হয়; প্রতিটি app-ফোল্ডারে তার নিজের `LICENSE-MIT`, `LICENSE-APACHE`, `NOTICE`, `ATTRIBUTION.md` ও `OFL-*.txt` থাকে |
+
+- ArtCraft নাম, wordmark ও logo তাদের trademark; এই লাইসেন্সের আওতায় নয়। ProNotes এগুলো নিজের branding হিসেবে ব্যবহার করে না; শুধু অ্যাপ চেনাতে নাম দেখায়। কোনো build বদলালে (যেমন বাংলা ফন্ট যোগ করে নিজে build করলে) তাদের logo সরাতে হবে।
+- ProNotes-এর "সর্বস্বত্ব সংরক্ষিত" লাইসেন্স এই অ্যাপগুলোর ওপর খাটে না।

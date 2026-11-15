@@ -29,6 +29,9 @@ test('manifest, icons and Apple home-screen tags are in place', async ({ page, r
   for (const i of m.icons) expect((await request.get(i.src)).status()).toBe(200);
   expect(await page.locator('link[rel=apple-touch-icon]').count()).toBe(1);
   expect(await page.locator('meta[name=apple-mobile-web-app-capable]').getAttribute('content')).toBe('yes');
+  expect(await page.locator('.top .brand img.brand-logo').getAttribute('alt')).toBe('ProNotes');
+  expect((await request.get('./branding/brand-light.svg')).status()).toBe(200);
+  expect((await request.get('./branding/brand-dark.svg')).status()).toBe(200);
 });
 
 test('no request leaves for Google Fonts or any other host', async ({ page }) => {

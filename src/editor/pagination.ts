@@ -243,7 +243,11 @@ export const Pagination = Extension.create<Opts>({
         view(view) {
           let timer: ReturnType<typeof setTimeout> | undefined;
           let frame = 0;
+          // a late fonts.ready / pn-relayout must not measure an editor that is already gone
+          // (e.g. after switching to the Law Dictionary or the Apps workspace)
+          let destroyed = false;
           const run = () => {
+            if (destroyed) return;
             const L = getLayout();
             const cur = paginationKey.getState(view.state)!;
             if (!L.on) {
@@ -254,6 +258,7 @@ export const Pagination = Extension.create<Opts>({
             if (!same(cur, next)) view.dispatch(view.state.tr.setMeta(paginationKey, next).setMeta('addToHistory', false));
           };
           const schedule = (delay = 120) => {
+            if (destroyed) return;
             clearTimeout(timer);
             cancelAnimationFrame(frame);
             timer = setTimeout(() => (frame = requestAnimationFrame(run)), delay);
@@ -268,6 +273,7 @@ export const Pagination = Extension.create<Opts>({
               if (v.state.doc !== prev.doc || paginationKey.getState(v.state)?.v === 0) schedule();
             },
             destroy() {
+              destroyed = true;
               clearTimeout(timer);
               cancelAnimationFrame(frame);
               window.removeEventListener('resize', onResize);

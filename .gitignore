@@ -8,3 +8,6 @@ playwright-report/
 dist-preview/
 i18n-missing.json
 tsconfig.tsbuildinfo
+# Craft app builds: fetched at build time, never committed (tools/fetch-craft-apps.mjs)
+public/apps/
+.craft-cache/

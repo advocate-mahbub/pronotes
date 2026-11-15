@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg"
+     xmlns:xlink="http://www.w3.org/1999/xlink"
+     width="440" height="120" viewBox="0 0 440 120"
+     role="img" aria-labelledby="title desc">
+  <title id="title">ProNotes Primary Logo Light</title>
+  <desc id="desc">ProNotes folded-paper P mark, using the corrected reference proportions.</desc>
+  
+<defs>
+  <path id="page" d="M0 31 H70 V116 H0 Z"/>
+  <path id="fold" d="M26 84 H70 V116 Z"/>
+  <path id="p" d="M26 0 H58
+    C87 0 110 18.8 110 42
+    C110 65.2 87 84 58 84
+    H26 Z"/>
+</defs>
+
+  <rect width="440" height="120" fill="#FFFFFF"/>
+    <g transform="translate(0 2) scale(1)">
+      <use href="#page" xlink:href="#page" fill="#D9DADD"/>
+      <use href="#fold" xlink:href="#fold" fill="#D4A017"/>
+      <use href="#p" xlink:href="#p" fill="#0B1F4B"/>
+    </g><text x="130" y="82" font-family="Manrope, Inter, Arial, sans-serif" font-size="39" font-weight="700" letter-spacing="-1.2" fill="#0B1F4B">ProNotes</text>
+</svg>

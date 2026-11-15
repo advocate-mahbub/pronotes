@@ -1,0 +1,50 @@
+{
+  "schema": 1,
+  "note": "Craft apps hosted under /apps/<id>/<version>/. Checked by tests/unit/craft.test.ts; updated by tools/check-craft-updates.mjs (a PR, never straight to main). New apps arrive with enabled=false: test them on the iPad first, then switch them on.",
+  "apps": [
+    {
+      "id": "wordcraft",
+      "name": "WordCraft",
+      "label": "ওয়ার্ড প্রসেসর",
+      "repo": "storytold/wordcraft",
+      "version": "0.18.1",
+      "sha256": "3daa7c2d1f209a7eeb2527fcefa3fe31e875848fb1970d68f54edae55fe0bc9f",
+      "bridge": "parent",
+      "accept": ".docx,.doc,.odt,.rtf,.html,.md,.tex,.txt,.wordcraft",
+      "enabled": true
+    },
+    {
+      "id": "pdfcraft",
+      "name": "PdfCraft",
+      "label": "PDF ওয়ার্কবেঞ্চ",
+      "repo": "storytold/pdfcraft",
+      "version": "0.21.1",
+      "sha256": "fe9708d46af191aebb56f70eb32cf8b112b0b9452d17ae6ba3a8c4a8665fe748",
+      "bridge": "none",
+      "accept": ".pdf",
+      "enabled": true
+    },
+    {
+      "id": "gridcraft",
+      "name": "GridCraft",
+      "label": "স্প্রেডশিট",
+      "repo": "storytold/gridcraft",
+      "version": "0.19.1",
+      "sha256": "48c5d1b101befebb3c5ba3b7a14914f01c3207934813ed07dc4251b7ae116a78",
+      "bridge": "parent",
+      "accept": ".xlsx,.xlsb,.xls,.ods,.csv,.tsv,.gridcraft",
+      "enabled": true
+    },
+    {
+      "id": "deckcraft",
+      "name": "DeckCraft",
+      "label": "প্রেজেন্টেশন",
+      "repo": "storytold/deckcraft",
+      "version": "0.18.1",
+      "sha256": "3196e537fcfab538aaa2e88584bc74e29bb584459b916ab584ac22fbafe32db5",
+      "bridge": "parent",
+      "accept": ".pptx,.potx,.ppsx,.deckcraft,.txt,.md,.rtf",
+      "enabled": true
+    }
+  ]
+}
