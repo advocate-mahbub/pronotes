@@ -113,8 +113,8 @@ test.describe('layout lists in Settings (touch screen)', () => {
     await unibijoy.tap();
     await expect(unibijoy).not.toBeChecked();
     await expect(box.locator('option[value="unibijoy"]')).toHaveCount(0);
-    // the desktop list is separate
-    await expect(page.getByTestId('layout-enabled-desktop-unibijoy')).toBeChecked();
+    // only this device's list is shown (the computer's list is changed on the computer)
+    await expect(page.getByTestId('layout-enabled-desktop-unibijoy')).toHaveCount(0);
     for (const id of ids.filter((x) => x !== 'unibijoy' && x !== 'pronotes')) await page.getByTestId('layout-enabled-mobile-' + id).tap();
     const last = page.getByTestId('layout-enabled-mobile-pronotes');
     await expect(last).toBeChecked();
@@ -126,4 +126,26 @@ test.describe('layout lists in Settings (touch screen)', () => {
     await expect(page.getByTestId('layout')).toHaveValue(/^custom-/);
     await expect(page.getByTestId('layout').locator('option[value="unibijoy"]')).toHaveCount(0);
   });
+});
+
+test('on a computer only the computer\'s layout list is shown', async ({ page }) => {
+  await page.goto('./');
+  await expect(editor(page)).toBeVisible();
+  await section(page, 'কিবোর্ড ও টাইপিং');
+  await expect(page.getByTestId('layout-enabled-desktop-unibijoy')).toBeVisible();
+  await expect(page.getByTestId('layout-enabled-mobile-unibijoy')).toHaveCount(0);
+});
+
+test('"কিবোর্ড ও টাইপিং" folds, and stays folded next time', async ({ page }) => {
+  await page.goto('./');
+  await expect(editor(page)).toBeVisible();
+  await page.getByTestId('settings').click();
+  const kb = page.getByTestId('settings-keyboard');
+  await expect(page.getByTestId('layout-add-btn')).toBeVisible();
+  await kb.locator(':scope > summary').click();
+  await expect(page.getByTestId('layout-add-btn')).toBeHidden();
+  await page.reload();
+  await page.getByTestId('settings').click();
+  await expect(page.getByTestId('settings-keyboard')).not.toHaveAttribute('open', '');
+  await expect(page.getByTestId('layout-add-btn')).toBeHidden();
 });

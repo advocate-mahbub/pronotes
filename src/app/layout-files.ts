@@ -71,7 +71,7 @@ export async function readLayoutFile(file: File): Promise<NewLayout[]> {
     if (!out.length) throw new Error(MSG.kmpBad);
     return out;
   }
-  const txt = new TextDecoder('utf-8').decode(buf);
+  const txt = decodeText(buf);
   if (/^\s*[{[]/.test(txt.replace(/^\uFEFF/, ''))) {
     try {
       return [{ ...parseOpenBanglaLayout(txt), format: 'openbangla', notes: [] }];
@@ -86,4 +86,27 @@ export async function readLayoutFile(file: File): Promise<NewLayout[]> {
   }
 }
 
+/**
+ * Text of a layout file in UTF-8 or UTF-16 (Avro's own Layout Editor saves .avrolayout as UTF-16
+ * with a byte-order mark; a UTF-16 file read as UTF-8 looked "unreadable").
+ */
+export function decodeText(buf: ArrayBuffer): string {
+  const b = new Uint8Array(buf);
+  if (b[0] === 0xff && b[1] === 0xfe) return new TextDecoder('utf-16le').decode(b.subarray(2));
+  if (b[0] === 0xfe && b[1] === 0xff) return new TextDecoder('utf-16be').decode(b.subarray(2));
+  if (b[0] === 0xef && b[1] === 0xbb && b[2] === 0xbf) return new TextDecoder('utf-8').decode(b.subarray(3));
+  // UTF-16 without a mark: every other byte of "<?xml" / "{" is zero
+  if (b.length > 3 && b[1] === 0 && b[3] === 0 && b[0] !== 0) return new TextDecoder('utf-16le').decode(b);
+  if (b.length > 3 && b[0] === 0 && b[2] === 0 && b[1] !== 0) return new TextDecoder('utf-16be').decode(b);
+  return new TextDecoder('utf-8').decode(b);
+}
+
 export const LAYOUT_ACCEPT = '.avrolayout,.xml,text/xml,.json,application/json,.kmx,.kmp';
+
+/**
+ * iPhone/iPad: the file picker greys out files whose kind it does not know (.avrolayout, .kmx, .kmp),
+ * so there it shows every file and ProNotes tells the kind from the content (readLayoutFile).
+ */
+export const isAppleTouch = (): boolean =>
+  typeof navigator !== 'undefined' && (/iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1));
+export const layoutAccept = (): string | undefined => (isAppleTouch() ? undefined : LAYOUT_ACCEPT);

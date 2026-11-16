@@ -222,3 +222,17 @@ describe('OpenBangla .json', () => {
     await expect(readLayoutFile(new File([await empty.generateAsync({ type: 'arraybuffer' })], 'e.kmp'))).rejects.toThrow('.kmx');
   });
 });
+
+describe('layout files saved as UTF-16 (Avro Layout Editor)', () => {
+  it('reads an .avrolayout in UTF-16 with or without a byte-order mark', async () => {
+    const { decodeText } = await import('../../src/app/layout-files');
+    const xml = '<?xml version="1.0" encoding="UTF-16"?><Layout>বর্ণনা</Layout>';
+    const le = new Uint8Array(xml.length * 2);
+    for (let i = 0; i < xml.length; i++) { le[2 * i] = xml.charCodeAt(i) & 0xff; le[2 * i + 1] = xml.charCodeAt(i) >> 8; }
+    const be = le.map((_, i) => le[i % 2 ? i - 1 : i + 1]);
+    expect(decodeText(new Uint8Array([0xff, 0xfe, ...le]).buffer)).toBe(xml);
+    expect(decodeText(le.buffer)).toBe(xml);
+    expect(decodeText(new Uint8Array([0xfe, 0xff, ...be]).buffer)).toBe(xml);
+    expect(decodeText(new TextEncoder().encode(xml).buffer as ArrayBuffer)).toBe(xml);
+  });
+});
