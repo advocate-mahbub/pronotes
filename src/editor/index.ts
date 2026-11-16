@@ -8,3 +8,4 @@ export * from './ansi-typing';
 export * from './text-map';
 export * from './table-tools';
 export * from './rules-typing';
+export * from './word-shortcuts';

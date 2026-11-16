@@ -5,7 +5,7 @@ import { EN } from '../../src/i18n/en';
 import { translate } from '../../src/i18n';
 import { ERRORS_FOR_I18N, decideVoice } from '../../src/voice';
 import { PASTE_MSG_HTML, PASTE_MSG_TEXT } from '../../src/bijoy';
-import { PARAGRAPH_STYLES, TABLE_STYLES, QUICK_TABLES } from '../../src/editor';
+import { PARAGRAPH_STYLES, TABLE_STYLES, QUICK_TABLES, WORD_SHORTCUTS } from '../../src/editor';
 import { ANSI_KEYS, KMX_NOTES } from '../../src/bornona-engine';
 import { LAYOUT_MSG } from '../../src/app/layout-files';
 import { fixBrokenBangla } from '../../src/convert';
@@ -33,6 +33,7 @@ export function uiKeys(): string[] {
     for (const m of src.matchAll(/(?:LABEL|Label|statusText|themeLabel|LANG_NAMES)[^=]*=\s*(?:t\()?\{([^}]*)\}/g))
       for (const v of m[1].matchAll(/'((?:[^'\\]|\\.)*)'/g)) if (BN.test(v[1])) keys.add(v[1]);
   }
+  for (const s of WORD_SHORTCUTS) if (BN.test(s.what)) keys.add(s.what);
   for (const s of PARAGRAPH_STYLES) keys.add(s.label);
   for (const s of [...TABLE_STYLES, ...QUICK_TABLES]) keys.add(s.label);
   for (const x of [...TASKS.map((x) => x.label), ...Object.values(KIND_LABEL), ...Object.values(AI_ERROR_TEXT)]) keys.add(x);

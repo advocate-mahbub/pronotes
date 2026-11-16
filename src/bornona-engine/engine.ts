@@ -45,7 +45,8 @@ export function isToggleKey(ev: KeyInput, k: ToggleKey = 'ctrl+space'): boolean 
   const onlyCtrl = ev.ctrlKey && !ev.altKey && !ev.metaKey && !ev.shiftKey;
   switch (k) {
     case 'ctrl+space':
-      return ev.ctrlKey && !ev.altKey && !ev.metaKey && (ev.code === 'Space' || ev.key === ' ');
+      // Ctrl+Shift+Space is Word's nonbreaking space
+      return ev.ctrlKey && !ev.altKey && !ev.metaKey && !ev.shiftKey && (ev.code === 'Space' || ev.key === ' ');
     case 'f12':
       return ev.code === 'F12' && !ev.ctrlKey && !ev.altKey && !ev.metaKey;
     case 'ctrl+m':
