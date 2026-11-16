@@ -12,6 +12,8 @@ interface Props {
   setOutput: (m: OutputMode) => void;
   onExport: (f: ExportFormat, mode: 'save' | 'share') => void;
   onPrint: () => void;
+  /** Open this draft in WordCraft (as .docx). */
+  onOpenWordCraft?: () => void;
 }
 
 const ROWS: { id: ExportFormat; label: string; note?: string }[] = [
@@ -25,7 +27,7 @@ const ROWS: { id: ExportFormat; label: string; note?: string }[] = [
   { id: 'png', label: 'ছবি (.png)', note: 'প্রতি পাতা একটা ছবি; একাধিক পাতা হলে .zip' },
 ];
 
-export function ShareMenu({ output, setOutput, onExport, onPrint }: Props) {
+export function ShareMenu({ output, setOutput, onExport, onPrint, onOpenWordCraft }: Props) {
   const { t } = useT();
   const [share] = useState(canShareFiles);
   return (
@@ -39,6 +41,11 @@ export function ShareMenu({ output, setOutput, onExport, onPrint }: Props) {
               <button type="button" aria-pressed={output === 'ansi'} data-testid="out-ansi" onClick={() => setOutput('ansi')}>{t('বিজয় (ANSI)')}</button>
             </div>
           </div>
+          {onOpenWordCraft && (
+            <button type="button" className="btn small share-wordcraft" data-testid="open-wordcraft" onClick={() => { close(); onOpenWordCraft(); }}>
+              {t('WordCraft-এ খুলুন')}<small>{t('Word-এর মতো পাতা সাজিয়ে দেখা ও export; খসড়া এখানে যেমন আছে তেমনই থাকে')}</small>
+            </button>
+          )}
           <ul>
             {ROWS.map((r) => (
               <li key={r.id}>

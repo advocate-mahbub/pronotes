@@ -11,7 +11,8 @@
       "sha256": "3daa7c2d1f209a7eeb2527fcefa3fe31e875848fb1970d68f54edae55fe0bc9f",
       "bridge": "parent",
       "accept": ".docx,.doc,.odt,.rtf,.html,.md,.tex,.txt,.wordcraft",
-      "enabled": true
+      "enabled": true,
+      "fonts": true
     },
     {
       "id": "photocraft",

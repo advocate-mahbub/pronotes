@@ -7,7 +7,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useT } from '../i18n';
 import { saveFile } from '../storage/download';
-import { craftApp, craftAppUrl, enabledCraftApps, openMessage, readBridgeMessage, runCommand, type CraftApp } from './bridge';
+import { callCommand, craftApp, craftAppUrl, enabledCraftApps, listedFamilies, manifestFonts, openMessage, readBridgeMessage, runCommand, type CraftApp } from './bridge';
 import { deleteCraftFile, getCraftFile, listCraftFiles, saveCraftFile, type CraftFileInfo } from './store';
 import './craft.css';
 
@@ -17,7 +17,33 @@ const SLOW_MS = 45_000;
 const kb = (n: number) => (n < 1024 * 1024 ? `${Math.max(1, Math.round(n / 1024))} KB` : `${(n / 1024 / 1024).toFixed(1)} MB`);
 const when = (t: number) => new Date(t).toLocaleString();
 
-export function CraftWorkspace({ initialApp, onClose, say }: { initialApp?: string | null; onClose: () => void; say: (m: string, v?: Record<string, string | number>) => void }) {
+/** A file to open as soon as the app is ready (e.g. the draft sent from ProNotes as .docx). */
+export interface CraftOpenFile { name: string; bytes: ArrayBuffer }
+
+/**
+ * Fonts for apps that add fonts through their own command (WordCraft: font.add): the files listed in
+ * the app folder's fonts/manifest.txt (craft-fonts/, e.g. Noto Sans Bengali) are added once; the app
+ * keeps them on this device, so the next start skips them.
+ */
+async function addBanglaFonts(frame: HTMLIFrameElement | null, app: CraftApp): Promise<void> {
+  if (!app.fonts || app.bridge !== 'parent') return;
+  const base = craftAppUrl({ ...app, bridge: 'none' }, document.baseURI).replace(/index\.html$/, '');
+  const res = await fetch(base + 'fonts/manifest.txt');
+  if (!res.ok) return;
+  const have = listedFamilies(await callCommand(frame, app.id, 'font.list', {}));
+  for (const f of manifestFonts(await res.text())) {
+    if (have.has(f.family)) continue;
+    const file = await fetch(base + f.file);
+    if (!file.ok) continue;
+    const bytes = new Uint8Array(await file.arrayBuffer());
+    let bin = '';
+    for (let i = 0; i < bytes.length; i += 0x8000) bin += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
+    await callCommand(frame, app.id, 'font.add', { data: btoa(bin), name: f.file.split('/').pop() });
+    have.add(f.family);
+  }
+}
+
+export function CraftWorkspace({ initialApp, initialFile, onClose, say }: { initialApp?: string | null; initialFile?: CraftOpenFile | null; onClose: () => void; say: (m: string, v?: Record<string, string | number>) => void }) {
   const { t } = useT();
   const [app, setApp] = useState<CraftApp | null>(() => craftApp(initialApp) ?? null);
   const [files, setFiles] = useState<CraftFileInfo[]>([]);
@@ -27,7 +53,7 @@ export function CraftWorkspace({ initialApp, onClose, say }: { initialApp?: stri
   const [dirty, setDirty] = useState(false);
   const frame = useRef<HTMLIFrameElement>(null);
   const ready = useRef(false);
-  const pending = useRef<{ name: string; bytes: ArrayBuffer } | null>(null);
+  const pending = useRef<{ name: string; bytes: ArrayBuffer } | null>(initialFile ?? null);
 
   const refresh = useCallback(async () => {
     try { setFiles(await listCraftFiles(app?.id)); } catch { setFiles([]); }
@@ -66,9 +92,10 @@ export function CraftWorkspace({ initialApp, onClose, say }: { initialApp?: stri
       if (ev.kind === 'ready') {
         ready.current = true;
         setStatus('ready');
+        // Bangla font first (so the document is drawn with it), then the waiting file or a blank one
+        await addBanglaFonts(frame.current, app).catch(() => {});
         const p = pending.current;
         pending.current = null;
-        // in host mode the app starts with no document: open the waiting file, or a blank one
         if (p) send(p.name, p.bytes);
         else void runCommand(frame.current, app.id, 'file.new').catch(() => {});
       } else if (ev.kind === 'save') {

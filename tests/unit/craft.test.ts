@@ -1,6 +1,6 @@
 import 'fake-indexeddb/auto';
 import { describe, it, expect, beforeEach } from 'vitest';
-import { CRAFT_APPS, craftApp, craftAppUrl, openMessage, readBridgeMessage, safeName } from '../../src/craft/bridge';
+import { CRAFT_APPS, craftApp, craftAppUrl, listedFamilies, manifestFonts, openMessage, readBridgeMessage, safeName } from '../../src/craft/bridge';
 import { deleteCraftFile, getCraftFile, listCraftFiles, resetCraftDbForTests, saveCraftFile } from '../../src/craft/store';
 import { newer } from '../../tools/check-craft-updates.mjs';
 import { zipUrl } from '../../tools/fetch-craft-apps.mjs';
@@ -55,6 +55,20 @@ describe('Craft bridge messages', () => {
   it('builds the open message', () => {
     const b = new ArrayBuffer(2);
     expect(openMessage('deckcraft', 'a.pptx', b)).toEqual({ type: 'deckcraft:open', name: 'a.pptx', bytes: b });
+  });
+});
+
+describe('Bangla fonts for the apps', () => {
+  it('reads the craft-fonts manifest, skipping comments and unsafe paths', () => {
+    const m = '# family | style | file\nNoto Sans Bengali | Regular | fonts/noto-sans-bengali/NotoSansBengali.ttf | Beng\nBad | Regular | ../x.ttf\n';
+    expect(manifestFonts(m)).toEqual([{ family: 'Noto Sans Bengali', file: 'fonts/noto-sans-bengali/NotoSansBengali.ttf' }]);
+  });
+  it('reads the families WordCraft already has (font.list)', () => {
+    expect([...listedFamilies({ folder: null, fonts: [{ faces: [{ family: 'Noto Sans Bengali', style: 'Regular' }, { family: 'Noto Sans Bengali', style: 'Bold' }] }] })]).toEqual(['Noto Sans Bengali']);
+    expect(listedFamilies(undefined).size).toBe(0);
+  });
+  it('WordCraft gets the Bangla font', () => {
+    expect(craftApp('wordcraft')?.fonts).toBe(true);
   });
 });
 
