@@ -1,0 +1,4 @@
+# Extra fonts for the Craft apps that load fonts at run time (apps.json: "fonts": true).
+# Same format as storytold/craft-fonts' fonts/manifest.txt (from which these files come):
+#   family | style | file (relative to the app folder) | scripts | licence | licence file | sha256 | source
+Noto Sans Bengali | Regular | fonts/noto-sans-bengali/NotoSansBengali.ttf | Beng | OFL-1.1 | fonts/noto-sans-bengali/OFL.txt | dcd42978094e584a849c84a51450eeac40c8826057d566ea6d4b9627a403a05a | https://github.com/google/fonts/tree/bd8f81ddb5c74d5c8897b36ad88b440266245103/ofl/notosansbengali

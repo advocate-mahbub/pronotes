@@ -18,8 +18,8 @@ describe('Craft apps manifest', () => {
       ids.add(a.id);
     }
   });
-  it('keeps the four chosen apps switched on', () => {
-    expect(CRAFT_APPS.filter((a) => a.enabled).map((a) => a.id)).toEqual(['wordcraft', 'pdfcraft', 'gridcraft', 'deckcraft']);
+  it('keeps the chosen apps switched on', () => {
+    expect(CRAFT_APPS.filter((a) => a.enabled).map((a) => a.id)).toEqual(['wordcraft', 'photocraft', 'vectorcraft', 'pdfcraft', 'gridcraft', 'deckcraft']);
   });
   it('builds the official release address and the app page address', () => {
     const w = craftApp('wordcraft')!;

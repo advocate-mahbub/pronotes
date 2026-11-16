@@ -868,4 +868,6 @@ export const EN: Record<string, string> = {
   "Caps Lock চালু থাকলে আলাদা রুল": "separate rules for Caps Lock on",
   "call() (বাইরের কোড)": "call() (outside code)",
   "mnemonic লেআউট: কী-গুলো US (ইংরেজি) কিবোর্ড ধরে নেওয়া হলো": "mnemonic layout: keys are read as a US (English) keyboard",
+  "ছবি এডিটর": "Image editor",
+  "ভেক্টর ডিজাইন": "Vector design",
 };
