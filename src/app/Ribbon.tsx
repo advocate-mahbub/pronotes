@@ -81,8 +81,11 @@ interface Painter {
   para: Record<string, unknown>;
 }
 
+/** The strike-through key shows a letter of the menu's own language. */
+const STRIKE_ICON = { bn: 'ক', en: 'abc' } as const;
+
 export function Ribbon(p: Props) {
-  const { t } = useT();
+  const { t, lang } = useT();
   const ed = p.editor;
   const [, rerender] = useReducer((x: number) => x + 1, 0);
   useEffect(() => {
@@ -270,7 +273,7 @@ export function Ribbon(p: Props) {
   );
   const moreFont = (
     <>
-      {btn(<s>ক</s>, t('কাটা দাগ'), ed.isActive('strike'), () => chain().toggleStrike().run(), 'strike')}
+      {btn(<s>{STRIKE_ICON[lang]}</s>, t('কাটা দাগ'), ed.isActive('strike'), () => chain().toggleStrike().run(), 'strike')}
       {btn(<>x<sup>2</sup></>, t('ঊর্ধ্বলিপি'), ed.isActive('superscript'), () => chain().toggleSuperscript().run(), 'sup')}
       {btn(<>x<sub>2</sub></>, t('নিম্নলিপি'), ed.isActive('subscript'), () => chain().toggleSubscript().run(), 'sub')}
       <Popover label="Aa" title={t('বড়-ছোট হাতের অক্ষর (ইংরেজি)')} testid="case">
@@ -354,7 +357,7 @@ export function Ribbon(p: Props) {
           {btn('⇤', t('Indent কমান'), false, () => chain().indentLess().run(), 'outdent')}
           {btn('⇥', t('Indent বাড়ান'), false, () => chain().indentMore().run(), 'indent')}
           {legal ? (
-            btn('১।', t('নম্বর দেওয়া অনুচ্ছেদ'), para.attrs.pstyle === 'numbered', () => toParagraph().setParagraphStyle(para.attrs.pstyle === 'numbered' ? 'normal' : 'numbered').run(), 'numbered')
+            btn(lang === 'en' ? '1.' : '১।', t('নম্বর দেওয়া অনুচ্ছেদ'), para.attrs.pstyle === 'numbered', () => toParagraph().setParagraphStyle(para.attrs.pstyle === 'numbered' ? 'normal' : 'numbered').run(), 'numbered')
           ) : (
             <>
               {btn('•', t('বুলেট তালিকা'), ed.isActive('bulletList'), () => chain().toggleBulletList().run(), 'bullets')}
@@ -451,7 +454,7 @@ export function Ribbon(p: Props) {
           if (isEnvelope(id)) return setPg({ ...envelopePage(id as 'env-10'), lang: pg.lang, textDir: pg.textDir });
           setPg({ paper: id, width: PAPERS[id].width, height: PAPERS[id].height });
         }}>
-        {paperChoices(pg.paper).map((id) => <option key={id} value={id}>{PAPERS[id].label}</option>)}
+        {paperChoices(pg.paper).map((id) => <option key={id} value={id}>{t(PAPERS[id].label)}</option>)}
         <option value="custom">{t('নিজের মাপ…')}</option>
       </select>
       {btn(t('খাড়া'), t('খাড়া (Portrait)'), pg.orientation === 'portrait', () => setPg({ orientation: 'portrait' }), 'portrait')}

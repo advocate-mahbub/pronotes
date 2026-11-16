@@ -739,7 +739,7 @@ export function App() {
         <button type="button" className="tb lang" data-testid="lang-toggle" data-lang={bangla ? 'bn' : 'en'}
           title={t(bangla ? 'টাইপ: বাংলা — চাপলে English' : 'টাইপ: English — চাপলে বাংলা')}
           aria-label={t(bangla ? 'টাইপ: বাংলা — চাপলে English' : 'টাইপ: English — চাপলে বাংলা')}
-          onPointerDown={(e) => e.preventDefault()} onClick={() => setBangla((b) => !b)}>{bangla ? 'বা' : 'e'}</button>
+          onPointerDown={(e) => e.preventDefault()} onClick={() => setBangla((b) => !b)}>{uiLang === 'en' ? (bangla ? 'BN' : 'EN') : bangla ? 'বা' : 'e'}</button>
         <button type="button" className={'tb' + (lawDictionaryOpen ? ' on' : '')} title="ProNotes Law Dictionary" aria-label="ProNotes Law Dictionary" data-testid="law-dictionary-toggle" onClick={() => { setCraftOpen(false); setLawDictionaryOpen((v) => !v); }}>⚖</button>
         <button type="button" className={'tb' + (craftOpen ? ' on' : '')} title={t('অ্যাপস: Word, PDF, Sheet, Slides')} aria-label={t('অ্যাপস: Word, PDF, Sheet, Slides')} data-testid="craft-toggle" onClick={() => { setLawDictionaryOpen(false); setCraftOpen((v) => !v); }}>▦</button>
         <button type="button" className="tb theme" data-testid="theme" data-theme-mode={theme} title={t(themeLabel[theme])} aria-label={t(themeLabel[theme])}
@@ -762,7 +762,7 @@ export function App() {
               onMakeDefaultPage={(pg) => { setPageDefault(pg); say('নতুন লিগ্যাল ড্রাফট এখন থেকে এই পাতায় খুলবে'); }}
               view={viewPrefs} setView={setViewPrefs} fixChandra={fixChandra} toggleKey={toggleKey}
               gemini={{ key: geminiKey, model: geminiModel, setModel: (m: string) => { setGeminiModel(m); say('Gemini মডেল বদলে {m} বাছা হলো', { m }); } }} privateWords={privateWords} setPrivateWords={setPrivateWords}
-              onOpenSettings={() => setSettingsOpen(true)}
+              onOpenSettings={() => { save('settings.tab', 'voice'); setSettingsOpen(true); }} // the Gemini key lives under Voice and AI
               ansiTyping={ansiTyping} ansiKey={ansiKey} onToggleAnsi={() => setAnsiTyping(!ansiTypingRef.current)}
               output={output} setOutput={setOutput}
               voice={voice} corrections={corrections} autoBijoy={autoBijoy} ansiFont={ansiFont} enFont={enFont}
@@ -785,7 +785,7 @@ export function App() {
 
 
       {settingsOpen && (
-        <Settings platform={coarse || phone ? 'mobile' : 'desktop'} vf={vf} setVf={setVf} oldReph={oldReph} setOldReph={setOldReph}
+        <Settings onClose={() => setSettingsOpen(false)} platform={coarse || phone ? 'mobile' : 'desktop'} vf={vf} setVf={setVf} oldReph={oldReph} setOldReph={setOldReph}
           keyboardLayouts={allKeyboardLayouts} hiddenDesktop={hiddenDesktop} setHiddenDesktop={setHiddenDesktop}
           hiddenMobile={hiddenMobile} setHiddenMobile={setHiddenMobile}
           customLayouts={customLayouts} onAddLayout={addLayout} onDeleteLayout={deleteLayout}

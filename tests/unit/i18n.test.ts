@@ -3,6 +3,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { EN } from '../../src/i18n/en';
 import { translate } from '../../src/i18n';
+import { PAPERS } from '../../src/docx-export/page';
 import { ERRORS_FOR_I18N, decideVoice } from '../../src/voice';
 import { PASTE_MSG_HTML, PASTE_MSG_TEXT } from '../../src/bijoy';
 import { PARAGRAPH_STYLES, TABLE_STYLES, QUICK_TABLES, WORD_SHORTCUTS } from '../../src/editor';
@@ -27,6 +28,9 @@ export function uiKeys(): string[] {
     for (const m of src.matchAll(/\b(?:label|note):\s*'((?:[^'\\]|\\.)*)'/g)) if (BN.test(m[1])) keys.add(m[1]);
     for (const line of src.split('\n').filter((l) => /\b(?:say|t)\(/.test(l)))
       for (const m of line.matchAll(/[?:]\s*'((?:[^'\\]|\\.)*)'/g)) if (BN.test(m[1])) keys.add(m[1]);
+    // explanations behind ⓘ (Settings: info="…" / info={a ? '…' : '…'}), translated where they are shown
+    for (const line of src.split('\n').filter((l) => /\binfo=/.test(l) || /^\s*:\s*'/.test(l) || /^\s*\?\s*'/.test(l)))
+      for (const m of line.matchAll(/["']((?:[^"'\\]|\\.)*)["']/g)) if (BN.test(m[1])) keys.add(m[1]);
     // [id, 'লেবেল'] tuples rendered as t(l)
     for (const m of src.matchAll(/\['[\w-]+', '((?:[^'\\]|\\.)*)'\]/g)) if (BN.test(m[1])) keys.add(m[1]);
     // object maps whose values are passed through t() (labels, status texts)
@@ -34,6 +38,7 @@ export function uiKeys(): string[] {
       for (const v of m[1].matchAll(/'((?:[^'\\]|\\.)*)'/g)) if (BN.test(v[1])) keys.add(v[1]);
   }
   for (const s of WORD_SHORTCUTS) if (BN.test(s.what)) keys.add(s.what);
+  for (const x of Object.values(PAPERS)) if (BN.test(x.label)) keys.add(x.label);
   for (const s of PARAGRAPH_STYLES) keys.add(s.label);
   for (const s of [...TABLE_STYLES, ...QUICK_TABLES]) keys.add(s.label);
   for (const x of [...TASKS.map((x) => x.label), ...Object.values(KIND_LABEL), ...Object.values(AI_ERROR_TEXT)]) keys.add(x);

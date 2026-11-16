@@ -5,7 +5,7 @@
  * presses the AI voice key and has agreed to it once (consent in the app).
  */
 import { fixNukta } from '../bornona-engine';
-import { geminiGenerate, type GeminiOptions } from './gemini';
+import { AiError, geminiGenerate, type GeminiOptions } from './gemini';
 
 /** 16 kHz mono is what speech models use; a minute is about 1.9 MB. */
 export const VOICE_RATE = 16000;
@@ -52,65 +52,148 @@ export function toBase64(bytes: Uint8Array): string {
 /** Loudest sample: a recording of only silence is not sent. */
 export const peak = (s: Float32Array) => s.reduce((m, x) => Math.max(m, Math.abs(x)), 0);
 
-/** Any recording the browser made (webm/opus, mp4/aac …) → 16 kHz mono samples. */
-export async function toMono16k(blob: Blob): Promise<Float32Array> {
-  const AC = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
-  const ctx = new AC();
-  try {
-    const buf = await ctx.decodeAudioData(await blob.arrayBuffer());
-    const off = new OfflineAudioContext(1, Math.max(1, Math.ceil(buf.duration * VOICE_RATE)), VOICE_RATE);
-    const src = off.createBufferSource();
-    src.buffer = buf;
-    src.connect(off.destination);
-    src.start();
-    return (await off.startRendering()).getChannelData(0);
-  } finally {
-    void ctx.close();
+/** Where a voice recording stopped working (shown to the user with the browser's own reason). */
+export type VoiceStage = 'unsupported' | 'mic' | 'audio' | 'silent';
+export class VoiceError extends Error {
+  constructor(public stage: VoiceStage, message: string) {
+    super(message);
   }
 }
+export const VOICE_ERROR_TEXT: Record<VoiceStage, string> = {
+  unsupported: 'এই ব্রাউজারে মাইক থেকে রেকর্ড করা যায় না',
+  mic: 'মাইক ব্যবহারের অনুমতি পাওয়া যায়নি। ব্রাউজারের সেটিংসে এই সাইটকে মাইকের অনুমতি দিন।',
+  audio: 'মাইক চালু হলো, কিন্তু কোনো শব্দ আসেনি। অ্যাপটা বন্ধ করে আবার খুলে চেষ্টা করুন।',
+  silent: 'কোনো কথা শোনা যায়নি',
+};
 
-/** Microphone recording with MediaRecorder; stop() gives the audio. */
-export class VoiceRecorder {
-  private rec: MediaRecorder | null = null;
+const withTimeout = <T,>(p: Promise<T>, ms: number, what: string): Promise<T> =>
+  new Promise<T>((resolve, reject) => {
+    const t = setTimeout(() => reject(new Error(what + ': timeout')), ms);
+    p.then((v) => { clearTimeout(t); resolve(v); }, (e) => { clearTimeout(t); reject(e); });
+  });
+
+/** Averages blocks of samples down to 16 kHz (a plain low-pass, enough for speech). */
+export function resampleTo16k(input: Float32Array, rate: number): Float32Array {
+  if (rate === VOICE_RATE) return input;
+  const ratio = rate / VOICE_RATE;
+  const out = new Float32Array(Math.floor(input.length / ratio));
+  for (let i = 0; i < out.length; i++) {
+    const a = Math.floor(i * ratio);
+    const b = Math.min(input.length, Math.max(a + 1, Math.floor((i + 1) * ratio)));
+    let sum = 0;
+    for (let k = a; k < b; k++) sum += input[k];
+    out[i] = sum / (b - a);
+  }
+  return out;
+}
+
+/**
+ * Microphone → raw samples through Web Audio, straight from the device: no MediaRecorder file and
+ * no decodeAudioData, which Safari (iPad/iPhone) cannot do for its own fragmented MP4 recordings.
+ * start() must be called from the tap itself: the audio is switched on before anything is awaited.
+ */
+export class PcmRecorder {
+  private ctx: AudioContext | null = null;
   private stream: MediaStream | null = null;
-  private chunks: Blob[] = [];
-  static supported = () => typeof navigator !== 'undefined' && !!navigator.mediaDevices?.getUserMedia && typeof MediaRecorder !== 'undefined';
+  private src: MediaStreamAudioSourceNode | null = null;
+  private node: ScriptProcessorNode | null = null;
+  private chunks: Float32Array[] = [];
+  private rate = 48000;
+  static supported = () =>
+    typeof navigator !== 'undefined' && !!navigator.mediaDevices?.getUserMedia && typeof window !== 'undefined'
+    && !!(window.AudioContext || (window as unknown as { webkitAudioContext?: unknown }).webkitAudioContext);
 
   async start(): Promise<void> {
-    this.stream = await navigator.mediaDevices.getUserMedia({ audio: { channelCount: 1, echoCancellation: true, noiseSuppression: true } });
+    if (!PcmRecorder.supported()) throw new VoiceError('unsupported', 'no getUserMedia/AudioContext');
+    const AC = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
+    const ctx = new AC();
+    this.ctx = ctx;
+    const resumed = ctx.resume().catch(() => {}); // still inside the tap
+    try {
+      this.stream = await withTimeout(navigator.mediaDevices.getUserMedia({ audio: { channelCount: 1, echoCancellation: true, noiseSuppression: true } }), 20_000, 'microphone');
+    } catch (e) {
+      this.cancel();
+      throw new VoiceError('mic', errText(e));
+    }
+    await resumed;
+    if (ctx.state !== 'running') await ctx.resume().catch(() => {});
+    this.rate = ctx.sampleRate;
     this.chunks = [];
-    this.rec = new MediaRecorder(this.stream);
-    this.rec.ondataavailable = (e) => e.data.size && this.chunks.push(e.data);
-    this.rec.start(1000);
+    this.src = ctx.createMediaStreamSource(this.stream);
+    this.node = ctx.createScriptProcessor(4096, 1, 1);
+    this.node.onaudioprocess = (e) => { this.chunks.push(new Float32Array(e.inputBuffer.getChannelData(0))); };
+    this.src.connect(this.node);
+    this.node.connect(ctx.destination); // Safari runs the node only when it is connected; its output is silence
   }
 
-  stop(): Promise<Blob> {
-    return new Promise((resolve) => {
-      const r = this.rec;
-      const done = () => {
-        this.stream?.getTracks().forEach((t) => t.stop());
-        this.stream = null;
-        this.rec = null;
-        resolve(new Blob(this.chunks, { type: r?.mimeType || 'audio/webm' }));
-      };
-      if (!r || r.state === 'inactive') return done();
-      r.onstop = done;
-      r.stop();
-    });
+  /** Seconds recorded so far. */
+  get seconds(): number {
+    return this.chunks.reduce((n, c) => n + c.length, 0) / this.rate;
+  }
+
+  /** Stops and gives 16 kHz mono samples. */
+  stop(): Float32Array {
+    const parts = this.chunks;
+    const rate = this.rate;
+    this.cancel();
+    if (!parts.length) throw new VoiceError('audio', 'no audio frames');
+    const all = new Float32Array(parts.reduce((n, c) => n + c.length, 0));
+    let o = 0;
+    for (const c of parts) { all.set(c, o); o += c.length; }
+    return resampleTo16k(all, rate);
   }
 
   cancel(): void {
-    if (this.rec && this.rec.state !== 'inactive') this.rec.stop();
+    try { this.src?.disconnect(); this.node?.disconnect(); } catch { /* already gone */ }
+    if (this.node) this.node.onaudioprocess = null;
     this.stream?.getTracks().forEach((t) => t.stop());
+    void this.ctx?.close().catch(() => {});
+    this.ctx = null;
     this.stream = null;
-    this.rec = null;
+    this.src = null;
+    this.node = null;
     this.chunks = [];
   }
 }
 
+/** The browser's own reason, short (e.g. "NotAllowedError"). */
+export function errText(e: unknown): string {
+  if (e instanceof Error) return (e.name && e.name !== 'Error' ? e.name + ': ' : '') + e.message.slice(0, 120);
+  return String(e).slice(0, 120);
+}
+
+/** Corrections ("ভুল = ঠিক") and the digits setting, applied to the model's text (line breaks kept). */
+export function polishTranscript(text: string, o: { corrections: string; banglaDigits: boolean }, parse: (s: string) => [string, string][]): string {
+  let s = fixNukta(text);
+  for (const [a, b] of parse(o.corrections)) {
+    const esc = a.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    s = s.replace(new RegExp('(^|[\\s(“‘"])' + esc + '(?=$|[\\s।,.?!;:)”’"])', 'gm'), '$1' + b);
+  }
+  if (!o.banglaDigits) s = s.replace(/[০-৯]/g, (d) => String('০১২৩৪৫৬৭৮৯'.indexOf(d)));
+  return s;
+}
+
+/** Longest wait for Gemini's answer. */
+export const TRANSCRIBE_TIMEOUT_MS = 90_000;
+
 /** Sends 16 kHz samples to Gemini and returns the Bangla text ('' for silence). */
-export async function transcribe(samples: Float32Array, o: GeminiOptions): Promise<string> {
+export async function transcribe(samples: Float32Array, o: GeminiOptions & { timeoutMs?: number }): Promise<string> {
   if (samples.length < VOICE_RATE / 2 || peak(samples) < 0.01) return '';
   const data = toBase64(encodeWav(samples));
-  return cleanTranscript(await geminiGenerate(TRANSCRIBE_PROMPT, { ...o, audio: { mime: 'audio/wav', data }, temperature: 0 }));
+  // never wait for ever: our own time limit, and the caller's cancel still works
+  const ac = new AbortController();
+  const outer = o.signal;
+  const onAbort = () => ac.abort();
+  outer?.addEventListener('abort', onAbort);
+  let timedOut = false;
+  const timer = setTimeout(() => { timedOut = true; ac.abort(); }, o.timeoutMs ?? TRANSCRIBE_TIMEOUT_MS);
+  try {
+    return cleanTranscript(await geminiGenerate(TRANSCRIBE_PROMPT, { ...o, signal: ac.signal, audio: { mime: 'audio/wav', data }, temperature: 0 }));
+  } catch (e) {
+    if (timedOut) throw new AiError('timeout', 'no answer in ' + Math.round((o.timeoutMs ?? TRANSCRIBE_TIMEOUT_MS) / 1000) + ' s');
+    throw e;
+  } finally {
+    clearTimeout(timer);
+    outer?.removeEventListener('abort', onAbort);
+  }
 }

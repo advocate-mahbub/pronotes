@@ -1,15 +1,11 @@
 import { test, expect, type Page } from '@playwright/test';
 import fs from 'node:fs';
+import { section } from './settings-tab';
 
 const editor = (p: Page) => p.getByTestId('editor');
 const text = (p: Page) => editor(p).locator('p').first().textContent();
 const kmx = (f: string) => fs.readFileSync(new URL('../fixtures/kmx/' + f, import.meta.url));
 
-async function section(page: Page, name: string) {
-  if (!(await page.getByTestId('settings-panel').isVisible())) await page.getByTestId('settings').click();
-  const d = page.locator('details', { has: page.locator('summary', { hasText: name }) });
-  if (!(await d.evaluate((e) => (e as HTMLDetailsElement).open))) await d.locator('summary').click();
-}
 async function addLayout(page: Page, name: string, buffer: Buffer) {
   await section(page, 'কিবোর্ড ও টাইপিং');
   await page.getByTestId('layout-add-file').setInputFiles({ name, mimeType: 'application/octet-stream', buffer });
@@ -136,16 +132,17 @@ test('on a computer only the computer\'s layout list is shown', async ({ page })
   await expect(page.getByTestId('layout-enabled-mobile-unibijoy')).toHaveCount(0);
 });
 
-test('"কিবোর্ড ও টাইপিং" folds, and stays folded next time', async ({ page }) => {
+test('Settings opens on the tab used last time, and ✕ closes it', async ({ page }) => {
   await page.goto('./');
   await expect(editor(page)).toBeVisible();
   await page.getByTestId('settings').click();
-  const kb = page.getByTestId('settings-keyboard');
-  await expect(page.getByTestId('layout-add-btn')).toBeVisible();
-  await kb.locator(':scope > summary').click();
+  await expect(page.getByTestId('layout-add-btn')).toBeVisible(); // the first tab: writing
+  await page.getByTestId('stab-words').click();
   await expect(page.getByTestId('layout-add-btn')).toBeHidden();
+  await page.getByTestId('settings-close').click();
+  await expect(page.getByTestId('settings-panel')).toHaveCount(0);
   await page.reload();
   await page.getByTestId('settings').click();
-  await expect(page.getByTestId('settings-keyboard')).not.toHaveAttribute('open', '');
-  await expect(page.getByTestId('layout-add-btn')).toBeHidden();
+  await expect(page.getByTestId('stab-words')).toHaveAttribute('aria-selected', 'true');
+  await expect(page.getByTestId('word-count')).toBeVisible();
 });

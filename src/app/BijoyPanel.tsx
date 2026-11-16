@@ -165,6 +165,7 @@ const copyText = (s: string, say: Props['say']) =>
 
 function AmountTab({ editor, say }: Props) {
   const { t } = useT();
+  const uiEn = useT().lang === 'en'; // English menu: no Bangla on the buttons
   const [v, setV] = useState('');
   const [lang, setLang] = useState<'bn' | 'en'>('bn');
   const r = v.trim() ? amountInWords(v, lang) : null;
@@ -173,9 +174,9 @@ function AmountTab({ editor, say }: Props) {
     <div className="conv-body">
       <p className="note">{t('অঙ্কে টাকার পরিমাণ লিখুন (যেমন 500000, ৫,০০,০০০ বা 1250.50)। কোটি-লক্ষ-হাজার হিসাবে কথায় হবে।')}</p>
       <div className="row">
-        <input data-testid="amount-in" inputMode="decimal" value={v} onChange={(e) => setV(e.target.value)} placeholder="৫,০০,০০০" />
+        <input data-testid="amount-in" inputMode="decimal" value={v} onChange={(e) => setV(e.target.value)} placeholder={uiEn ? '5,00,000' : '৫,০০,০০০'} />
         <div className="seg small" role="group">
-          <button type="button" aria-pressed={lang === 'bn'} data-testid="amount-bn" onClick={() => setLang('bn')}>বাংলা</button>
+          <button type="button" aria-pressed={lang === 'bn'} data-testid="amount-bn" onClick={() => setLang('bn')}>{uiEn ? 'Bangla' : 'বাংলা'}</button>
           <button type="button" aria-pressed={lang === 'en'} data-testid="amount-en" onClick={() => setLang('en')}>English</button>
         </div>
       </div>
@@ -195,6 +196,7 @@ function AmountTab({ editor, say }: Props) {
 
 function DigitsTab({ editor, say }: Props) {
   const { t } = useT();
+  const uiEn = useT().lang === 'en';
   const apply = (fn: (s: string) => string) => {
     const sel = !editor.state.selection.empty;
     const n = mapDocText(editor.view, fn, true);
@@ -204,8 +206,8 @@ function DigitsTab({ editor, say }: Props) {
     <div className="conv-body">
       <p className="note">{t('কিছু সিলেক্ট করা থাকলে শুধু সেই অংশ, না থাকলে পুরো ড্রাফট। Undo দিয়ে ফেরানো যায়।')}</p>
       <div className="row">
-        <button type="button" className="btn" data-testid="digits-bn" onPointerDown={(e) => e.preventDefault()} onClick={() => apply(toBnDigits)}>123 → ১২৩</button>
-        <button type="button" className="btn" data-testid="digits-en" onPointerDown={(e) => e.preventDefault()} onClick={() => apply(toEnDigits)}>১২৩ → 123</button>
+        <button type="button" className="btn" data-testid="digits-bn" onPointerDown={(e) => e.preventDefault()} onClick={() => apply(toBnDigits)}>{uiEn ? '123 → Bangla digits' : '123 → ১২৩'}</button>
+        <button type="button" className="btn" data-testid="digits-en" onPointerDown={(e) => e.preventDefault()} onClick={() => apply(toEnDigits)}>{uiEn ? 'Bangla digits → 123' : '১২৩ → 123'}</button>
       </div>
     </div>
   );

@@ -1,0 +1,20 @@
+import type { Page } from '@playwright/test';
+
+export type SettingsTab = 'type' | 'voice' | 'font' | 'words' | 'app';
+
+/** Where each part of Settings lives now (tabs), by the names the older tests used. */
+const TAB_OF: [RegExp, SettingsTab][] = [
+  [/কিবোর্ড|শর্টকাট|টাইপিং-এর/, 'type'],
+  [/AI|ভ[\u09df\u09af]|Gemini/, 'voice'],
+  [/ফন্ট|বিজ|Font/, 'font'],
+  [/শব্দ/, 'words'],
+  [/অ্যাপ|ব্যাকআপ|App|menu/i, 'app'],
+];
+
+/** Opens Settings (if closed) on the tab that holds this part. */
+export async function section(page: Page, name: string): Promise<void> {
+  const tab = (['type', 'voice', 'font', 'words', 'app'] as string[]).includes(name) ? (name as SettingsTab) : TAB_OF.find(([re]) => re.test(name))?.[1];
+  if (!tab) throw new Error('no Settings tab for ' + name);
+  if (!(await page.getByTestId('settings-panel').isVisible())) await page.getByTestId('settings').click();
+  await page.getByTestId('stab-' + tab).click();
+}

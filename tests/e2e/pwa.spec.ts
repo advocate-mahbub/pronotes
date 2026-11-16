@@ -4,6 +4,7 @@ import http from 'node:http';
 import os from 'node:os';
 import path from 'node:path';
 import type { AddressInfo } from 'node:net';
+import { section } from './settings-tab';
 
 const editor = (p: Page) => p.getByTestId('editor');
 const paras = (p: Page) => editor(p).locator('p').allTextContents();
@@ -73,8 +74,7 @@ test('works offline after the first visit: open, type, save, Word file, fonts', 
 
 test('settings explain offline and install', async ({ page }) => {
   await page.goto('./');
-  await page.getByTestId('settings').click();
-  await page.locator('summary', { hasText: 'অ্যাপ' }).click();
+  await section(page, 'app');
   await expect(page.getByTestId('app-status')).toContainText('অফলাইন');
   await expect(page.getByTestId('check-update')).toBeVisible();
 });
@@ -86,8 +86,7 @@ test('iPad (Safari user agent) gets Add to Home Screen steps', async ({ browser 
   });
   const page = await ctx.newPage();
   await page.goto('http://localhost:4173/');
-  await page.getByTestId('settings').click();
-  await page.locator('summary', { hasText: 'অ্যাপ' }).click();
+  await section(page, 'app');
   await expect(page.getByTestId('install-howto')).toContainText('Add to Home Screen');
   await ctx.close();
 });
@@ -124,8 +123,7 @@ test('new version: notice appears, the open draft is saved, then the app reloads
     fs.appendFileSync(path.join(s.dir, 'sw.js'), '\n// new version\n');
     await editor(page).click();
     for (const k of ['KeyK', 'KeyM']) await page.keyboard.press(k);
-    await page.getByTestId('settings').click();
-    await page.locator('summary', { hasText: 'অ্যাপ' }).click();
+    await section(page, 'app');
     await page.getByTestId('check-update').click();
     await expect(page.getByTestId('update-banner')).toBeVisible({ timeout: 15_000 });
     // "later" hides it; the check finds it again
@@ -152,9 +150,7 @@ test('licence page: linked from Settings, works offline-cached, CSP meta in the 
   await page.goto('./');
   const csp = await page.locator('meta[http-equiv="Content-Security-Policy"]').getAttribute('content');
   expect(csp).toContain("connect-src 'self' data: blob: https://generativelanguage.googleapis.com");
-  await page.getByTestId('settings').click();
-  const d = page.locator('details', { has: page.locator(':scope > summary', { hasText: 'অ্যাপ:' }) });
-  if (!(await d.evaluate((e) => (e as HTMLDetailsElement).open))) await d.locator(':scope > summary').click();
+  await section(page, 'app');
   const [lic] = await Promise.all([page.waitForEvent('popup'), page.getByTestId('license-link').click()]);
   await expect(lic.locator('h1')).toContainText('লাইসেন্স');
   await expect(lic.locator('body')).toContainText('সর্বস্বত্ব সংরক্ষিত');

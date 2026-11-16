@@ -16,6 +16,7 @@ export const SCALES = [200, 150, 100, 90, 80, 66, 50, 33];
 /** Word's Font dialog, Advanced tab (Scale, Spacing, Position, Kerning) plus underline style and small caps. */
 export function FontPanel({ editor, onClose }: { editor: Editor; onClose: () => void }) {
   const { t } = useT();
+  const uiEn = useT().lang === 'en';
   const a = editor.getAttributes('textStyle');
   const u = editor.getAttributes('underline');
   const [scale, setScale] = useState(String(a.scale ?? 100));
@@ -75,7 +76,7 @@ export function FontPanel({ editor, onClose }: { editor: Editor; onClose: () => 
         <label className="check"><input type="checkbox" data-testid="f-smallcaps" checked={smallCaps} onChange={(e) => setSmallCaps(e.target.checked)} /> Small caps ({t('শুধু ইংরেজি')})</label>
       </div>
       <div className="preview" style={{ letterSpacing: spType === 'normal' ? undefined : (spType === 'expanded' ? 1 : -1) * (Number(spBy) || 0) + 'pt', fontVariantCaps: smallCaps ? 'small-caps' : undefined }}>
-        <span style={{ display: 'inline-block', transform: `scaleX(${(Number(scale) || 100) / 100})`, transformOrigin: '0 50%' }}>আমার সোনার বাংলা · Plaintiff</span>
+        <span style={{ display: 'inline-block', transform: `scaleX(${(Number(scale) || 100) / 100})`, transformOrigin: '0 50%' }}>{uiEn ? 'Sample text · Plaintiff' : 'আমার সোনার বাংলা · Plaintiff'}</span>
       </div>
     </Sheet>
   );
@@ -302,7 +303,7 @@ export function PageSetupSheet({ page, onApply, onClose, onMakeDefault }: { page
       <div className="form">
         <label>{t('মাপ')}
           <select data-testid="ps-paper" value={paper} onChange={(e) => pick(e.target.value as PaperId)}>
-            {paperChoices(paper).map((id) => <option key={id} value={id}>{PAPERS[id].label}</option>)}
+            {paperChoices(paper).map((id) => <option key={id} value={id}>{t(PAPERS[id].label)}</option>)}
             <option value="custom">{t('নিজের মাপ')}</option>
           </select>
         </label>

@@ -1,6 +1,7 @@
 import { test, expect, type Page } from '@playwright/test';
 import fs from 'node:fs';
 import JSZip from 'jszip';
+import { section } from './settings-tab';
 
 const editor = (p: Page) => p.getByTestId('editor');
 const typeKeys = async (p: Page, keys: string[]) => { for (const k of keys) await p.keyboard.press(k); };
@@ -57,8 +58,7 @@ test('paragraph styles, Bangla numbering, schedule table, .docx export', async (
 test('format settings change the page and the Word file', async ({ page }) => {
   await start(page);
   await typeKeys(page, ['KeyK']);
-  await page.getByTestId('settings').click();
-  await page.locator('summary', { hasText: 'ফন্ট' }).click();
+  await section(page, 'font');
   await page.getByTestId('fmt-size').fill('16');
   await page.getByTestId('fmt-line').selectOption('2');
   await page.getByTestId('settings').click();

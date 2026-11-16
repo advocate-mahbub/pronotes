@@ -1,16 +1,12 @@
 import { test, expect, type Page } from '@playwright/test';
 import fs from 'node:fs';
 import { toBijoy } from '../../src/bijoy';
+import { section } from './settings-tab';
 
 // any real font file will do as a stand-in "Bijoy" font: the app treats it as ANSI because it was added as ANSI
 const stand = '/usr/share/fonts/truetype/dejavu/DejaVuSerif.ttf';
 const editor = (p: Page) => p.getByTestId('editor');
 const typeKeys = async (p: Page, keys: string[]) => { for (const k of keys) await p.keyboard.press(k); };
-const section = async (page: Page, name: string) => {
-  if (!(await page.getByTestId('settings-panel').isVisible())) await page.getByTestId('settings').click();
-  const d = page.locator('details', { has: page.locator(':scope > summary', { hasText: name }) });
-  if (!(await d.evaluate((e) => (e as HTMLDetailsElement).open))) await d.locator(':scope > summary').click();
-};
 
 test('Bijoy fonts: own ANSI list with search, converting a selection, keeping the font on clear formatting, finding Bijoy text', async ({ page }) => {
   test.skip(!fs.existsSync(stand), 'needs a local TTF file');

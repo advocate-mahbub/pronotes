@@ -92,8 +92,12 @@ function BnInput(props: React.InputHTMLAttributes<HTMLInputElement> & { cfg: () 
   return <input ref={ref} {...rest} />;
 }
 
+const DEFAULT_TITLES = new Set(['নতুন ড্রাফট', 'নতুন নোট']);
+
 export function Sidebar(p: Props) {
   const { t, lang } = useT();
+  // the names ProNotes gives new drafts follow the menu language; names the user typed stay as they are
+  const shown = (title: string) => (DEFAULT_TITLES.has(title) ? t(title) : title);
   const [confirmId, setConfirmId] = useState<string | null>(null);
   const [query, setQuery] = useState('');
   const [renaming, setRenaming] = useState<string | null>(null);
@@ -280,7 +284,7 @@ export function Sidebar(p: Props) {
                     onDoubleClick={() => !picking && startRename(d)} title={t('খুলতে চাপুন; নাম বদলাতে দুবার চাপুন')}>
                     <span className="t">
                       {d.pinned && <span className="pin" title={t('উপরে আটকানো')}>📌</span>}
-                      <span className="ki" title={t(p.kindLabel[kindOf(d)])}>{isEnvelope(d) ? '✉' : p.kindIcon[kindOf(d)]}</span> <span className="name" data-testid="doc-title">{d.title}</span>
+                      <span className="ki" title={t(p.kindLabel[kindOf(d)])}>{isEnvelope(d) ? '✉' : p.kindIcon[kindOf(d)]}</span> <span className="name" data-testid="doc-title">{shown(d.title)}</span>
                     </span>
                     {snippet(d, q) && <span className="pv" data-testid="doc-preview">{snippet(d, q)}</span>}
                     <span className="d">
@@ -330,7 +334,7 @@ export function Sidebar(p: Props) {
             ) : (
               <>
                 <div className="doc">
-                  <span className="t">{d.title}</span>
+                  <span className="t">{shown(d.title)}</span>
                   <span className="d">{t('আর {n} দিন', { n: daysLeft(d) })}</span>
                 </div>
                 <div className="row-actions">

@@ -1,6 +1,7 @@
 import { test, expect, type Page } from '@playwright/test';
 import JSZip from 'jszip';
 import { toBijoy } from '../../src/bijoy';
+import { section } from './settings-tab';
 
 const editor = (p: Page) => p.getByTestId('editor');
 const typeKeys = async (p: Page, keys: string[]) => { for (const k of keys) await p.keyboard.press(k); };
@@ -67,9 +68,7 @@ test('ANSI typing: Bornona keys typed straight into Bijoy, ⌫ removes one lette
 
 test('ANSI typing setting and switch key live in Settings', async ({ page }) => {
   await start(page);
-  await page.getByTestId('settings').click();
-  const d = page.locator('details', { has: page.locator('summary', { hasText: 'কিবোর্ড ও টাইপিং' }) });
-  if (!(await d.evaluate((e) => (e as HTMLDetailsElement).open))) await d.locator('summary').click();
+  await section(page, 'type');
   await page.getByTestId('ansi-key').selectOption('ctrl+period');
   await page.getByTestId('ansi-typing').check();
   await page.getByTestId('settings').click();
