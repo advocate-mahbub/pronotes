@@ -36,8 +36,24 @@ export function toBijoy(u: string, prev = ''): string {
     .replace(/([¯š])—/g, '$1Í')
     .replace(/i“/g, 'iæ')
     .replace(/ª“/g, 'ªæ')
+    .replace(/[«Ö]/g, '«')
+    .replace(RAPHALA, raphala)
     .replace(/\uE020/g, 'Ò').replace(/\uE021/g, 'Ó').replace(/\uE022/g, 'Ô').replace(/\uE023/g, 'Õ');
 }
+
+/**
+ * র-ফলা has three shapes in SutonnyMJ, chosen by the letter it hangs from, as in the approved
+ * Bijoy Classic layout (reference/approved-layouts/m17n/bn-bijoyClassic.mim):
+ *   Ö — প্র cÖ, গ্র MÖ, শ্র kÖ, ষ্প্র ®úÖ
+ *   « — ফ্র d«, হ্র n«, ছ্র Q«, and the conjuncts ক্ত্র ³«, ঙ্ক্র ¼«, ন্ধ্র Ü«, ল্ফ্র î«, স্ফ্র ù«, চ্ছ্র ”Q«
+ *   ª — every other letter: দ্র `ª, ব্র eª, খ্র Lª, ট্র Uª, স্প্র ¯úª …
+ * The library writes « after every letter; this puts the right one.
+ */
+const RAPHALA = /(®ú|[\s\S])«/g;
+const RAPHALA_WIDE = new Set(['c', 'M', 'k', '®ú']);
+const RAPHALA_HOOK = new Set(['d', 'n', 'Q', '³', '¼', 'Ü', 'î', 'ù']);
+const raphala = (_m: string, before: string) =>
+  before + (RAPHALA_WIDE.has(before) ? 'Ö' : RAPHALA_HOOK.has(before) ? '«' : 'ª');
 
 /** Bijoy → Unicode. Ò Ó Ô Õ come back as curly quotes (the library made them straight). */
 export function toUnicode(b: string): string {
