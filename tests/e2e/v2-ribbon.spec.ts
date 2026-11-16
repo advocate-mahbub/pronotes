@@ -1,4 +1,5 @@
 import { test, expect, type Page } from '@playwright/test';
+import { section } from './settings-tab';
 
 const editor = (p: Page) => p.getByTestId('editor');
 const typeKeys = async (p: Page, keys: string[]) => { for (const k of keys) await p.keyboard.press(k); };
@@ -228,12 +229,11 @@ test('title box types Bangla through Bornona (physical and on-screen keys)', asy
 test('app language English ⇄ Bangla; document text and typing are not affected', async ({ page }) => {
   await start(page);
   await typeKeys(page, ['KeyK']);
-  await page.getByTestId('settings').click();
-  // menu language lives in the App section of Settings
-  await page.locator('details', { has: page.locator(':scope > summary', { hasText: 'অ্যাপ: মেনুর ভাষা' }) }).locator(':scope > summary').click();
+  // menu language lives in the App tab of Settings
+  await section(page, 'app');
   await page.getByTestId('ui-en').click();
   await expect(page.getByTestId('tab-home')).toHaveText('Home');
-  await expect(page.getByTestId('settings-panel')).toContainText('Keyboard and typing');
+  await expect(page.getByTestId('settings-panel')).toContainText('Menu language');
   await expect(page.getByTestId('save-status')).toHaveText(/Saved on this device|Saving…/);
   await expect(page.locator('html')).toHaveAttribute('lang', 'en');
   await page.getByTestId('settings').click();
@@ -245,8 +245,7 @@ test('app language English ⇄ Bangla; document text and typing are not affected
   await expect(editor(page).locator('p').first()).toHaveText('কম');
   await page.reload();
   await expect(page.getByTestId('tab-insert')).toHaveText('Insert');
-  await page.getByTestId('settings').click();
-  await page.locator('details', { has: page.locator(':scope > summary', { hasText: 'App: menu language' }) }).locator(':scope > summary').click();
+  await section(page, 'app');
   await page.getByTestId('ui-bn').click();
   await expect(page.getByTestId('tab-home')).toHaveText('হোম');
 });

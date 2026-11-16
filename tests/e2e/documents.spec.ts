@@ -1,5 +1,6 @@
 import { test, expect, type Page } from '@playwright/test';
 import fs from 'node:fs';
+import { section } from './settings-tab';
 
 const editor = (p: Page) => p.getByTestId('editor');
 const status = (p: Page) => p.getByTestId('save-status');
@@ -85,8 +86,7 @@ test('backup on one device, restore on another', async ({ page, browser }) => {
   await page.getByTestId('title').fill('তফসিল খসড়া');
   await page.getByTestId('title').press('Enter');
   await page.keyboard.press('Control+s');
-  await page.getByTestId('settings').click();
-  await page.locator('summary', { hasText: 'ব্যাকআপ' }).click();
+  await section(page, 'app');
   const [dl] = await Promise.all([page.waitForEvent('download'), page.getByTestId('backup').click()]);
   expect(dl.suggestedFilename()).toMatch(/^pronotes-backup-\d{4}-\d{2}-\d{2}\.json$/);
   const file = await dl.path();
@@ -97,7 +97,7 @@ test('backup on one device, restore on another', async ({ page, browser }) => {
 
   const other = await (await browser.newContext()).newPage();
   await start(other);
-  await other.getByTestId('settings').click();
+  await section(other, 'app');
   await other.getByTestId('restore-file').setInputFiles(file);
   await expect(other.getByTestId('toast')).toContainText('নতুন ১টা');
   await rows(other).filter({ hasText: 'তফসিল খসড়া' }).locator('.doc').click();

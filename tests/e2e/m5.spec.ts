@@ -2,6 +2,7 @@ import { test, expect, type Page } from '@playwright/test';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
+import { section } from './settings-tab';
 
 const layouts = JSON.parse(fs.readFileSync(new URL('../golden/layouts.json', import.meta.url), 'utf8')) as { id: string; map: Record<string, string[]> }[];
 const editor = (p: Page) => p.getByTestId('editor');
@@ -11,11 +12,6 @@ async function start(page: Page) {
   await page.goto('./');
   await expect(editor(page)).toBeVisible();
   await editor(page).click();
-}
-async function section(page: Page, name: string) {
-  if (!(await page.getByTestId('settings-panel').isVisible())) await page.getByTestId('settings').click();
-  const d = page.locator('details', { has: page.locator('summary', { hasText: name }) });
-  if (!(await d.evaluate((e) => (e as HTMLDetailsElement).open))) await d.locator('summary').click();
 }
 
 /** A scriptable SpeechRecognition. window.__sr.say(text, final) sends a result. */
@@ -225,6 +221,7 @@ test('voice settings and corrections are applied to the next result', async ({ p
   await page.addInitScript(() => localStorage.setItem('pronotes.voiceConsent', 'true'));
   await start(page);
   await section(page, 'ভয়েস টাইপিং');
+  await page.getByTestId('corr-open').click();
   await page.getByTestId('corr').fill('এক্তিয়ার = এখতিয়ার');
   await page.getByTestId('vdig').uncheck();
   await page.getByTestId('settings').click();

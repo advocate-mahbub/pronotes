@@ -8,7 +8,7 @@ const BASE = 'https://generativelanguage.googleapis.com/v1beta';
 export const DEFAULT_GEMINI_MODEL = 'gemini-flash-latest';
 
 export class AiError extends Error {
-  constructor(public code: 'key' | 'quota' | 'blocked' | 'network' | 'model' | 'other', message: string) {
+  constructor(public code: 'key' | 'quota' | 'blocked' | 'network' | 'model' | 'timeout' | 'other', message: string) {
     super(message);
   }
 }
@@ -131,6 +131,7 @@ export const AI_ERROR_TEXT: Record<AiError['code'], string> = {
   blocked: 'Gemini এই লেখার উত্তর দেয়নি। Claude-এ কপি করে চেষ্টা করুন।',
   network: 'ইন্টারনেট নেই বা Gemini-তে পৌঁছানো গেল না।',
   model: 'বাছাই করা Gemini মডেল আপনার key-তে চলছে না। Settings → AI সহকারী → "key যাচাই ও মডেল তালিকা" চেপে অন্য মডেল বাছুন।',
+  timeout: 'Gemini অনেকক্ষণ উত্তর দেয়নি। ইন্টারনেট দেখে আবার চেষ্টা করুন।',
   other: 'Gemini থেকে উত্তর আনা গেল না।',
 };
 

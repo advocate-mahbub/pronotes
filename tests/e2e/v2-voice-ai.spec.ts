@@ -1,4 +1,5 @@
 import { test, expect, devices } from '@playwright/test';
+import { section } from './settings-tab';
 
 test.use({ launchOptions: { args: ['--use-fake-ui-for-media-stream', '--use-fake-device-for-media-stream'] } });
 
@@ -17,9 +18,7 @@ test('✦ AI voice: consent once, records, sends WAV to Gemini, types the Bangla
   // one microphone key: without a Gemini key it is the device's voice
   await expect(page.getByTestId('mic')).toBeVisible();
   await expect(page.getByTestId('ai-voice')).toHaveCount(0);
-  await page.getByTestId('settings').click();
-  const d = page.locator('details', { has: page.locator('summary', { hasText: 'AI সহকারী' }) });
-  if (!(await d.evaluate((e) => (e as HTMLDetailsElement).open))) await d.locator(':scope > summary').click();
+  await section(page, 'voice');
   await page.getByTestId('ai-key-in').fill('AIzaTEST1234');
   await page.getByTestId('ai-key-save').click();
   await page.getByTestId('settings').click();

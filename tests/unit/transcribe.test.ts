@@ -18,7 +18,7 @@ describe('AI voice typing', () => {
     const b = new Uint8Array(100000).map((_, i) => i % 256);
     expect(Buffer.from(toBase64(b), 'base64').equals(Buffer.from(b))).toBe(true);
   });
-  it('cleans the answer: fences, wrapping quotes, canonical য়', () => {
+  it('cleans the answer: fences, wrapping quotes, canonical য়', () => {
     expect(cleanTranscript('```\nআমার জমি\n```')).toBe('আমার জমি');
     expect(cleanTranscript('“বাদী পক্ষ”')).toBe('বাদী পক্ষ');
     expect(cleanTranscript('\u09A8\u09AF\u09BC')).toBe('\u09A8\u09DF');
@@ -39,5 +39,32 @@ describe('AI voice typing', () => {
     expect(sent[0].url).not.toContain('K&'); // key not in the URL
     expect(await transcribe(new Float32Array(VOICE_RATE), { key: 'K', fetchImpl })).toBe('');
     expect(sent.length).toBe(1);
+  });
+});
+
+describe('AI voice on every device', () => {
+  it('raw 48 kHz samples become 16 kHz (block average)', async () => {
+    const { resampleTo16k } = await import('../../src/ai');
+    const x = new Float32Array(48000).fill(0.5);
+    const y = resampleTo16k(x, 48000);
+    expect(y.length).toBe(16000);
+    expect(y[100]).toBeCloseTo(0.5);
+    expect(resampleTo16k(new Float32Array(160), 16000).length).toBe(160);
+    expect(resampleTo16k(new Float32Array(44100), 44100).length).toBe(16000);
+  });
+  it('corrections and the digits setting apply to the model text, line breaks kept', async () => {
+    const { polishTranscript } = await import('../../src/ai');
+    const { parseCorrections } = await import('../../src/voice');
+    const o = { corrections: 'এক্তিয়ার = এখতিয়ার', banglaDigits: true };
+    expect(polishTranscript('আদালতের এক্তিয়ার আছে।\nদাগ ১২৩', o, parseCorrections)).toBe('আদালতের এখতিয়ার আছে।\nদাগ ১২৩');
+    expect(polishTranscript('দাগ ১২৩', { ...o, banglaDigits: false }, parseCorrections)).toBe('দাগ 123');
+  });
+  it('gives up after its time limit instead of spinning for ever', async () => {
+    const { transcribe, AiError } = await import('../../src/ai');
+    const samples = new Float32Array(16000).map((_, i) => Math.sin(i / 5) * 0.5);
+    const never = (_u: unknown, init?: RequestInit) => new Promise<Response>((_r, rej) => init?.signal?.addEventListener('abort', () => rej(Object.assign(new Error('aborted'), { name: 'AbortError' }))));
+    const err = await transcribe(samples, { key: 'k', fetchImpl: never as typeof fetch, timeoutMs: 50 }).catch((e) => e);
+    expect(err).toBeInstanceOf(AiError);
+    expect(err.code).toBe('timeout');
   });
 });

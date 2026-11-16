@@ -1,10 +1,7 @@
 import { test, expect } from '@playwright/test';
 import fs from 'node:fs';
+import { section } from './settings-tab';
 
-const section = async (page: import('@playwright/test').Page, name: string) => {
-  const d = page.locator('details', { has: page.locator(':scope > summary', { hasText: name }) });
-  if (!(await d.evaluate((e) => (e as HTMLDetailsElement).open))) await d.locator(':scope > summary').click();
-};
 
 test('settings: saved at once with a visible ✓, kept after reload, and come back from a backup', async ({ page }) => {
   await page.goto('./');

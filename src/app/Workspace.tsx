@@ -599,7 +599,7 @@ export function Workspace(p: Props) {
           aria-pressed={listening || deviceKb} aria-label={listening ? t('ভয়েস থামান') : t('ভয়েস টাইপিং')} title={listening ? t('ভয়েস থামান') : t('ভয়েস টাইপিং')}
           disabled={p.ansiTyping}
           onPointerDown={(e) => e.preventDefault()} onClick={toggleVoice}>{MIC}</button>}
-        {p.voiceEngine === 'ai' && <AiVoiceKey editor={editor} gemini={p.gemini} say={p.say} onOpenSettings={p.onOpenSettings} disabled={p.ansiTyping} icon={MIC} />}
+        {p.voiceEngine === 'ai' && <AiVoiceKey editor={editor} gemini={p.gemini} say={p.say} onOpenSettings={p.onOpenSettings} disabled={p.ansiTyping} voice={{ corrections: p.corrections, banglaDigits: p.voice.banglaDigits }} icon={MIC} />}
         {kbDown && p.kbVisible && !deviceKb && (
           <button type="button" className="kb-up" data-testid="kb-show" aria-label={t('কিবোর্ড দেখান')} title={t('কিবোর্ড দেখান')}
             onPointerDown={(e) => e.preventDefault()} onClick={() => setKbDown(false)}>⌨</button>

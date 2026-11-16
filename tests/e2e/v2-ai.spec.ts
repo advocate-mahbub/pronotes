@@ -1,4 +1,5 @@
 import { test, expect, type Page } from '@playwright/test';
+import { section } from './settings-tab';
 
 const editor = (p: Page) => p.getByTestId('editor');
 const TEXT = 'বাদী মোঃ আব্দুল করিম, সাং: চরকান্দি, দাগ নং ১২৩৪।';
@@ -64,8 +65,6 @@ test('Gemini: needs a key, asks every time, sends masked text only', async ({ pa
   });
   await start(page);
   await page.getByTestId('ai-gemini-setup').click();
-  const d = page.locator('details', { has: page.locator('summary', { hasText: 'AI সহকারী' }) });
-  if (!(await d.evaluate((e) => (e as HTMLDetailsElement).open))) await d.locator(':scope > summary').click();
   await page.getByTestId('ai-key-in').fill('AIzaTEST1234');
   await page.getByTestId('ai-key-save').click();
   await expect(page.getByTestId('ai-key-set')).toContainText('1234');
@@ -85,8 +84,6 @@ test('Gemini: needs a key, asks every time, sends masked text only', async ({ pa
   expect(bodies[0]).not.toContain('চরকান্দি');
   expect(bodies[0]).toContain('[ব্যক্তি-১]');
   await page.reload();
-  await page.getByTestId('settings').click();
-  const d2 = page.locator('details', { has: page.locator('summary', { hasText: 'AI সহকারী' }) });
-  await d2.locator('summary').click();
+  await section(page, 'voice');
   await expect(page.getByTestId('ai-key-set')).toBeVisible(); // remembered on this device
 });
