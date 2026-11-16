@@ -31,6 +31,9 @@ export function toBijoy(u: string, prev = ''): string {
     b = w.startsWith('K') ? w.slice(1) : libToBijoy(q);
   } else b = libToBijoy(q);
   return b
+    // “ and ‘ in the library's output are always parts of letters (রু i“, স্তু, ন্তু …) — real quotes
+    // travel as placeholders — so an ে-কার after them is inside the word: ‡, not the word-start †
+    .replace(/([“‘])†/g, '$1‡')
     .replace(/([\uE020\uE022])‡/g, '$1†')
     .replace(/([¯š])—y/g, '$1‘')
     .replace(/([¯š])—/g, '$1Í')

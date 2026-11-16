@@ -9,7 +9,8 @@ const ui = golden('bijoy-ui.json');
 
 /** v8's output with the SutonnyMJ glyph fixes the owner asked for (decision 42). */
 const ownerFix = (b: string) =>
-  b.replace(/([¯š])—y/g, '$1‘').replace(/([¯š])—/g, '$1Í').replace(/i“/g, 'iæ').replace(/ª“/g, 'ªæ')
+  b.replace(/([“‘])†/g, '$1‡') // ে-কার after a letter drawn with “ ‘ (রু …) is in-word (owner, 17 Nov 2026)
+    .replace(/([¯š])—y/g, '$1‘').replace(/([¯š])—/g, '$1Í').replace(/i“/g, 'iæ').replace(/ª“/g, 'ªæ')
     .replace(/(^|[\s(])"/g, '$1Ò').replace(/"/g, 'Ó').replace(/(^|[\s(])'/g, '$1Ô').replace(/'/g, 'Õ')
     // র-ফলা shape by letter, as in the approved Bijoy Classic layout (owner, 16 Nov 2026)
     .replace(/(®ú|[cMk])«/g, '$1Ö').replace(/([^dnQ³¼Üîù])«/g, '$1ª');
@@ -35,6 +36,13 @@ describe('Bijoy converter matches v8 (with the owner\'s glyph fixes)', () => {
       ['দ্রুত', '`ªæZ'], ['ব্রিটিশ', 'weªwUk'], ['ট্রেন', '†Uªb'], ['খ্রিস্টান', 'wLª÷vb'], ['স্প্রে', '†¯úª'],
       ['ক্রয়', 'µq'], ['ত্রুটি', 'ÎywU'],
     ];
+    for (const [u, b] of cases) {
+      expect(toBijoy(u), u).toBe(b);
+      expect(toUnicode(b), b).toBe(u);
+    }
+  });
+  it('ে-কার after রু (and other letters drawn with “ ‘) stays the in-word ‡', () => {
+    const cases: [string, string][] = [['ফারুকের', 'dviæ‡Ki'], ['রুকে', 'iæ‡K'], ['গুরুতে', '¸iæ‡Z'], ['শুরুতেই', 'ïiæ‡ZB'], ['কে', '†K'], ['“কে”', 'Ò†KÓ']];
     for (const [u, b] of cases) {
       expect(toBijoy(u), u).toBe(b);
       expect(toUnicode(b), b).toBe(u);
