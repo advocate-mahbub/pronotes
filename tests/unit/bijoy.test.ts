@@ -10,7 +10,9 @@ const ui = golden('bijoy-ui.json');
 /** v8's output with the SutonnyMJ glyph fixes the owner asked for (decision 42). */
 const ownerFix = (b: string) =>
   b.replace(/([¯š])—y/g, '$1‘').replace(/([¯š])—/g, '$1Í').replace(/i“/g, 'iæ').replace(/ª“/g, 'ªæ')
-    .replace(/(^|[\s(])"/g, '$1Ò').replace(/"/g, 'Ó').replace(/(^|[\s(])'/g, '$1Ô').replace(/'/g, 'Õ');
+    .replace(/(^|[\s(])"/g, '$1Ò').replace(/"/g, 'Ó').replace(/(^|[\s(])'/g, '$1Ô').replace(/'/g, 'Õ')
+    // র-ফলা shape by letter, as in the approved Bijoy Classic layout (owner, 16 Nov 2026)
+    .replace(/(®ú|[cMk])«/g, '$1Ö').replace(/([^dnQ³¼Üîù])«/g, '$1ª');
 /** straight quotes come back curly (Bijoy has only Ò Ó Ô Õ) */
 const curly = (u: string) => u.replace(/(^|[\s(])"/g, '$1“').replace(/"/g, '”').replace(/(^|[\s(])'/g, '$1‘').replace(/'/g, '’');
 
@@ -25,6 +27,18 @@ describe('Bijoy converter matches v8 (with the owner\'s glyph fixes)', () => {
       n++;
     }
     expect(n).toBeGreaterThan(940);
+  });
+  it('র-ফলা takes the shape SutonnyMJ uses for each letter (প্র cÖ, গ্র MÖ, শ্র kÖ …)', () => {
+    const cases: [string, string][] = [
+      ['প্র', 'cÖ'], ['গ্র', 'MÖ'], ['শ্র', 'kÖ'], ['প্রতি', 'cÖwZ'], ['গ্রাম', 'MÖvg'], ['শ্রেণি', '†kÖwY'], ['ষ্প্র', '®úÖ'],
+      ['হ্রাস', 'n«vm'], ['ফ্রান্স', 'd«vÝ'],
+      ['দ্রুত', '`ªæZ'], ['ব্রিটিশ', 'weªwUk'], ['ট্রেন', '†Uªb'], ['খ্রিস্টান', 'wLª÷vb'], ['স্প্রে', '†¯úª'],
+      ['ক্রয়', 'µq'], ['ত্রুটি', 'ÎywU'],
+    ];
+    for (const [u, b] of cases) {
+      expect(toBijoy(u), u).toBe(b);
+      expect(toUnicode(b), b).toBe(u);
+    }
   });
   it('named hard words', () => {
     for (const w of ['অন্তর্বর্তীকালীন', 'উল্লেখ্য', 'পৌরসভা', 'র‍্যাব', 'কার্য', 'ঊর্ধ্ব']) expect(toUnicode(toBijoy(w))).toBe(w);

@@ -22,6 +22,14 @@ const openConverter = async (page: Page) => {
   await page.getByTestId('bijoy-toggle').click();
 };
 
+test('ANSI typing: র-ফলা takes SutonnyMJ\'s shape for the letter (প্র cÖ, গ্র MÖ, শ্র kÖ)', async ({ page }) => {
+  await start(page);
+  await page.keyboard.press('Control+Shift+KeyA');
+  await expect(page.getByTestId('ansi-typing-badge')).toBeVisible();
+  await typeKeys(page, ['KeyP', 'Shift+KeyP', 'Space', 'KeyG', 'Shift+KeyP', 'KeyA', 'KeyM', 'Space', 'Shift+KeyS', 'Shift+KeyP', 'KeyM']); // প্র গ্রাম শ্রম
+  await expect(editor(page)).toHaveText('cÖ MÖvg kÖg');
+});
+
 test('ANSI typing: Bornona keys typed straight into Bijoy, ⌫ removes one letter, English in its own font', async ({ page }) => {
   await start(page);
   await page.keyboard.press('Control+Shift+KeyA');
