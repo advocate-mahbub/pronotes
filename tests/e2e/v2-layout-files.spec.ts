@@ -67,15 +67,17 @@ test('OpenBangla .json and a "one key, one letter" .kmx become ordinary layouts'
   await expect(page.getByTestId('toast')).toContainText('ওবি পরীক্ষা');
   await expect(page.getByTestId('layout-list')).toContainText('OpenBangla');
   await page.getByTestId('settings').click();
+  await expect(page.getByTestId('settings-panel')).toBeHidden();
   await editor(page).click();
   await page.keyboard.press('KeyK');
-  expect(await text(page)).toBe('ক');
+  await expect.poll(() => text(page)).toBe('ক');
 
   await addLayout(page, 'probhat.kmx', kmx('bangla_probhat.kmx'));
   await expect(page.getByTestId('toast')).toContainText('Bangla Probhat');
   await page.getByTestId('settings').click();
-  await editor(page).click();
-  await editor(page).evaluate((el) => (el as unknown as { editor: { commands: { focus: (p: string) => void } } }).editor.commands.focus('end'));
+  await expect(page.getByTestId('settings-panel')).toBeHidden();
+  await editor(page).locator('p').last().click();
+  await page.keyboard.press('ControlOrMeta+End'); // caret after the ক, wherever the click landed
   await page.keyboard.press('Space');
   for (const k of ['KeyK', 'KeyZ']) await page.keyboard.press(k);
   expect(await text(page)).toBe('ক কয়');

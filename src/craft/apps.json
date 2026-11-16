@@ -14,6 +14,36 @@
       "enabled": true
     },
     {
+      "id": "photocraft",
+      "name": "PhotoCraft",
+      "label": "ছবি এডিটর",
+      "repo": "storytold/photocraft",
+      "version": "0.23.1",
+      "sha256": "3a498eb517bca6cec89f9c6b1fc6448269a05428c8a3a4637c16817da157f03c",
+      "bridge": "none",
+      "accept": ".png,.jpg,.jpeg,.webp,.psd,.kra,.photocraft",
+      "enabled": true,
+      "copy": [
+        [
+          "snippets",
+          "app/snippets"
+        ]
+      ],
+      "note": "0.23.1 zip: app/photocraft-web.js loads ./snippets/… from app/, but the zip has snippets/ at the top — the folder is copied there unchanged.",
+      "fonts": true
+    },
+    {
+      "id": "vectorcraft",
+      "name": "VectorCraft",
+      "label": "ভেক্টর ডিজাইন",
+      "repo": "storytold/vectorcraft",
+      "version": "0.24.1",
+      "sha256": "de31befd175476f252e3563b4b1fdc6c887d5842b33fb7d1f5fdf007dc7633aa",
+      "bridge": "none",
+      "accept": ".svg,.ai,.pdf,.png,.vectorcraft",
+      "enabled": true
+    },
+    {
       "id": "pdfcraft",
       "name": "PdfCraft",
       "label": "PDF ওয়ার্কবেঞ্চ",

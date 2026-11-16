@@ -42,9 +42,10 @@ users upload their own licensed copy in the app.
 - OpenBangla Keyboard-এর লেআউট ফাইল (GPL-3.0) রিপোতে রাখা হয়নি; পরীক্ষা নিজে বানানো একই ধাঁচের ফাইল দিয়ে।
 
 ## Craft অ্যাপস (`/apps/<id>/<version>/`, তালিকা: `src/craft/apps.json`)
-| জিনিস | লাইসেন্স | কোথায় |
+| জিনিস | লাইসেন্স | কোথায় |
 |---|---|---|
-| WordCraft, PdfCraft, GridCraft, DeckCraft — ArtCraft দলের অফিসিয়াল web build (storytold/…) | MIT অথবা Apache-2.0 (কোড); ভেতরের ফন্ট SIL OFL 1.1 | deploy-এর সময় GitHub release থেকে নামিয়ে SHA-256 মিলিয়ে **অপরিবর্তিত** অবস্থায় রাখা হয়; প্রতিটি app-ফোল্ডারে তার নিজের `LICENSE-MIT`, `LICENSE-APACHE`, `NOTICE`, `ATTRIBUTION.md` ও `OFL-*.txt` থাকে |
+| WordCraft, PhotoCraft, VectorCraft, PdfCraft, GridCraft, DeckCraft — ArtCraft দলের অফিসিয়াল web build (storytold/…) | MIT অথবা Apache-2.0 (কোড); ভেতরের ফন্ট SIL OFL 1.1 | deploy-এর সময় GitHub release থেকে নামিয়ে SHA-256 মিলিয়ে **অপরিবর্তিত** অবস্থায় রাখা হয়; প্রতিটি app-ফোল্ডারে তার নিজের `LICENSE-MIT`, `LICENSE-APACHE`, `NOTICE`, `ATTRIBUTION.md` ও `OFL-*.txt` থাকে |
 
-- ArtCraft নাম, wordmark ও logo তাদের trademark; এই লাইসেন্সের আওতায় নয়। ProNotes এগুলো নিজের branding হিসেবে ব্যবহার করে না; শুধু অ্যাপ চেনাতে নাম দেখায়। কোনো build বদলালে (যেমন বাংলা ফন্ট যোগ করে নিজে build করলে) তাদের logo সরাতে হবে।
+- ArtCraft নাম, wordmark ও logo তাদের trademark; এই লাইসেন্সের আওতায় নয়। ProNotes এগুলো নিজের branding হিসেবে ব্যবহার করে না; শুধু অ্যাপ চেনাতে নাম দেখায়। কোনো build বদলালে (যেমন বাংলা ফন্ট যোগ করে নিজে build করলে) তাদের logo সরাতে হবে।
 - ProNotes-এর "সর্বস্বত্ব সংরক্ষিত" লাইসেন্স এই অ্যাপগুলোর ওপর খাটে না।
+- Noto Sans Bengali (`craft-fonts/fonts/noto-sans-bengali/`, storytold/craft-fonts থেকে, উৎস google/fonts) — SIL OFL 1.1, লাইসেন্স ফাইল পাশেই; PhotoCraft-এর ফোল্ডারে কপি হয়ে পরিবেশিত হয়।

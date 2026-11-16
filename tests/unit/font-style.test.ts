@@ -4,7 +4,7 @@ import { readFontStyle } from '../../src/fonts/font-file';
 
 const dir = '/usr/share/fonts/truetype/dejavu/';
 const buf = (f: string) => { const b = fs.readFileSync(dir + f); return b.buffer.slice(b.byteOffset, b.byteOffset + b.byteLength) as ArrayBuffer; };
-const have = fs.existsSync(dir + 'DejaVuSerif.ttf');
+const have = ['DejaVuSerif.ttf', 'DejaVuSerif-Bold.ttf', 'DejaVuSerif-Italic.ttf', 'DejaVuSerif-BoldItalic.ttf'].every((f) => fs.existsSync(dir + f));
 
 describe('font file style (so an italic file never draws normal text)', () => {
   it.skipIf(!have)('reads regular, bold, italic and bold italic from real files', () => {

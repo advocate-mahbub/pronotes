@@ -21,6 +21,11 @@ export interface CraftApp {
   /** File types for the Open box. */
   accept: string;
   enabled: boolean;
+  /** Packaging fixes applied when the zip is unpacked (tools/fetch-craft-apps.mjs). */
+  copy?: [string, string][];
+  /** The app reads fonts/manifest.txt: the fonts in craft-fonts/ (Noto Sans Bengali) are added. */
+  fonts?: boolean;
+  note?: string;
 }
 
 export const CRAFT_APPS = manifest.apps as CraftApp[];

@@ -12,7 +12,7 @@
  * the size budget (the published site may be at most 1 GB).
  */
 import { createHash } from 'node:crypto';
-import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { cpSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import JSZip from 'jszip';
@@ -74,6 +74,28 @@ export async function fetchApps(outDir, { manifest = join(ROOT, 'src/craft/apps.
       writeFileSync(target, data);
     }
     if (!existsSync(join(dest, 'index.html'))) throw new Error(`${app.id}: no index.html in the zip`);
+    // packaging fixes listed in apps.json ("copy": [[from, to]]): files are copied, never changed
+    for (const [from, to] of app.copy ?? []) {
+      const ok = (x) => typeof x === 'string' && x && !x.split('/').some((p) => p === '..' || p === '') && !x.startsWith('/');
+      if (!ok(from) || !ok(to)) throw new Error(`${app.id}: bad copy entry ${from} → ${to}`);
+      cpSync(join(dest, from), join(dest, to), { recursive: true });
+    }
+    // extra fonts (craft-fonts/fonts/: manifest.txt + the files it lists) for apps that read fonts/manifest.txt
+    if (app.fonts) {
+      for (const line of readFileSync(join(ROOT, 'craft-fonts/fonts/manifest.txt'), 'utf8').split('\n')) {
+        const f = line.trim().startsWith('#') ? [] : line.split('|').map((x) => x.trim());
+        if (f.length < 3) continue;
+        for (const [i, file] of [[2, f[2]], [5, f[5]]]) {
+          if (!file) continue;
+          if (!file.startsWith('fonts/') || file.split('/').includes('..')) throw new Error(`craft-fonts: bad path ${file}`);
+          const data = readFileSync(join(ROOT, 'craft-fonts', file));
+          if (i === 2 && f[6] && createHash('sha256').update(data).digest('hex') !== f[6]) throw new Error(`craft-fonts: SHA-256 of ${file} does not match`);
+          mkdirSync(dirname(join(dest, file)), { recursive: true });
+          writeFileSync(join(dest, file), data);
+        }
+      }
+      cpSync(join(ROOT, 'craft-fonts/fonts/manifest.txt'), join(dest, 'fonts/manifest.txt'));
+    }
     writeFileSync(marker, app.sha256);
     total += size;
     console.log(`  ${(size / 2 ** 20).toFixed(1)} MiB`);
