@@ -149,6 +149,6 @@ test('Share → "WordCraft-এ খুলুন" opens the draft in the Apps work
   await page.getByTestId('open-wordcraft').click();
   await expect(page.getByTestId('craft-app')).toBeVisible();
   await expect(page.getByTestId('craft-app')).toContainText('WordCraft');
-  await page.getByTestId('craft-close').click();
+  await page.getByTestId('craft-drafts').click();
   await expect(page.getByTestId('editor')).toContainText('দলিল মূলে খরিদ'); // the draft is untouched
 });

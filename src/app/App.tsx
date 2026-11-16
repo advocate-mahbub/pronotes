@@ -29,7 +29,7 @@ import { DEFAULT_FORMAT, type DocFormat } from '../docx-export/format';
 import { Sidebar } from './Sidebar';
 import { Workspace, type SaveState } from './Workspace';
 import { LawDictionary } from './LawDictionary';
-import { CraftWorkspace, type CraftOpenFile } from '../craft/CraftWorkspace';
+import { CraftWorkspace, type CraftHandoff, type CraftView } from '../craft/CraftWorkspace';
 import { craftApp } from '../craft/bridge';
 import { load, save, allPrefs, restorePrefs } from './prefs';
 import { I18nContext, setUiLangGlobal, translate, tr, type UiLang } from '../i18n';
@@ -113,7 +113,13 @@ export function App() {
   const [craftStart] = useState(() => (typeof location === 'undefined' ? null : new URLSearchParams(location.search).get('app')));
   const [craftOpen, setCraftOpen] = useState(() => !!craftApp(craftStart));
   // a draft sent from the Share menu ("WordCraft-এ খুলুন")
-  const [craftHandoff, setCraftHandoff] = useState<{ app: string; file: CraftOpenFile; n: number } | null>(null);
+  const [craftHandoff, setCraftHandoff] = useState<CraftHandoff | null>(null);
+  // once opened, the Apps workspace stays mounted (hidden) so a running app is not reloaded
+  const [craftMounted, setCraftMounted] = useState(() => !!craftApp(craftStart));
+  useEffect(() => { if (craftOpen) setCraftMounted(true); }, [craftOpen]);
+  // an app fills the screen: ProNotes' header steps aside (the app's thin bar has the way back)
+  const [craftView, setCraftView] = useState<CraftView>('launcher');
+  const appFullscreen = craftOpen && craftView === 'app';
   useEffect(() => {
     if (craftStart) history.replaceState(null, '', location.pathname + location.hash);
   }, [craftStart]);
@@ -720,7 +726,7 @@ export function App() {
   return (
     <I18nContext.Provider value={i18n}>
     <div className={'app' + (!lawDictionaryOpen && !craftOpen && showSide && wide ? ' with-side' : '')}>
-      <header className="top">
+      <header className="top" hidden={appFullscreen}>
         <div className="brand" id="title-slot">
           {!current && <picture className="brand-picture">
             <source media="(prefers-color-scheme: dark)" srcSet="./branding/brand-dark.svg" />
@@ -745,7 +751,8 @@ export function App() {
       <div className="body">
         {!lawDictionaryOpen && !craftOpen && showSide && (wide ? sidebar : <div className="drawer" onClick={(e) => e.target === e.currentTarget && setSideOpen(false)}>{sidebar}</div>)}
         <div className="work">
-          {craftOpen ? <CraftWorkspace key={craftHandoff?.n ?? 0} initialApp={craftHandoff?.app ?? craftStart} initialFile={craftHandoff?.file} onClose={() => { setCraftOpen(false); setCraftHandoff(null); }} say={say} /> : lawDictionaryOpen ? <LawDictionary onClose={() => setLawDictionaryOpen(false)} /> : current && (
+          {craftMounted && <CraftWorkspace visible={craftOpen} initialApp={craftStart} handoff={craftHandoff} onShowDrafts={() => setCraftOpen(false)} onViewChange={setCraftView} say={say} />}
+          {craftOpen ? null : lawDictionaryOpen ? <LawDictionary onClose={() => setLawDictionaryOpen(false)} /> : current && (
             <Workspace key={current.id + ':' + reloadKey} doc={current} map={map} phonetic={layoutId === 'pronotes-phonetic'} rules={layout.kmx} bangla={bangla} vowelForming={vf} oldReph={oldReph}
               kbVisible={kbVisible} coarse={coarse} phone={phone} voiceEngine={voiceEngine === 'auto' ? (geminiKey ? 'ai' : 'device') : voiceEngine} bank={bank.current} bankVersion={bankVersion} onBankChanged={onBankChanged}
               onToggleLanguage={() => setBangla((b) => !b)} onSave={onSave}
@@ -761,7 +768,7 @@ export function App() {
               voice={voice} corrections={corrections} autoBijoy={autoBijoy} ansiFont={ansiFont} enFont={enFont}
               onEditor={(e) => { editorRef.current = e; }}
               onLawDictionary={() => setLawDictionaryOpen(true)}
-              onOpenWordCraft={(name, bytes) => { setLawDictionaryOpen(false); setCraftHandoff({ app: 'wordcraft', file: { name, bytes }, n: Date.now() }); setCraftOpen(true); }}
+              onOpenWordCraft={(name, bytes) => { setLawDictionaryOpen(false); setCraftHandoff({ app: 'wordcraft', file: { name, bytes }, n: Date.now() }); setCraftMounted(true); setCraftOpen(true); }}
               toolbarExtra={
                 <>
                   <button type="button" className={'tb' + (showSide ? ' on' : '')} title={t('ডকুমেন্টের তালিকা')} aria-label={t('ডকুমেন্টের তালিকা')}

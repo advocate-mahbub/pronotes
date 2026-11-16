@@ -875,4 +875,10 @@ export const EN: Record<string, string> = {
   "WordCraft-এর জন্য ফাইল বানানো গেল না": "Could not make the file for WordCraft",
   "এই ডিভাইসের (Mobile/iPad) লেআউট বাক্সে কোনগুলো থাকবে বেছে নিন। কম্পিউটারের তালিকা কম্পিউটার থেকে বদলান।": "Choose which layouts this device (Mobile/iPad) shows in the layout box. Change the computer's list on the computer.",
   "এই কম্পিউটারের লেআউট বাক্সে কোনগুলো থাকবে বেছে নিন। iPad/ফোনের তালিকা সেখান থেকে বদলান।": "Choose which layouts this computer shows in the layout box. Change the iPad/phone list there.",
+  "চলছে": "Running",
+  "{app}-এ সেভ না করা পরিবর্তন আছে। তবুও বন্ধ করে {next} খুলবেন?": "{app} has unsaved changes. Close it and open {next} anyway?",
+  "ড্রাফটে ফিরুন": "Back to drafts",
+  "ফিরে যান": "Go back",
+  "{app}: এখানে Save বা Export করলে সাধারণ ডাউনলোড হবে": "{app}: Save or Export here is an ordinary download",
+  "সেভ না করা পরিবর্তন আছে": "Unsaved changes",
 };
