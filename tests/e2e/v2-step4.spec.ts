@@ -30,6 +30,14 @@ test('ANSI typing: র-ফলা takes SutonnyMJ\'s shape for the letter (প্
   await expect(editor(page)).toHaveText('cÖ MÖvg kÖg');
 });
 
+test('ANSI typing: ে-কার after রু stays inside the word (ফারুকের dviæ‡Ki, not dviæ†Ki)', async ({ page }) => {
+  await start(page);
+  await page.keyboard.press('Control+Shift+KeyA');
+  await expect(page.getByTestId('ansi-typing-badge')).toBeVisible();
+  await typeKeys(page, ['KeyF', 'KeyA', 'KeyR', 'KeyU', 'KeyK', 'KeyE', 'KeyR']);
+  await expect(editor(page)).toHaveText('dviæ‡Ki');
+});
+
 test('ANSI typing: Bornona keys typed straight into Bijoy, ⌫ removes one letter, English in its own font', async ({ page }) => {
   await start(page);
   await page.keyboard.press('Control+Shift+KeyA');
