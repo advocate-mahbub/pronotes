@@ -769,3 +769,9 @@ button, select, .chip, .key, summary { touch-action: manipulation; }
 }
 .share-wordcraft { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; width: 100%; margin: 6px 0; text-align: left; }
 .share-wordcraft small { color: var(--muted); font-size: 12px; font-weight: 400; }
+
+/* Settings → keyboard shortcuts */
+.kb-shortcuts { width: 100%; border-collapse: collapse; font-size: 14px; }
+.kb-shortcuts td { padding: 4px 6px; border-bottom: 1px solid var(--line); vertical-align: top; }
+.kb-shortcuts td:first-child { white-space: nowrap; width: 1%; }
+.kb-shortcuts kbd { font: 500 12px var(--f-sans); background: var(--sheet); border: 1px solid var(--line); border-radius: 5px; padding: 1px 5px; }

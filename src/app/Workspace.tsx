@@ -192,7 +192,7 @@ export function Workspace(p: Props) {
       convertPaste: (text, html) => (cb.current.autoBijoy ? convertBijoyPaste(text, html) : null),
       onNotice: (m) => cb.current.say(m),
       onToggleAnsi: () => cb.current.onToggleAnsi(),
-    }, { getLayout: () => layoutRef.current }),
+    }, { getLayout: () => layoutRef.current, getDefaultSize: () => (kindOf(cb.current.doc) === 'note' ? NOTE_SIZE : cb.current.format.size) }),
     content: p.doc.content,
     // Tiptap re-applies these options on re-render, so inputmode must be part of them.
     editorProps: {
@@ -226,14 +226,24 @@ export function Workspace(p: Props) {
         e.preventDefault();
         pending.current = true;
         flush(editor);
-      } else if (k === 'f' || k === 'h') {
+      } else if ((k === 'f' || k === 'h') && !e.shiftKey) {
         e.preventDefault();
         setFind({ replace: k === 'h' });
-      } else if (editor.isFocused && ['l', 'e', 'r', 'j'].includes(k) && !e.shiftKey) {
-        // Word's alignment shortcuts
+      } else if (k === 'p' && !e.shiftKey) {
         e.preventDefault();
-        editor.chain().focus().setTextAlign({ l: 'left', e: 'center', r: 'right', j: 'justify' }[k]!).run();
+        void printRef.current();
+      } else if (editor.isFocused && (e.code === 'KeyD' && !e.shiftKey || e.code === 'KeyF' && e.shiftKey)) {
+        // Word: Ctrl+D / Ctrl+Shift+F — the font list
+        e.preventDefault();
+        document.querySelector<HTMLElement>('[data-testid="font"]')?.click();
+      } else if (editor.isFocused && e.code === 'KeyP' && e.shiftKey) {
+        // Word: Ctrl+Shift+P — the font size box
+        e.preventDefault();
+        const box = document.querySelector<HTMLInputElement>('[data-testid="size"]');
+        box?.focus();
+        box?.select();
       }
+      // the rest of Word's keys live in the editor (src/editor/word-shortcuts.ts)
     };
     document.addEventListener('visibilitychange', hide);
     const leave = () => flush(editor);
@@ -458,6 +468,7 @@ export function Workspace(p: Props) {
     }
   };
 
+  const printRef = useRef<() => Promise<void>>(async () => {});
   const print = async () => {
     if (!editor) return;
     pending.current = true;
@@ -467,7 +478,8 @@ export function Workspace(p: Props) {
     } catch {
       p.say('এখানে প্রিন্ট করা যায় না');
     }
-  };
+  };  printRef.current = print;
+
 
   // Copy and cut in Bijoy (ANSI) when that output is chosen: plain text in Bijoy, rich text with the fonts
   useEffect(() => {

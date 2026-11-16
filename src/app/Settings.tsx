@@ -7,6 +7,7 @@ import type { VoicePrefs } from './prefs-types';
 import { layoutAccept } from './layout-files';
 import { load, save } from './prefs';
 import { useT, type UiLang } from '../i18n';
+import { WORD_SHORTCUTS, showKeys } from '../editor/word-shortcuts';
 
 export interface FontInfo {
   id: string;
@@ -269,6 +270,23 @@ export function Settings(p: Props) {
         <label><input type="checkbox" data-testid="ansi-typing" checked={p.ansiTyping} onChange={(e) => p.setAnsiTyping(e.target.checked)} /> {t('বাংলা লেখা সরাসরি বিজয় ANSI-তে (SutonnyMJ) রাখো')}</label>
         <p className="note">{t('শুধু পুরোনো SutonnyMJ ফাইলে কপি-পেস্ট করার জন্য। এই অবস্থায় শব্দের পরামর্শ, শেখা, কথা বলে লেখা আর খোঁজা ঠিকমতো কাজ করে না, আর ফন্ট না থাকলে লেখা ভাঙা দেখায়। সাধারণ কাজে ইউনিকোডে লিখে “কপি: ANSI” বা বিজয় Word ফাইল নেওয়াই ভালো। পরে Converter → “পুরো ড্রাফট ইউনিকোডে” দিয়ে ফেরানো যায়।')}</p>
         <label><input type="checkbox" data-testid="fix-chandra" checked={p.fixChandra} onChange={(e) => p.setFixChandra(e.target.checked)} /> {t('চন্দ্রবিন্দুর জায়গা নিজে থেকে ঠিক করো (ক ঁ া লিখলে হবে কাঁ)')}</label>
+      </details>
+
+      <details data-testid="settings-shortcuts">
+        <summary>{t('কিবোর্ড শর্টকাট (Word-এর মতো)')}</summary>
+        <p className="note">{t('MS Word-এর শর্টকাট এখানেও চলে; বাংলা লেআউটে লিখলেও একই কী। বাংলা/ইংরেজি বদল আর ANSI-র কী আগে কাজ করে। ব্রাউজার নিজে কিছু কী রেখে দেয় (Ctrl+N, Ctrl+T, Ctrl+W, Ctrl+Tab), অ্যাপ হিসেবে ইনস্টল করলে বেশিরভাগ পাওয়া যায়।')}</p>
+        {([['char', 'অক্ষর'], ['para', 'প্যারা'], ['edit', 'লেখা ও চিহ্ন'], ['file', 'ফাইল']] as const).map(([g, label]) => (
+          <div key={g}>
+            <h3 className="sub-h">{t(label)}</h3>
+            <table className="kb-shortcuts">
+              <tbody>
+                {WORD_SHORTCUTS.filter((s) => s.group === g).map((s) => (
+                  <tr key={s.keys}><td><kbd>{showKeys(s.keys)}</kbd></td><td>{t(s.what)}</td></tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ))}
       </details>
 
       <details>
