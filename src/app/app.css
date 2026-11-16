@@ -56,7 +56,7 @@ button:focus-visible, select:focus-visible { outline: 2px solid var(--gold); out
 .settings .note { margin: 0; color: var(--muted); font-size: 13px; }
 
 .desk { flex: 1; min-height: 0; overflow: auto; padding: 14px 0; }
-.page { width: var(--pw, 816px); zoom: var(--z, 1); margin: 0 auto; position: relative; background: var(--sheet); border: 1px solid var(--line); box-shadow: 0 2px 12px rgba(11, 27, 51, .08); }
+.page { width: var(--pw, 816px); zoom: calc(var(--z, 1) * var(--pz, 1)); margin: 0 auto; position: relative; background: var(--sheet); border: 1px solid var(--line); box-shadow: 0 2px 12px rgba(11, 27, 51, .08); }
 .page-body { position: relative; z-index: 1; min-height: var(--ph, 1344px); padding: var(--mt, 288px) var(--mr, 96px) var(--mb, 144px) var(--ml, 144px); outline: none; white-space: pre-wrap; word-break: break-word;
   font-family: var(--doc-font, "SutonnyOMJ"), "Noto Sans Bengali", "Hind Siliguri", serif; font-size: var(--doc-size, 14pt); line-height: calc(var(--doc-line, 1.5) * 1.3);
   counter-reset: pn; color: var(--fg); }
@@ -91,7 +91,7 @@ button:focus-visible, select:focus-visible { outline: 2px solid var(--gold); out
 
 /* Print: only the page. Paper size, margins and page numbers come from the @page rule the app writes for the open document. */
 @media print {
-  html, body, #root, .app { height: auto !important; background: #fff !important; padding: 0 !important; }
+  html, body, #root, .app { height: auto !important; background: #fff !important; padding: 0 !important; position: static !important; overflow: visible !important; }
   .top, .toolbar, .ribbon, .findbar, .side, .drawer, .dock, .title, .settings, .toast, .mic, .conv, .pop, .modal { display: none !important; }
   .fm-para { display: none !important; } .find-hit { background: none !important; }
   .page-body .pb { border: 0 !important; height: 0 !important; margin: 0 !important; break-after: page; } .page-body .pb::after { content: none !important; }
@@ -827,3 +827,11 @@ button, select, .chip, .key, summary { touch-action: manipulation; }
   .settings { top: auto; left: 0; right: 0; bottom: 0; width: 100%; max-height: 88vh; height: 88vh; border-radius: 16px 16px 0 0; padding-bottom: env(safe-area-inset-bottom, 0px); }
 }
 .info-gap { flex: none; width: 28px; }
+
+/* The screen never scrolls as a whole: the app is pinned to the visible area (iPad keyboard, Safari's
+   collapsing bars, full screen), so the header and the ribbon stay in view; only the page scrolls. */
+html, body { overflow: hidden; }
+.app { position: fixed; top: var(--app-top, 0px); left: 0; right: 0; box-sizing: border-box; }
+/* pinching a note or the phone view sizes its text (the paper view zooms the page instead) */
+.page.note .page-body { font-size: calc(13pt * var(--tz, 1) * var(--ptz, 1)); }
+.page.phone .page-body { font-size: calc(max(var(--doc-size, 14pt), 18px) * var(--tz, 1) * var(--ptz, 1)); }

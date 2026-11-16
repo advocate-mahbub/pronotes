@@ -43,5 +43,7 @@ export interface ViewPrefs {
   ruler: boolean;
   rulerUnit: 'cm' | 'in';
   grid: GridPrefs;
+  /** Text size on screen for notes and the phone view (percent), set by pinching the page. */
+  textZoom?: number;
 }
 export const DEFAULT_VIEW: ViewPrefs = { layout: 'print', zoom: 'width', ruler: false, rulerUnit: 'cm', grid: DEFAULT_GRID };
