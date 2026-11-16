@@ -4,7 +4,8 @@ import { DEFAULT_FORMAT, type DocFormat } from '../docx-export/format';
 import { ENGLISH_FONTS, LOCAL_ANSI, LOCAL_UNI, WEB_FONTS, isFontAvailable } from '../fonts';
 import { TOGGLE_KEYS, ANSI_KEYS, type Layout, type ToggleKey, type AnsiKey } from '../bornona-engine';
 import type { VoicePrefs } from './prefs-types';
-import { LAYOUT_ACCEPT } from './layout-files';
+import { layoutAccept } from './layout-files';
+import { load, save } from './prefs';
 import { useT, type UiLang } from '../i18n';
 
 export interface FontInfo {
@@ -18,6 +19,8 @@ export interface FontInfo {
 }
 
 interface Props {
+  /** The device the settings are open on: only its layout list is shown. */
+  platform: 'desktop' | 'mobile';
   keyboardLayouts: Layout[];
   /** Layouts hidden from the layout box on computers / on touch devices (phone, iPad). */
   hiddenDesktop: string[];
@@ -151,7 +154,7 @@ export interface AppInfo {
 const FORMAT_NAME = { avro: 'Avro', openbangla: 'OpenBangla', kmx: 'Keyman' } as const;
 
 /** Hidden file input + button. */
-function FileButton(p: { label: string; accept: string; testid: string; onFile: (f: File) => void; primary?: boolean }) {
+function FileButton(p: { label: string; accept?: string; testid: string; onFile: (f: File) => void; primary?: boolean }) {
   const ref = useRef<HTMLInputElement>(null);
   return (
     <>
@@ -187,6 +190,8 @@ const FONT_ACCEPT = '.ttf,.otf,.woff,.woff2,font/ttf,font/otf,font/woff,font/wof
 
 export function Settings(p: Props) {
   const { t } = useT();
+  // "কিবোর্ড ও টাইপিং" stays open or folded as it was left last time
+  const [kbOpen, setKbOpen] = useState(() => load('settings.keyboardOpen', true));
   const uniFonts = p.fonts.filter((f) => f.role === 'uni');
   const ansiFonts = p.fonts.filter((f) => f.role === 'ansi');
   const here = (name: string, ansi = false) => p.fonts.some((f) => f.family === name) || WEB_FONTS.includes(name) || isFontAvailable(name, ansi);
@@ -206,12 +211,14 @@ export function Settings(p: Props) {
   return (
     <section className="settings" aria-label={t('সেটিংস')} data-testid="settings-panel">
       <SavedLine />
-      <details open>
+      <details open={kbOpen} onToggle={(e) => { const o = (e.currentTarget as HTMLDetailsElement).open; setKbOpen(o); save('settings.keyboardOpen', o); }} data-testid="settings-keyboard">
         <summary>{t('কিবোর্ড ও টাইপিং')}</summary>
         <h3 className="sub-h">{t('কিবোর্ড লেআউট')}</h3>
-        <p className="note">{t('Desktop এবং Mobile/iPad-এর dropdown-এ কোন layout থাকবে তা আলাদাভাবে বেছে নিন।')}</p>
-        <div className="grid2" data-testid="enabled-layouts">
-          {(['desktop', 'mobile'] as const).map((platform) => {
+        <p className="note">{p.platform === 'mobile'
+          ? t('এই ডিভাইসের (Mobile/iPad) লেআউট বাক্সে কোনগুলো থাকবে বেছে নিন। কম্পিউটারের তালিকা কম্পিউটার থেকে বদলান।')
+          : t('এই কম্পিউটারের লেআউট বাক্সে কোনগুলো থাকবে বেছে নিন। iPad/ফোনের তালিকা সেখান থেকে বদলান।')}</p>
+        <div data-testid="enabled-layouts">
+          {[p.platform].map((platform) => {
             const hidden = hiddenOf(platform);
             const shownCount = p.keyboardLayouts.filter((l) => !hidden.includes(l.id)).length;
             return <fieldset key={platform}><legend>{platform === 'desktop' ? t('Desktop / PC') : t('Mobile / iPad')}</legend>
@@ -226,7 +233,7 @@ export function Settings(p: Props) {
         </div>
         <p className="note">{t('অন্য লেআউট যোগ করা যায়: Avro (.avrolayout), OpenBangla (.json), Keyman (.kmx বা .kmp)। ফাইলটা শুধু এই ডিভাইসে থাকে (ব্যাকআপে যায়)।')}</p>
         <div className="row">
-          <FileButton label={t('লেআউট যোগ করুন')} accept={LAYOUT_ACCEPT} testid="layout-add" onFile={p.onAddLayout} />
+          <FileButton label={t('লেআউট যোগ করুন')} accept={layoutAccept()} testid="layout-add" onFile={p.onAddLayout} />
         </div>
         {p.customLayouts.length > 0 && (
           <ul className="itemlist" data-testid="layout-list">

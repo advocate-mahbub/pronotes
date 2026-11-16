@@ -778,7 +778,7 @@ export function App() {
 
 
       {settingsOpen && (
-        <Settings vf={vf} setVf={setVf} oldReph={oldReph} setOldReph={setOldReph}
+        <Settings platform={coarse || phone ? 'mobile' : 'desktop'} vf={vf} setVf={setVf} oldReph={oldReph} setOldReph={setOldReph}
           keyboardLayouts={allKeyboardLayouts} hiddenDesktop={hiddenDesktop} setHiddenDesktop={setHiddenDesktop}
           hiddenMobile={hiddenMobile} setHiddenMobile={setHiddenMobile}
           customLayouts={customLayouts} onAddLayout={addLayout} onDeleteLayout={deleteLayout}

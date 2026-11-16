@@ -172,10 +172,15 @@ button:focus-visible, select:focus-visible { outline: 2px solid var(--gold); out
 .fatal h1 { margin-top: 0; font: 700 22px var(--f-display); }
 
 /* M5: settings sections, voice, Bijoy panel */
-.settings details { border-top: 1px solid var(--line); padding: 6px 0; display: grid; gap: 8px; }
+/* block, not grid: Safari on iPad/iPhone ignored "closed" on a <details> drawn as a grid, so a section could not fold */
+.settings details { border-top: 1px solid var(--line); padding: 6px 0; display: block; }
 .settings details:first-child { border-top: 0; }
 .settings details[open] { padding-bottom: 10px; }
 .settings summary { font: 600 15px var(--f-display); cursor: pointer; min-height: 36px; display: flex; align-items: center; }
+.settings summary { list-style: none; gap: 8px; }
+.settings summary::-webkit-details-marker { display: none; }
+.settings summary::after { content: '›'; margin-left: auto; font-size: 20px; line-height: 1; color: var(--muted); transition: transform .15s; }
+.settings details[open] > summary::after { transform: rotate(90deg); }
 .settings details > * + * { margin-top: 8px; }
 .settings textarea, .conv textarea { width: 100%; min-height: 80px; border: 1px solid var(--line); border-radius: 8px; background: var(--bg); color: var(--fg); font: 15px var(--f-sans); padding: 8px; box-sizing: border-box; resize: vertical; }
 .settings label.stack { display: block; font-weight: 600; }

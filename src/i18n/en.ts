@@ -873,4 +873,6 @@ export const EN: Record<string, string> = {
   "WordCraft-এ খুলুন": "Open in WordCraft",
   "Word-এর মতো পাতা সাজিয়ে দেখা ও export; খসড়া এখানে যেমন আছে তেমনই থাকে": "Lay out and export it like Word; the draft here stays as it is",
   "WordCraft-এর জন্য ফাইল বানানো গেল না": "Could not make the file for WordCraft",
+  "এই ডিভাইসের (Mobile/iPad) লেআউট বাক্সে কোনগুলো থাকবে বেছে নিন। কম্পিউটারের তালিকা কম্পিউটার থেকে বদলান।": "Choose which layouts this device (Mobile/iPad) shows in the layout box. Change the computer's list on the computer.",
+  "এই কম্পিউটারের লেআউট বাক্সে কোনগুলো থাকবে বেছে নিন। iPad/ফোনের তালিকা সেখান থেকে বদলান।": "Choose which layouts this computer shows in the layout box. Change the iPad/phone list there.",
 };
