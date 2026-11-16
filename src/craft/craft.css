@@ -23,6 +23,28 @@
 .craft-file-name { flex: 1 1 160px; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 500; }
 .craft-file-actions { display: flex; gap: 4px; }
 .craft-stage { flex: 1; min-height: 0; display: flex; gap: 6px; }
-.craft-side { width: 300px; flex: none; overflow: auto; }
 .craft-frame { flex: 1; min-width: 0; width: 100%; height: 100%; border: 1px solid var(--line); border-radius: 8px; background: #e6e6e6; }
-@media (max-width: 700px) { .craft-side { position: absolute; z-index: 5; width: min(320px, 90vw); max-height: 70%; background: var(--bg); padding: 6px; border-radius: 8px; box-shadow: 0 6px 24px rgba(0,0,0,.2); } }
+
+/* hidden means hidden, whatever display the class sets (the running app waits, unseen) */
+.craft[hidden], .craft-app[hidden], .app > header.top[hidden] { display: none !important; }
+.craft-launcher { display: flex; flex-direction: column; gap: 10px; }
+.craft-app { flex: 1; min-height: 0; display: flex; flex-direction: column; gap: 4px; }
+.craft-running { padding: 4px 0 0; }
+/* the thin bar over a running app: the only ProNotes chrome left */
+.craft-slim { display: flex; align-items: center; gap: 8px; min-height: 32px; padding: 0 2px; font-size: 14px; }
+.craft-slim strong { font: 600 14px var(--f-sans); }
+.craft-slim-btn { border: 1px solid var(--line); background: var(--sheet); color: var(--fg); border-radius: 8px; padding: 4px 10px; min-height: 28px; font: 500 13px var(--f-sans); cursor: pointer; }
+.craft-dot { display: inline-flex; align-items: center; gap: 6px; color: var(--muted); font-size: 12px; }
+.craft-dot::before { content: ''; width: 8px; height: 8px; border-radius: 50%; background: #9e9e9e; flex: none; }
+.craft-dot.ready::before { background: #2e7d32; }
+.craft-dot.ready:not(.dirty) .craft-dot-text { display: none; } /* ready and saved: the green dot says enough */
+.craft-dot.dirty::before, .craft-dot.slow::before { background: #e09a00; }
+.craft-dot.failed::before, .craft-dot.missing::before { background: #c62828; }
+.craft-stage { position: relative; }
+.craft-loading { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px;
+  background: color-mix(in srgb, var(--bg) 85%, transparent); border-radius: 8px; font-size: 14px; color: var(--muted); }
+.craft-spinner { width: 28px; height: 28px; border-radius: 50%; border: 3px solid var(--line); border-top-color: var(--gold); animation: craft-spin 0.9s linear infinite; }
+@keyframes craft-spin { to { transform: rotate(360deg); } }
+.craft-running-card { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 10px 12px; border: 1px solid var(--gold); border-radius: 12px; background: var(--sheet); }
+.craft-running-card > span { flex: 1 1 200px; }
+.craft-card.running { border-color: var(--gold); }

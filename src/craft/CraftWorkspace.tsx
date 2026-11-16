@@ -1,5 +1,8 @@
 /**
  * "অ্যাপস" workspace: the Craft apps (WordCraft, PdfCraft, GridCraft, DeckCraft …) inside ProNotes.
+ * The running app stays alive while you go back to the drafts or to the app list (▦ hides it, it does
+ * not close it), so coming back finds it as it was. While an app is shown, ProNotes' own header steps
+ * aside and only a thin bar stays: ← অ্যাপস · name · state · ✎ ProNotes.
  * Each app is the official, unchanged web build served from this site (/apps/<id>/<version>/), framed
  * in a same-origin iframe. Files it saves land in ProNotes' "pronotes-craft" database on this
  * device (store.ts) and can be downloaded from here. ProNotes' own editor and data are untouched.
@@ -43,24 +46,45 @@ async function addBanglaFonts(frame: HTMLIFrameElement | null, app: CraftApp): P
   }
 }
 
-export function CraftWorkspace({ initialApp, initialFile, onClose, say }: { initialApp?: string | null; initialFile?: CraftOpenFile | null; onClose: () => void; say: (m: string, v?: Record<string, string | number>) => void }) {
+/** A draft handed over from ProNotes (Share → "WordCraft-এ খুলুন"); n changes with every hand-over. */
+export interface CraftHandoff { app: string; file: CraftOpenFile; n: number }
+export type CraftView = 'launcher' | 'app';
+
+interface Props {
+  /** The Apps workspace is on screen (false: the drafts are shown, the running app waits). */
+  visible: boolean;
+  /** Open straight into this app (the /word/ address). */
+  initialApp?: string | null;
+  handoff?: CraftHandoff | null;
+  /** Back to the drafts; the running app keeps running. */
+  onShowDrafts: () => void;
+  /** Tells ProNotes whether an app fills the screen (its header then steps aside). */
+  onViewChange?: (v: CraftView) => void;
+  say: (m: string, v?: Record<string, string | number>) => void;
+}
+
+export function CraftWorkspace({ visible, initialApp, handoff, onShowDrafts, onViewChange, say }: Props) {
   const { t } = useT();
+  // the running app (its iframe stays alive) and what is on screen
   const [app, setApp] = useState<CraftApp | null>(() => craftApp(initialApp) ?? null);
+  const [view, setView] = useState<CraftView>(() => (craftApp(initialApp) ? 'app' : 'launcher'));
+  const [run, setRun] = useState(0); // a new number restarts the app (fresh iframe)
   const [files, setFiles] = useState<CraftFileInfo[]>([]);
-  const [showFiles, setShowFiles] = useState(false);
   const [status, setStatus] = useState<Status>('checking');
   const [error, setError] = useState('');
   const [dirty, setDirty] = useState(false);
   const frame = useRef<HTMLIFrameElement>(null);
   const ready = useRef(false);
-  const pending = useRef<{ name: string; bytes: ArrayBuffer } | null>(initialFile ?? null);
+  const pending = useRef<{ name: string; bytes: ArrayBuffer } | null>(null);
+
+  useEffect(() => { onViewChange?.(visible ? view : 'launcher'); }, [visible, view, onViewChange]);
 
   const refresh = useCallback(async () => {
-    try { setFiles(await listCraftFiles(app?.id)); } catch { setFiles([]); }
-  }, [app]);
-  useEffect(() => { void refresh(); }, [refresh]);
+    try { setFiles(await listCraftFiles()); } catch { setFiles([]); }
+  }, []);
+  useEffect(() => { if (visible) void refresh(); }, [refresh, visible, view]);
 
-  // a new app: find out if its files are on this site, then wait for its "ready"
+  // an app (re)started: find out if its files are on this site, then wait for its "ready"
   useEffect(() => {
     if (!app) return;
     ready.current = false;
@@ -73,8 +97,9 @@ export function CraftWorkspace({ initialApp, initialFile, onClose, say }: { init
       .then((r) => { if (!gone) setStatus(r.ok ? 'loading' : 'missing'); })
       .catch(() => { if (!gone) setStatus('loading'); }); // offline: let the iframe try (it may be cached)
     const slow = setTimeout(() => { if (!gone && !ready.current && app.bridge === 'parent') setStatus((s) => (s === 'loading' ? 'slow' : s)); }, SLOW_MS);
+    if (app.bridge !== 'parent') say('{app}: এখানে Save বা Export করলে সাধারণ ডাউনলোড হবে', { app: app.name });
     return () => { gone = true; clearTimeout(slow); };
-  }, [app]);
+  }, [app, run]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const send = useCallback((name: string, bytes: ArrayBuffer) => {
     const w = frame.current?.contentWindow;
@@ -122,66 +147,53 @@ export function CraftWorkspace({ initialApp, initialFile, onClose, say }: { init
     return () => window.removeEventListener('beforeunload', guard);
   }, [dirty]);
 
-  const leave = (next: () => void) => {
+  /** Show this app; if another one is running, it is closed first (asks when it has unsaved work). */
+  const start = (a: CraftApp, file?: { name: string; bytes: ArrayBuffer }): boolean => {
+    if (app && app.id === a.id && status !== 'failed' && status !== 'missing') {
+      if (file) {
+        if (dirty && !confirm(t('এই অ্যাপে সেভ না করা পরিবর্তন আছে। তবুও অন্য ফাইল খুলবেন?'))) return false;
+        if (ready.current) send(file.name, file.bytes);
+        else pending.current = file;
+      }
+      setView('app');
+      return true;
+    }
+    if (app && dirty && !confirm(t('{app}-এ সেভ না করা পরিবর্তন আছে। তবুও বন্ধ করে {next} খুলবেন?', { app: app.name, next: a.name }))) return false;
+    pending.current = file ?? null;
+    setApp(a);
+    setRun((n) => n + 1);
+    setView('app');
+    return true;
+  };
+  /** Close the running app (frees its memory). */
+  const stop = () => {
+    if (!app) return;
     if (dirty && !confirm(t('এই অ্যাপে সেভ না করা পরিবর্তন আছে। তবুও বন্ধ করবেন?'))) return;
-    next();
+    setApp(null);
+    setDirty(false);
+    setView('launcher');
   };
 
-  const openBytes = (name: string, bytes: ArrayBuffer) => {
-    if (dirty && !confirm(t('এই অ্যাপে সেভ না করা পরিবর্তন আছে। তবুও অন্য ফাইল খুলবেন?'))) return;
-    if (ready.current) send(name, bytes);
-    else pending.current = { name, bytes };
-    setShowFiles(false);
-  };
-  const openDeviceFile = async (f: File | undefined) => { if (f) openBytes(f.name, await f.arrayBuffer()); };
-  const openSaved = async (id: string) => { const f = await getCraftFile(id); if (f) openBytes(f.name, f.bytes); };
+  // a draft handed over from ProNotes
+  const lastHandoff = useRef(0);
+  useEffect(() => {
+    if (!handoff || handoff.n === lastHandoff.current) return;
+    lastHandoff.current = handoff.n;
+    const a = craftApp(handoff.app);
+    if (a) start(a, handoff.file);
+  }, [handoff]); // eslint-disable-line react-hooks/exhaustive-deps
+
   const download = async (id: string) => { const f = await getCraftFile(id); if (f) await saveFile(f.name, new Blob([f.bytes])); };
   const remove = async (f: CraftFileInfo) => {
     if (!confirm(t('{name} এই ডিভাইস থেকে মুছে ফেলবেন?', { name: f.name }))) return;
     await deleteCraftFile(f.id);
     void refresh();
   };
-
-  const fileList = (
-    <ul className="craft-files" data-testid="craft-files">
-      {files.length === 0 && <li className="craft-empty">{t('এখনো কোনো ফাইল রাখা হয়নি')}</li>}
-      {files.map((f) => (
-        <li key={f.id}>
-          <span className="craft-file-name" title={f.name}>{f.name}</span>
-          <small>{!app && (craftApp(f.appId)?.name ?? f.appId) + ' · '}{kb(f.size)} · {when(f.updatedAt)}</small>
-          <span className="craft-file-actions">
-            {app?.bridge === 'parent' && <button type="button" className="btn small" onClick={() => void openSaved(f.id)}>{t('খুলুন')}</button>}
-            {!app && craftApp(f.appId)?.bridge === 'parent' && <button type="button" className="btn small" onClick={async () => { const a = craftApp(f.appId)!; const x = await getCraftFile(f.id); setApp(a); if (x) pending.current = { name: x.name, bytes: x.bytes }; }}>{t('খুলুন')}</button>}
-            <button type="button" className="btn small" onClick={() => void download(f.id)}>{t('ডাউনলোড')}</button>
-            <button type="button" className="btn small" onClick={() => void remove(f)}>{t('মুছুন')}</button>
-          </span>
-        </li>
-      ))}
-    </ul>
-  );
-
-  if (!app)
-    return (
-      <section className="craft" data-testid="craft-launcher">
-        <header className="craft-bar">
-          <strong>{t('অ্যাপস')}</strong>
-          <span className="craft-spacer" />
-          <button type="button" className="btn small" data-testid="craft-close" onClick={onClose}>{t('বন্ধ')}</button>
-        </header>
-        <div className="craft-grid">
-          {enabledCraftApps().map((a) => (
-            <button type="button" key={a.id} className="craft-card" data-testid={'craft-app-' + a.id} onClick={() => setApp(a)}>
-              <strong>{a.name}</strong>
-              <span>{t(a.label)}</span>
-              <small>v{a.version}</small>
-            </button>
-          ))}
-        </div>
-        <p className="craft-note">{t('অ্যাপগুলো ArtCraft-এর ওপেন-সোর্স (MIT/Apache-2.0) web build, অপরিবর্তিত অবস্থায় এই সাইট থেকে চলে। ProNotes-এর সাথে এদের দলের কোনো সম্পর্ক নেই।')}</p>
-        <h3 className="craft-h">{t('এই ডিভাইসে রাখা ফাইল')}</h3>
-        {fileList}
-      </section>
-    );
+  const openKept = async (f: CraftFileInfo) => {
+    const a = craftApp(f.appId);
+    const x = await getCraftFile(f.id);
+    if (a && x) start(a, { name: x.name, bytes: x.bytes });
+  };
 
   const statusText: Record<Status, string> = {
     checking: 'অ্যাপ খোঁজা হচ্ছে…',
@@ -191,35 +203,74 @@ export function CraftWorkspace({ initialApp, initialFile, onClose, say }: { init
     failed: 'অ্যাপ চালু হলো না',
     missing: 'এই সাইটে অ্যাপটির ফাইল নেই',
   };
+  const busy = status === 'checking' || status === 'loading' || status === 'slow';
 
   return (
-    <section className="craft craft-running" data-testid="craft-app">
-      <header className="craft-bar">
-        <button type="button" className="btn small" data-testid="craft-back" onClick={() => leave(() => setApp(null))}>← {t('অ্যাপস')}</button>
-        <strong>{app.name}</strong>
-        <span className={'craft-status ' + status + (dirty ? ' dirty' : '')} data-testid="craft-status" role="status">{t(statusText[status])}</span>
-        <span className="craft-spacer" />
-        {app.bridge === 'parent' && (
-          <>
-            <button type="button" className="btn small" data-testid="craft-new" disabled={status !== 'ready'}
-              onClick={() => { if (!dirty || confirm(t('এই অ্যাপে সেভ না করা পরিবর্তন আছে। তবুও নতুন ফাইল খুলবেন?'))) void runCommand(frame.current, app.id, 'file.new').catch(() => {}); }}>{t('নতুন')}</button>
-            <label className="btn small">{t('ফাইল খুলুন')}<input type="file" accept={app.accept} hidden onChange={(e) => { void openDeviceFile(e.target.files?.[0]); e.currentTarget.value = ''; }} /></label>
-            <button type="button" className={'btn small' + (showFiles ? ' on' : '')} data-testid="craft-files-toggle" onClick={() => setShowFiles((v) => !v)}>{t('রাখা ফাইল')} ({files.length})</button>
-          </>
-        )}
-        <button type="button" className="btn small" data-testid="craft-close" onClick={() => leave(onClose)}>{t('বন্ধ')}</button>
-      </header>
-      {app.bridge !== 'parent' && <p className="craft-note">{t('এই অ্যাপ এখনো ProNotes-এ ফাইল দিতে পারে না: সেভ বা এক্সপোর্ট করলে সাধারণ ডাউনলোড হবে।')}</p>}
-      {status === 'failed' && <p className="craft-error" role="alert">{t('অ্যাপ চালু হলো না। এই ব্রাউজারে WebGPU বা WebGL2 নেই, বা মেমরি কম।')} {error && <code>{error}</code>}</p>}
-      {status === 'missing' ? (
-        <p className="craft-error" role="alert">{t('অ্যাপটির ফাইল এই build-এ নেই। কম্পিউটারে চালান: npm run craft:fetch')}</p>
-      ) : (
-        <div className="craft-stage">
-          {showFiles && <aside className="craft-side">{fileList}</aside>}
-          {status !== 'checking' && (
-            <iframe key={app.id + app.version} ref={frame} className="craft-frame" title={app.name} data-testid="craft-frame"
-              src={craftAppUrl(app, document.baseURI)} allow="fullscreen; clipboard-read; clipboard-write" allowFullScreen
-              onLoad={() => { if (app.bridge !== 'parent') setStatus('ready'); }} />
+    <section className={'craft' + (view === 'app' && app ? ' craft-running' : '')} hidden={!visible} data-testid="craft">
+      {view === 'launcher' && (
+        <div className="craft-launcher" data-testid="craft-launcher">
+          <header className="craft-bar">
+            <strong>{t('অ্যাপস')}</strong>
+            <span className="craft-spacer" />
+            <button type="button" className="btn small" data-testid="craft-close" onClick={onShowDrafts}>✎ {t('ড্রাফটে ফিরুন')}</button>
+          </header>
+          {app && (
+            <div className="craft-running-card" data-testid="craft-running">
+              <span>{t('চলছে')}: <strong>{app.name}</strong>{dirty ? ' · ' + t('সেভ না করা পরিবর্তন আছে') : ''}</span>
+              <button type="button" className="btn small primary" data-testid="craft-resume" onClick={() => setView('app')}>{t('ফিরে যান')}</button>
+              <button type="button" className="btn small" data-testid="craft-stop" onClick={stop}>{t('বন্ধ করুন')}</button>
+            </div>
+          )}
+          <div className="craft-grid">
+            {enabledCraftApps().map((a) => (
+              <button type="button" key={a.id} className={'craft-card' + (app?.id === a.id ? ' running' : '')} data-testid={'craft-app-' + a.id} onClick={() => start(a)}>
+                <strong>{a.name}</strong>
+                <span>{t(a.label)}</span>
+                <small>v{a.version}{app?.id === a.id ? ' · ' + t('চলছে') : ''}</small>
+              </button>
+            ))}
+          </div>
+          <p className="craft-note">{t('অ্যাপগুলো ArtCraft-এর ওপেন-সোর্স (MIT/Apache-2.0) web build, অপরিবর্তিত অবস্থায় এই সাইট থেকে চলে। ProNotes-এর সাথে এদের দলের কোনো সম্পর্ক নেই।')}</p>
+          <h3 className="craft-h">{t('এই ডিভাইসে রাখা ফাইল')}</h3>
+          <ul className="craft-files" data-testid="craft-files">
+            {files.length === 0 && <li className="craft-empty">{t('এখনো কোনো ফাইল রাখা হয়নি')}</li>}
+            {files.map((f) => (
+              <li key={f.id}>
+                <span className="craft-file-name" title={f.name}>{f.name}</span>
+                <small>{(craftApp(f.appId)?.name ?? f.appId) + ' · '}{kb(f.size)} · {when(f.updatedAt)}</small>
+                <span className="craft-file-actions">
+                  {craftApp(f.appId)?.bridge === 'parent' && <button type="button" className="btn small" onClick={() => void openKept(f)}>{t('খুলুন')}</button>}
+                  <button type="button" className="btn small" onClick={() => void download(f.id)}>{t('ডাউনলোড')}</button>
+                  <button type="button" className="btn small" onClick={() => void remove(f)}>{t('মুছুন')}</button>
+                </span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+      {app && (
+        <div className="craft-app" hidden={view !== 'app'} data-testid="craft-app">
+          <header className="craft-slim">
+            <button type="button" className="craft-slim-btn" data-testid="craft-back" onClick={() => setView('launcher')}>← {t('অ্যাপস')}</button>
+            <strong>{app.name}</strong>
+            <span className={'craft-dot ' + status + (dirty ? ' dirty' : '')} data-testid="craft-status" role="status" title={t(statusText[status])} aria-label={t(statusText[status])}>
+              <span className="craft-dot-text">{t(statusText[status])}</span>
+            </span>
+            <span className="craft-spacer" />
+            <button type="button" className="craft-slim-btn" data-testid="craft-drafts" onClick={onShowDrafts}>✎ ProNotes</button>
+          </header>
+          {status === 'failed' && <p className="craft-error" role="alert">{t('অ্যাপ চালু হলো না। এই ব্রাউজারে WebGPU বা WebGL2 নেই, বা মেমরি কম।')} {error && <code>{error}</code>}</p>}
+          {status === 'missing' ? (
+            <p className="craft-error" role="alert">{t('অ্যাপটির ফাইল এই build-এ নেই। কম্পিউটারে চালান: npm run craft:fetch')}</p>
+          ) : (
+            <div className="craft-stage">
+              {status !== 'checking' && (
+                <iframe key={app.id + app.version + ':' + run} ref={frame} className="craft-frame" title={app.name} data-testid="craft-frame"
+                  src={craftAppUrl(app, document.baseURI)} allow="fullscreen; clipboard-read; clipboard-write" allowFullScreen
+                  onLoad={() => { if (app.bridge !== 'parent') setStatus('ready'); }} />
+              )}
+              {busy && <div className="craft-loading" role="status"><span className="craft-spinner" aria-hidden="true" />{t(statusText[status])}</div>}
+            </div>
           )}
         </div>
       )}
