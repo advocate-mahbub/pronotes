@@ -23,7 +23,7 @@ export interface CraftApp {
   enabled: boolean;
   /** Packaging fixes applied when the zip is unpacked (tools/fetch-craft-apps.mjs). */
   copy?: [string, string][];
-  /** The app reads fonts/manifest.txt: the fonts in craft-fonts/ (Noto Sans Bengali) are added. */
+  /** Bangla fonts from craft-fonts/ go into the app folder; apps with the bridge get them through font.add, the rest read fonts/manifest.txt. */
   fonts?: boolean;
   note?: string;
 }
@@ -95,6 +95,27 @@ export const insertText = (frame: HTMLIFrameElement, appId: string, text: string
  * Run one of the app's own commands through its control API (window.<id>, craft-web-api), e.g.
  * 'file.new'. Resolves false when the app has no control API.
  */
+export async function callCommand(frame: HTMLIFrameElement | null, appId: string, command: string, params: unknown = {}): Promise<unknown> {
+  const api = (frame?.contentWindow as unknown as Record<string, { execute?: (c: string, p: unknown) => Promise<unknown> }> | null)?.[appId];
+  if (!api?.execute) return undefined;
+  return api.execute(command, params);
+}
+
+/** Families in a craft-fonts manifest.txt (family | style | file | …), with their files. */
+export function manifestFonts(text: string): { family: string; file: string }[] {
+  return text.split('\n').map((l) => l.trim()).filter((l) => l && !l.startsWith('#'))
+    .map((l) => l.split('|').map((x) => x.trim())).filter((f) => f.length >= 3 && f[0] && f[2].startsWith('fonts/') && !f[2].includes('..'))
+    .map((f) => ({ family: f[0], file: f[2] }));
+}
+
+/** Family names in the app's answer to font.list. */
+export function listedFamilies(answer: unknown): Set<string> {
+  const out = new Set<string>();
+  const fonts = (answer as { fonts?: { faces?: { family?: unknown }[] }[] } | null)?.fonts ?? [];
+  for (const f of fonts) for (const face of f.faces ?? []) if (typeof face.family === 'string') out.add(face.family);
+  return out;
+}
+
 export async function runCommand(frame: HTMLIFrameElement | null, appId: string, command: string, params: unknown = {}): Promise<boolean> {
   const api = (frame?.contentWindow as unknown as Record<string, { execute?: (c: string, p: unknown) => Promise<unknown> }> | null)?.[appId];
   if (!api?.execute) return false;

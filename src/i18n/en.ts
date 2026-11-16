@@ -870,4 +870,7 @@ export const EN: Record<string, string> = {
   "mnemonic লেআউট: কী-গুলো US (ইংরেজি) কিবোর্ড ধরে নেওয়া হলো": "mnemonic layout: keys are read as a US (English) keyboard",
   "ছবি এডিটর": "Image editor",
   "ভেক্টর ডিজাইন": "Vector design",
+  "WordCraft-এ খুলুন": "Open in WordCraft",
+  "Word-এর মতো পাতা সাজিয়ে দেখা ও export; খসড়া এখানে যেমন আছে তেমনই থাকে": "Lay out and export it like Word; the draft here stays as it is",
+  "WordCraft-এর জন্য ফাইল বানানো গেল না": "Could not make the file for WordCraft",
 };

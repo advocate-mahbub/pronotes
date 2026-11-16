@@ -762,3 +762,5 @@ button, select, .chip, .key, summary { touch-action: manipulation; }
 .settings .grid2 > label > select, .settings .grid2 > label > input:not([type="checkbox"]):not([type="radio"]) {
   width: 100%; min-width: 0; max-width: 100%; height: auto; min-height: 36px; margin: 0; box-sizing: border-box; text-overflow: ellipsis;
 }
+.share-wordcraft { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; width: 100%; margin: 6px 0; text-align: left; }
+.share-wordcraft small { color: var(--muted); font-size: 12px; font-weight: 400; }

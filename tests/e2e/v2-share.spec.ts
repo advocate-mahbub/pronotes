@@ -140,3 +140,15 @@ test('share sends the file to the device share sheet when it can', async ({ page
   await expect.poll(() => page.evaluate(() => (window as unknown as { __shared: string[] }).__shared)).toEqual(['পরীক্ষা.docx']);
   await expect(page.getByTestId('toast')).toContainText('শেয়ার করা হয়েছে');
 });
+
+test('Share → "WordCraft-এ খুলুন" opens the draft in the Apps workspace', async ({ page }) => {
+  await page.goto('./');
+  await page.getByTestId('editor').click();
+  await page.keyboard.insertText('দলিল মূলে খরিদ');
+  await page.getByTestId('share').click();
+  await page.getByTestId('open-wordcraft').click();
+  await expect(page.getByTestId('craft-app')).toBeVisible();
+  await expect(page.getByTestId('craft-app')).toContainText('WordCraft');
+  await page.getByTestId('craft-close').click();
+  await expect(page.getByTestId('editor')).toContainText('দলিল মূলে খরিদ'); // the draft is untouched
+});

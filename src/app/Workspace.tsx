@@ -20,6 +20,7 @@ import { kindOf, type Doc } from '../storage';
 import { useT } from '../i18n';
 import { Ribbon } from './Ribbon';
 import { FindBar, FontPanel, PageSetupSheet, ParagraphPanel, WordCount } from './Panels';
+import { craftApp } from '../craft/bridge';
 import { ShareMenu, type ExportFormat, type OutputMode } from './ShareMenu';
 import { deliver, MIME } from '../export/deliver';
 import { tr } from '../i18n';
@@ -57,6 +58,8 @@ interface Props {
   toolbarExtra: React.ReactNode;
   /** Opens the law dictionary (button in the Tools tab). */
   onLawDictionary?: () => void;
+  /** Hand this draft (as .docx) to WordCraft. */
+  onOpenWordCraft?: (name: string, bytes: ArrayBuffer) => void;
   toolbarRight: React.ReactNode;
   format: DocFormat;
   /** Font families for the font box (document default first). */
@@ -521,7 +524,21 @@ export function Workspace(p: Props) {
   const commitTitle = () => {
     if (title.trim() !== p.doc.title) p.onRename(p.doc.id, title);
   };
-  const share = <ShareMenu output={p.output} setOutput={p.setOutput} onExport={exportAs} onPrint={print} />;
+  /** The draft as Unicode .docx, opened in WordCraft (Apps). Nothing in the draft changes. */
+  const openInWordCraft = async () => {
+    if (!editor || !p.onOpenWordCraft) return;
+    pending.current = true;
+    await flush(editor);
+    try {
+      const { docxFileName } = await import('../docx-export/name');
+      const { docxBlob } = await import('../docx-export');
+      const blob = await docxBlob(editor.getJSON(), title, p.format, { kind, page: legal ? pg : null, ansi: null });
+      p.onOpenWordCraft(docxFileName(title, '.docx'), await blob.arrayBuffer());
+    } catch {
+      p.say('WordCraft-এর জন্য ফাইল বানানো গেল না');
+    }
+  };
+  const share = <ShareMenu output={p.output} setOutput={p.setOutput} onExport={exportAs} onPrint={print} onOpenWordCraft={p.onOpenWordCraft && craftApp('wordcraft') ? () => void openInWordCraft() : undefined} />;
 
   return (
     <>
