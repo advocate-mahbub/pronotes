@@ -26,9 +26,54 @@ export const ONE = frac(1);
 export const isZero = (a: Frac) => a.n === 0n;
 
 const ascii = (s: string) => s.replace(/[০-৯]/g, (c) => String('০১২৩৪৫৬৭৮৯'.indexOf(c)));
-/** "1/3", "2", "0.0825", "৮.২৫" or "৮.২৫শ" → exact fraction; null when it is not a number. */
+/**
+ * আনা-গণ্ডা hissa: ১৬ আনা = পূর্ণ (1); ১ আনা = ২০ গণ্ডা; ১ গণ্ডা = ৪ কড়া; ১ কড়া = ৩ ক্রান্তি; ১ ক্রান্তি = ২০ তিল.
+ * Each unit as a part of the whole (1/16, 1/320 …).
+ */
+export const ANNA_UNITS: { names: string[]; per: bigint }[] = [
+  { names: ['আনা'], per: 16n },
+  { names: ['গণ্ডা', 'গন্ডা'], per: 320n },
+  { names: ['কড়া', 'কড়'], per: 1280n },
+  { names: ['ক্রান্তি', 'কান্তি'], per: 3840n },
+  { names: ['তিল'], per: 76800n },
+];
+const nukta = (s: string) => s.replace(/\u09a1\u09bc/g, '\u09dc').replace(/\u09af\u09bc/g, '\u09df');
+
+/** "৫ আনা ৬ গণ্ডা ২ কড়া ১ ক্রান্তি" → exact share of the whole; null when it has no আনা-গণ্ডা unit. */
+export function readAnna(s: string): Frac | null {
+  const t = ascii(nukta(s));
+  let total = ZERO;
+  let found = false;
+  const rest = t.replace(/(\d+(?:\.\d+)?)\s*([\u0980-\u09ff]+)/g, (m, n: string, unit: string) => {
+    const u = ANNA_UNITS.find((x) => x.names.includes(unit));
+    if (!u) return m;
+    found = true;
+    const v = readFrac(n)!;
+    total = add(total, frac(v.n, v.d * u.per));
+    return '';
+  });
+  return found && !rest.trim() ? total : null;
+}
+
+/** A share written back in আনা-গণ্ডা (with Bangla digits): 21/64 → "৫ আনা ৫ গণ্ডা". What is left below a তিল is written as a fraction of a তিল. */
+export function annaText(f: Frac): string {
+  let left = f;
+  const parts: string[] = [];
+  for (const u of ANNA_UNITS) {
+    const k = (left.n * u.per) / left.d; // whole units
+    if (k > 0n) { parts.push(`${k} ${u.names[0]}`); left = sub(left, frac(k, u.per)); }
+    if (u === ANNA_UNITS.at(-1) && !isZero(left)) {
+      const r = frac(left.n * u.per, left.d);
+      parts.push(`${fracText(r)} তিল`);
+    }
+  }
+  return bnDigits(parts.join(' ') || '0');
+}
+
+/** "1/3", "2", "0.0825", "৮.২৫", "৮.২৫শ" or "৫ আনা ৬ গণ্ডা" → exact fraction; null when it is not a number. */
 export function readFrac(s: string | undefined): Frac | null {
   if (!s) return null;
+  if (/আনা|গণ্ডা|গন্ডা|কড়া|কড়া|ক্রান্তি|তিল/.test(s)) return readAnna(s);
   const t = ascii(s).trim().replace(/\s*(শতক|শতাংশ|শ\.?)$/, '');
   const m = t.match(/^(\d+)\s*\/\s*(\d+)$/);
   if (m) return frac(BigInt(m[1]), BigInt(m[2]));

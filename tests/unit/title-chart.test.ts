@@ -55,3 +55,30 @@ describe('title chart: drawing in the owner’s format', () => {
     expect(chartSvg(SAMPLE_CHART)).not.toContain('⚠');
   });
 });
+
+describe('আনা-গণ্ডা hissa', () => {
+  it('reads আনা, গণ্ডা, কড়া, ক্রান্তি, তিল exactly (১৬ আনা = পূর্ণ)', async () => {
+    const { readFrac, frac } = await import('../../src/chart');
+    expect(readFrac('৮ আনা')).toEqual(frac(1, 2));
+    expect(readFrac('৫ আনা ৬ গণ্ডা')).toEqual(frac(5 * 20 + 6, 320));
+    expect(readFrac('১ গণ্ডা ২ কড়া ১ ক্রান্তি')).toEqual(frac(12 + 6 + 1, 3840));
+    expect(readFrac('৪ আনা ১০ তিল')).toEqual(frac(4 * 4800 + 10, 76800));
+    expect(readFrac('৫ আনা কিছু')).toBeNull();
+  });
+  it('writes a share back in আনা-গণ্ডা', async () => {
+    const { annaText, frac } = await import('../../src/chart');
+    expect(annaText(frac(1, 2))).toBe('৮ আনা');
+    expect(annaText(frac(106, 320))).toBe('৫ আনা ৬ গণ্ডা');
+    expect(annaText(frac(1, 3))).toBe('৫ আনা ৬ গণ্ডা ২ কড়া ২ ক্রান্তি'); // exactly, nothing left over
+  });
+  it('heirs’ shares in আনা-গণ্ডা are checked like any other', async () => {
+    const { check, SAMPLE_CHART } = await import('../../src/chart');
+    const c = structuredClone(SAMPLE_CHART);
+    const w1 = c.steps.find((s) => s.id === 'w1') as { heirs: { share?: string }[] };
+    w1.heirs[0].share = '৪ আনা';
+    w1.heirs[1].share = '১২ আনা';
+    expect(check(c).problems).toEqual([]);
+    w1.heirs[1].share = '১১ আনা';
+    expect(check(c).problems.some((p) => p.step === 'w1')).toBe(true);
+  });
+});
