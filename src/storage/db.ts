@@ -8,6 +8,7 @@ import type { JSONContent } from '@tiptap/core';
 import type { WordBank } from '../suggest';
 import type { Layout } from '../bornona-engine';
 import type { PageSetup } from '../docx-export/page';
+import type { TitleChart } from '../chart/model';
 
 /** 'note' = free notes, 'legal' = court draft on a page, 'chart' = title chart (v2.2). Missing = 'legal' (drafts made before v2). */
 export type DocKind = 'note' | 'legal' | 'chart';
@@ -30,6 +31,8 @@ export interface Doc {
   pinned?: boolean;
   /** Folder the document is in (missing = no folder). */
   folderId?: string;
+  /** A title chart's data (kind 'chart'); `content` stays an empty document. */
+  chart?: TitleChart;
 }
 
 export interface DictionarySource { id: string; title: string; author?: string; publisher?: string; year?: number; jurisdiction?: string; importedAt: number; }
@@ -158,6 +161,11 @@ export async function saveContent(id: string, content: JSONContent, text: string
   await update(id, (d) => ({ ...d, content, text, updatedAt: now }));
 }
 
+/** A title chart's data; `text` keeps its names searchable. */
+export async function saveChart(id: string, chart: TitleChart, text: string, now = Date.now()): Promise<void> {
+  await update(id, (d) => ({ ...d, chart, text, updatedAt: now }));
+}
+
 export async function renameDoc(id: string, title: string, now = Date.now()): Promise<void> {
   await update(id, (d) => ({ ...d, title: title.trim() || 'নামহীন ড্রাফট', updatedAt: now }));
 }
@@ -169,6 +177,7 @@ export async function duplicateDoc(id: string, now = Date.now()): Promise<Doc | 
   const extra: Partial<Doc> = {};
   if (d.page) extra.page = structuredClone(d.page);
   if (d.folderId) extra.folderId = d.folderId;
+  if (d.chart) extra.chart = structuredClone(d.chart);
   if (Object.keys(extra).length) await update(c.id, (x) => ({ ...x, ...extra }));
   return { ...c, ...extra };
 }

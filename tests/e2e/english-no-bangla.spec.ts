@@ -7,7 +7,7 @@ const BN = /[ঀ-৿]+/g;
 async function banglaOnScreen(page: Page): Promise<string[]> {
   return page.evaluate((src) => {
     const re = new RegExp(src, 'g');
-    const skip = (el: Element | null) => !!el?.closest('.page-body, .osk, [data-testid="osk"], [data-testid="title"], .kb');
+    const skip = (el: Element | null) => !!el?.closest('.page-body, .osk, [data-testid="osk"], [data-testid="title"], .kb, .chart-preview');
     const found: string[] = [];
     const walk = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
     for (let n = walk.nextNode(); n; n = walk.nextNode()) {
@@ -69,6 +69,11 @@ test('English menu: not one Bangla letter or digit in Settings (every tab, every
   await page.getByTestId('craft-toggle').click();
   await look('apps');
   await page.getByTestId('craft-toggle').click();
+  // a title chart with one step of each kind (the chart itself is the user's Bangla text)
+  await page.getByTestId('new-doc').click();
+  await page.getByTestId('new-chart').click();
+  for (const k of ['record', 'inheritance', 'deed', 'merge', 'note']) await page.getByTestId('add-' + k).click();
+  await look('title chart');
 
   for (const tab of ['type', 'voice', 'font', 'words', 'app'] as const) {
     await section(page, tab);

@@ -29,6 +29,7 @@ import { DEFAULT_FORMAT, type DocFormat } from '../docx-export/format';
 import { Sidebar } from './Sidebar';
 import { Workspace, type SaveState } from './Workspace';
 import { LawDictionary } from './LawDictionary';
+import { ChartWorkspace } from './ChartWorkspace';
 import { CraftWorkspace, type CraftHandoff, type CraftView } from '../craft/CraftWorkspace';
 import { craftApp } from '../craft/bridge';
 import { load, save, allPrefs, restorePrefs } from './prefs';
@@ -414,7 +415,7 @@ export function App() {
   }, [refresh]);
 
   const newDoc = async (kind: DocKind = 'legal') => {
-    const d = await createDoc(tr(kind === 'note' ? 'নতুন নোট' : 'নতুন ড্রাফট'), undefined, '', Date.now(), kind);
+    const d = await createDoc(tr(kind === 'note' ? 'নতুন নোট' : kind === 'chart' ? 'নতুন টাইটেল চার্ট' : 'নতুন ড্রাফট'), undefined, '', Date.now(), kind);
     // a new document goes into the folder being looked at
     if (listPrefs.folder && listPrefs.folder !== 'all') await moveToFolder([d.id], listPrefs.folder);
     await refresh();
@@ -775,7 +776,11 @@ export function App() {
         {!lawDictionaryOpen && !craftOpen && showSide && (wide ? sidebar : <div className="drawer" onClick={(e) => e.target === e.currentTarget && setSideOpen(false)}>{sidebar}</div>)}
         <div className="work">
           {craftMounted && <CraftWorkspace visible={craftOpen} initialApp={craftStart} handoff={craftHandoff} onShowDrafts={() => setCraftOpen(false)} onViewChange={setCraftView} say={say} />}
-          {craftOpen ? null : lawDictionaryOpen ? <LawDictionary onClose={() => setLawDictionaryOpen(false)} /> : current && (
+          {craftOpen ? null : lawDictionaryOpen ? <LawDictionary onClose={() => setLawDictionaryOpen(false)} /> : current && kindOf(current) === 'chart' ? (
+            <ChartWorkspace key={current.id + ':' + reloadKey} doc={current} cfg={getSideConfig} toggle={toggleBangla} say={say} onRename={renameAny}
+              toolbarExtra={<button type="button" className={'tb' + (showSide ? ' on' : '')} title={t('ডকুমেন্টের তালিকা')} aria-label={t('ডকুমেন্টের তালিকা')}
+                data-testid="side-toggle" onPointerDown={(e) => e.preventDefault()} onClick={() => setSideOpen((v) => !v)}>☰</button>} />
+          ) : current && (
             <Workspace key={current.id + ':' + reloadKey} doc={current} map={map} phonetic={layoutId === 'pronotes-phonetic'} rules={layout.kmx} bangla={bangla} vowelForming={vf} oldReph={oldReph}
               kbVisible={kbVisible} coarse={coarse} phone={phone} voiceEngine={voiceEngine === 'auto' ? (geminiKey ? 'ai' : 'device') : voiceEngine} bank={bank.current} bankVersion={bankVersion} onBankChanged={onBankChanged}
               onToggleLanguage={() => setBangla((b) => !b)} onSave={onSave}
