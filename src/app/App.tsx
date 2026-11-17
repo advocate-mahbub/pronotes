@@ -311,17 +311,40 @@ export function App() {
     if (!wideQuery?.matches) setSideOpen(false);
   }, []);
 
-  // iPad/iPhone: keep the app inside the visible area when the device keyboard opens
+  // iPad/iPhone: keep the app inside the visible area when the device keyboard opens, and never let the
+  // whole screen scroll away (the header and the ribbon always stay in view; only the page scrolls)
   useEffect(() => {
     const vv = window.visualViewport;
-    if (!vv) return;
+    const root = document.documentElement;
     const fit = () => {
-      document.documentElement.style.setProperty('--app-h', vv.height + 'px');
-      if (window.scrollY) window.scrollTo(0, 0);
+      if (vv) {
+        root.style.setProperty('--app-h', vv.height + 'px');
+        root.style.setProperty('--app-top', Math.max(0, vv.offsetTop) + 'px');
+      }
+      if (window.scrollY || window.scrollX) window.scrollTo(0, 0);
     };
     fit();
-    vv.addEventListener('resize', fit);
-    return () => vv.removeEventListener('resize', fit);
+    vv?.addEventListener('resize', fit);
+    vv?.addEventListener('scroll', fit);
+    window.addEventListener('scroll', fit);
+    return () => { vv?.removeEventListener('resize', fit); vv?.removeEventListener('scroll', fit); window.removeEventListener('scroll', fit); };
+  }, []);
+
+  // the screen itself never zooms: a pinch is for the page only (Workspace), not the buttons and bars
+  useEffect(() => {
+    const stop = (e: Event) => e.preventDefault();
+    const twoFingers = (e: TouchEvent) => { if (e.touches.length > 1) e.preventDefault(); };
+    const ctrlWheel = (e: WheelEvent) => { if (e.ctrlKey) e.preventDefault(); };
+    document.addEventListener('gesturestart', stop);
+    document.addEventListener('gesturechange', stop);
+    document.addEventListener('touchmove', twoFingers, { passive: false });
+    document.addEventListener('wheel', ctrlWheel, { passive: false });
+    return () => {
+      document.removeEventListener('gesturestart', stop);
+      document.removeEventListener('gesturechange', stop);
+      document.removeEventListener('touchmove', twoFingers);
+      document.removeEventListener('wheel', ctrlWheel);
+    };
   }, []);
 
   // service worker: offline copy and update notice (once per page load)

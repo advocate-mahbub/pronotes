@@ -105,6 +105,9 @@ export const NOTE_SIZE = 13;
 const LANG_NAMES: Record<string, string> = { 'bn-BD': 'বাংলা', 'bn-IN': 'বাংলা', 'en-US': 'English', 'en-GB': 'English', 'en-IN': 'English' };
 
 /** One open document: toolbar, title, page and the keyboard dock. Remounted per document (fresh undo history). */
+const clampZoom = (pct: number) => Math.max(25, Math.min(300, pct));
+const clampText = (pct: number) => Math.max(60, Math.min(250, pct));
+
 export function Workspace(p: Props) {
   const { t } = useT();
   const kind = kindOf(p.doc);
@@ -148,6 +151,10 @@ export function Workspace(p: Props) {
   // phones: the text reflows to the screen at its real size (like Word's Mobile View); the paper comes back in files and print
   const reflow = legal && p.phone;
   const zoom = !legal || reflow ? 1 : p.view.zoom === 'width' ? fitW : p.view.zoom === 'page' ? Math.max(0.2, Math.min(fitW, (desk.h - 60) / geo.ph)) : p.view.zoom / 100;
+  // notes and the phone view have no paper: a pinch makes their text bigger or smaller instead
+  const textZoom = (p.view.textZoom ?? 100) / 100;
+  const paper = legal && !reflow;
+
   const footerText = (n: number, total: number) => {
     if (!pg.pageNumbers.show) return '';
     const parts = pageNumberParts(pg);
@@ -208,6 +215,77 @@ export function Workspace(p: Props) {
       timer.current = window.setTimeout(() => flush(editor), 600);
     },
   });
+
+  // Pinch (two fingers, or a trackpad pinch) zooms only the page; the rest of the app stays as it is.
+  // While the fingers move only a CSS variable changes; the zoom is kept when they lift.
+  const pinchRef = useRef({ zoom, textZoom, paper, view: p.view, setView: p.setView });
+  pinchRef.current = { zoom, textZoom, paper, view: p.view, setView: p.setView };
+  useEffect(() => {
+    const el = deskRef.current;
+    if (!el) return;
+    let base = 0;
+    let factor = 1;
+    let startDist = 0;
+    let wheelTimer = 0;
+    const live = (f: number) => {
+      factor = f;
+      const c = pinchRef.current;
+      // a factor on top of the set zoom, kept inside the same limits
+      if (c.paper) el.style.setProperty('--pz', String(clampZoom(c.zoom * f * 100) / 100 / c.zoom));
+      else el.style.setProperty('--ptz', String(clampText(c.textZoom * f * 100) / 100 / c.textZoom));
+    };
+    const begin = () => { factor = 1; base = 1; };
+    const end = () => {
+      if (!base) return;
+      base = 0;
+      const c = pinchRef.current;
+      if (Math.abs(factor - 1) < 0.02) { el.style.removeProperty('--pz'); el.style.removeProperty('--ptz'); return; }
+      if (c.paper) c.setView({ ...c.view, zoom: Math.round(clampZoom(c.zoom * factor * 100)) });
+      else c.setView({ ...c.view, textZoom: Math.round(clampText(c.textZoom * factor * 100)) });
+      // the new zoom comes back through the view; the live factor is dropped then (layout effect below)
+    };
+    // Safari (iPad, iPhone, Mac trackpad)
+    const gs = (e: Event) => { e.preventDefault(); begin(); };
+    const gc = (e: Event) => { e.preventDefault(); live((e as unknown as { scale: number }).scale); };
+    const ge = (e: Event) => { e.preventDefault(); end(); };
+    // other touch screens: two fingers
+    const dist = (t: TouchList) => Math.hypot(t[0].clientX - t[1].clientX, t[0].clientY - t[1].clientY);
+    const ts = (e: TouchEvent) => { if (e.touches.length === 2) { startDist = dist(e.touches); begin(); } };
+    const tm = (e: TouchEvent) => { if (e.touches.length === 2 && startDist) { e.preventDefault(); live(dist(e.touches) / startDist); } };
+    const te = (e: TouchEvent) => { if (startDist && e.touches.length < 2) { startDist = 0; end(); } };
+    // trackpad pinch and Ctrl + wheel in Chrome/Edge
+    const wh = (e: WheelEvent) => {
+      if (!e.ctrlKey) return;
+      e.preventDefault();
+      if (!base) begin();
+      live(factor * Math.exp(-e.deltaY / 200));
+      clearTimeout(wheelTimer);
+      wheelTimer = window.setTimeout(end, 250);
+    };
+    el.addEventListener('gesturestart', gs);
+    el.addEventListener('gesturechange', gc);
+    el.addEventListener('gestureend', ge);
+    el.addEventListener('touchstart', ts, { passive: true });
+    el.addEventListener('touchmove', tm, { passive: false });
+    el.addEventListener('touchend', te);
+    el.addEventListener('touchcancel', te);
+    el.addEventListener('wheel', wh, { passive: false });
+    return () => {
+      clearTimeout(wheelTimer);
+      el.removeEventListener('gesturestart', gs);
+      el.removeEventListener('gesturechange', gc);
+      el.removeEventListener('gestureend', ge);
+      el.removeEventListener('touchstart', ts);
+      el.removeEventListener('touchmove', tm);
+      el.removeEventListener('touchend', te);
+      el.removeEventListener('touchcancel', te);
+      el.removeEventListener('wheel', wh);
+    };
+  }, [editor]); // the page exists once the editor does
+  useLayoutEffect(() => {
+    deskRef.current?.style.removeProperty('--pz');
+    deskRef.current?.style.removeProperty('--ptz');
+  }, [zoom, textZoom]);
 
   // Save before the app reloads itself (update).
   useEffect(() => {
@@ -568,7 +646,7 @@ export function Workspace(p: Props) {
       {panel === 'page' && <PageSetupSheet page={pg} onApply={p.onPage} onMakeDefault={p.onMakeDefaultPage} onClose={() => setPanel(null)} />}
       <div className="deskwrap">
       <main className="desk" ref={deskRef} onClick={() => kbDown && setKbDown(false)}
-        style={{ ['--z' as string]: zoom, ['--pw' as string]: geo.pw + 'px', ['--ph' as string]: geo.ph + 'px', ['--mt' as string]: geo.mt + 'px', ['--mr' as string]: geo.mr + 'px', ['--mb' as string]: geo.mb + 'px', ['--ml' as string]: geo.ml + 'px',
+        style={{ ['--z' as string]: zoom, ['--tz' as string]: textZoom, ['--pw' as string]: geo.pw + 'px', ['--ph' as string]: geo.ph + 'px', ['--mt' as string]: geo.mt + 'px', ['--mr' as string]: geo.mr + 'px', ['--mb' as string]: geo.mb + 'px', ['--ml' as string]: geo.ml + 'px',
           ['--doc-font' as string]: `"${pg.lang === 'en' && legal ? p.format.fontEn : p.format.font}"`, ['--doc-size' as string]: p.format.size + 'pt', ['--doc-title' as string]: p.format.titleSize + 'pt', ['--doc-line' as string]: p.format.lineSpacing } as React.CSSProperties}>
         {(() => {
           const input = (
