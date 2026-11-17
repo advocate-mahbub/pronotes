@@ -835,3 +835,52 @@ html, body { overflow: hidden; }
 /* pinching a note or the phone view sizes its text (the paper view zooms the page instead) */
 .page.note .page-body { font-size: calc(13pt * var(--tz, 1) * var(--ptz, 1)); }
 .page.phone .page-body { font-size: calc(max(var(--doc-size, 14pt), 18px) * var(--tz, 1) * var(--ptz, 1)); }
+
+/* ---------- Title chart page: steps on the left, the drawing on the right ---------- */
+.chart-ws { flex: 1; min-height: 0; display: flex; flex-direction: column; gap: 8px; }
+.chart-bar { display: flex; align-items: center; gap: 8px; }
+.chart-bar .chart-title { flex: 1; min-width: 0; margin: 0; position: static; }
+.chart-split { flex: 1; min-height: 0; display: grid; grid-template-columns: minmax(340px, 460px) 1fr; gap: 12px; }
+.chart-form { overflow: auto; -webkit-overflow-scrolling: touch; display: flex; flex-direction: column; gap: 8px; padding-bottom: 40px; }
+.chart-preview-wrap { overflow: auto; -webkit-overflow-scrolling: touch; background: var(--bg); border: 1px solid var(--line); border-radius: 12px; padding: 12px; }
+.chart-preview svg { display: block; width: 100%; max-width: 760px; height: auto; margin: 0 auto; background: #fff; box-shadow: 0 2px 12px rgba(11, 27, 51, .12); }
+.cf-step { background: var(--sheet); border: 1px solid var(--line); border-radius: 10px; padding: 8px 10px; display: flex; flex-direction: column; gap: 6px; }
+.cf-step.bad { border-color: #c62828; }
+.cf-step header { display: flex; align-items: center; gap: 8px; font-size: 14px; }
+.cf-n { width: 22px; height: 22px; border-radius: 50%; background: var(--accent); color: var(--accent-fg); font-size: 12px; display: inline-flex; align-items: center; justify-content: center; }
+.cf-tools { margin-left: auto; display: flex; gap: 4px; }
+.cf-tools button, .cf-x { min-width: 32px; min-height: 32px; border: 1px solid var(--line); border-radius: 8px; background: var(--bg); color: var(--fg); cursor: pointer; }
+.cf-tools button:disabled { opacity: .35; }
+.cf-row, .cf-line { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; font-size: 13px; color: var(--muted); }
+.cf-sub { font-size: 12px; color: var(--muted); margin-top: 2px; }
+.cf-chip { display: inline-flex; gap: 4px; }
+.cf { min-height: 38px; border: 1px solid var(--line); border-radius: 8px; background: var(--bg); color: var(--fg); font: 15px var(--f-sans); padding: 0 8px; min-width: 0; }
+.cf.w-name { flex: 1 1 150px; }
+.cf.w-rel { flex: 0 1 90px; width: 90px; }
+.cf.w-num { flex: 0 1 96px; width: 96px; }
+.cf.w-date { flex: 0 1 120px; width: 120px; }
+.cf.w-lines { flex: 1 1 100%; }
+.cf-area { width: 100%; min-height: 0; padding: 6px 8px; box-sizing: border-box; resize: vertical; }
+.chart-form select { min-height: 38px; border: 1px solid var(--line); border-radius: 8px; background: var(--bg); color: var(--fg); font: 14px var(--f-sans); padding: 0 6px; }
+.cf-add { display: flex; flex-wrap: wrap; gap: 6px; }
+.cf-bad { margin: 0; color: #c62828; font-size: 13px; }
+[data-theme="dark"] .cf-bad { color: #ef9a9a; }
+@media (max-width: 900px) {
+  .chart-split { grid-template-columns: 1fr; overflow: auto; }
+  .chart-form, .chart-preview-wrap { overflow: visible; }
+}
+/* printing a chart: only the chart page, on Legal paper */
+.chart-print { display: none; }
+@media print {
+  body.chart-printing > *:not(.chart-print) { display: none !important; }
+  body.chart-printing .chart-print { display: block !important; }
+  body.chart-printing .chart-print svg { width: 8.5in; height: 14in; }
+}
+/* compact rows: relation, name, share, area on one line; extra lines and ✕ below */
+.cf.w-rel { flex: 0 1 72px; width: 72px; }
+.cf.w-name { flex: 1 1 120px; }
+.cf.w-num { flex: 0 1 78px; width: 78px; }
+.cf-row .cf.w-lines { flex: 1 1 200px; }
+.cf-step > .btn, .cf-row > .btn { align-self: flex-start; }
+.cf-row .cf-x { margin-left: auto; }
+input.cf[data-testid$="-type"] { flex: 0 1 112px; width: 112px; }

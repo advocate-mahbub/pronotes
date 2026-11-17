@@ -92,7 +92,7 @@ function BnInput(props: React.InputHTMLAttributes<HTMLInputElement> & { cfg: () 
   return <input ref={ref} {...rest} />;
 }
 
-const DEFAULT_TITLES = new Set(['নতুন ড্রাফট', 'নতুন নোট']);
+const DEFAULT_TITLES = new Set(['নতুন ড্রাফট', 'নতুন নোট', 'নতুন টাইটেল চার্ট']);
 
 export function Sidebar(p: Props) {
   const { t, lang } = useT();
@@ -162,7 +162,7 @@ export function Sidebar(p: Props) {
                   {p.kindIcon[k]} {t(p.kindLabel[k])}
                 </button>
               ))}
-              <button type="button" disabled>{p.kindIcon.chart} {t(p.kindLabel.chart)} ({t('শীঘ্রই')})</button>
+              <button type="button" data-testid="new-chart" onClick={() => { close(); p.onNew('chart'); }}>{p.kindIcon.chart} {t(p.kindLabel.chart)}</button>
             </div>
           )}
         </Popover>
@@ -307,8 +307,9 @@ export function Sidebar(p: Props) {
                           <span className="menu-h">{t('ফোল্ডারে সরান')}</span>
                           {moveMenu((f) => p.onMove([d.id], f), close, d.folderId ?? '')}
                           <hr />
-                          <span className="menu-h">{t('ধরন')}</span>
-                          {(['legal', 'note'] as DocKind[]).map((k) => (
+                          {kindOf(d) !== 'chart' && <span className="menu-h">{t('ধরন')}</span>}
+                          {/* a title chart is data, not text: it cannot turn into a draft or back */}
+                          {(kindOf(d) === 'chart' ? [] : (['legal', 'note'] as DocKind[])).map((k) => (
                             <button key={k} type="button" data-testid={'m-kind-' + k} disabled={kindOf(d) === k} onClick={() => { close(); p.onChangeKind(d.id, k); }}>
                               {p.kindIcon[k]} {t(p.kindLabel[k])}
                             </button>
