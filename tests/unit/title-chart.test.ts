@@ -1,55 +1,57 @@
 import { describe, it, expect } from 'vitest';
-import { add, frac, parseFrac, toDecimal, replay, layoutChart, chartSvg, SAMPLE_CHART, G, type TitleChart } from '../../src/chart';
+import { add, frac, parseFrac, readFrac, toDecimal, check, layoutChart, chartSvg, chartPageSvg, SAMPLE_CHART, G, type TitleChart, type Step } from '../../src/chart';
 
 describe('title chart: exact shares', () => {
-  it('fractions and decimals, Bangla digits too', () => {
+  it('fractions and decimals, Bangla digits and the শ ending', () => {
     expect(add(frac(1, 3), frac(1, 6))).toEqual(frac(1, 2));
     expect(parseFrac('৭/৪০')).toEqual(frac(7, 40));
-    expect(parseFrac('5.775')).toEqual(frac(231, 40));
+    expect(readFrac('৪৬.৮১শ')).toEqual(frac(4681, 100));
+    expect(readFrac('৪পুত্র')).toBeNull();
     expect(toDecimal(frac(1, 3))).toBe('0.3333');
-    expect(toDecimal(frac(33, 16))).toBe('2.0625');
   });
-  it('replays the sample chain: land neither grows nor shrinks, today’s owners are right', () => {
-    const r = replay(SAMPLE_CHART);
-    expect(r.problems).toEqual([]);
-    const own = Object.fromEntries(r.owners.map((o) => [o.person, toDecimal(o.area)]));
-    expect(own).toEqual({ jamila: '2.0625', salma: '2.8875', hasan: '28.05' });
+  it('the sample adds up', () => {
+    expect(check(SAMPLE_CHART).problems).toEqual([]);
   });
-  it('flags what does not add up: heirs not summing to 1, selling more than held', () => {
+  it('flags heirs not adding to 1, and a deed for more than the giver had', () => {
     const bad: TitleChart = structuredClone(SAMPLE_CHART);
-    (bad.steps[1] as { heirs: { share: string }[] }).heirs[0].share = '1/4';
-    (bad.steps[3] as { from: { area: string }[] }).from[0].area = '20';
-    const r = replay(bad);
-    expect(r.problems.map((p) => p.step)).toContain('w1');
-    expect(r.problems.some((p) => p.step === 'd1' && p.text.includes('16.5'))).toBe(true);
+    const w1 = bad.steps.find((s) => s.id === 'w1') as Extract<Step, { kind: 'inheritance' }>;
+    w1.heirs[0].share = '1/2';
+    const d1 = bad.steps.find((s) => s.id === 'd1') as Extract<Step, { kind: 'deed' }>;
+    d1.area = '90';
+    const p = check(bad).problems;
+    expect(p.some((x) => x.step === 'w1')).toBe(true);
+    expect(p.some((x) => x.step === 'd1')).toBe(true);
   });
 });
 
-describe('title chart: drawing', () => {
-  it('boxes on the 4px grid, never overlapping; receivers below the givers', () => {
-    const L = layoutChart(SAMPLE_CHART);
-    for (const b of L.boxes) { expect(b.x % G).toBe(0); expect(b.y % G).toBe(0); }
-    for (const a of L.boxes) for (const b of L.boxes) {
+describe('title chart: drawing in the owner’s format', () => {
+  const L = layoutChart(SAMPLE_CHART);
+  it('blocks on the 4px grid, never overlapping; receivers below their sources', () => {
+    for (const n of L.nodes) { expect(n.x % G).toBe(0); expect(n.y % G).toBe(0); }
+    for (const a of L.nodes) for (const b of L.nodes) {
       if (a === b) continue;
-      const apart = a.x + 176 <= b.x || b.x + 176 <= a.x || a.y + 72 <= b.y || b.y + 72 <= a.y;
+      const apart = a.x + a.w <= b.x || b.x + b.w <= a.x || a.y + a.h <= b.y || b.y + b.h <= a.y;
       expect(apart, a.id + ' / ' + b.id).toBe(true);
     }
-    // one box per owner here: the buyer of two deeds is one box, below everyone who sold to him
-    const hasan = L.boxes.filter((b) => b.person === 'hasan');
-    expect(hasan).toHaveLength(1);
-    for (const p of ['rahim', 'abdul', 'alam']) expect(hasan[0].rank).toBeGreaterThan(L.boxes.find((b) => b.person === p)!.rank);
-    // a box shows what the person received, and the records naming them
-    expect(L.boxes.find((b) => b.person === 'karim')!.tags).toEqual(['CS খতিয়ান 55']);
-    expect(L.boxes.find((b) => b.person === 'abdul')!.tags).toEqual(['SA খতিয়ান 88']);
-    expect(hasan[0].tags).toEqual(['নামজারি খতিয়ান 410']);
-    expect(L.boxes.filter((b) => b.current).map((b) => b.person).sort()).toEqual(['hasan', 'jamila', 'salma']);
+    const byId = new Map(L.nodes.map((n) => [n.id, n]));
+    for (const l of L.links) for (const f of l.from) for (const t of l.to) expect(byId.get(t)!.rank).toBeGreaterThan(byId.get(f)!.rank);
   });
-  it('one SVG with the plot summary, deeds and Bangla digits', () => {
-    const svg = chartSvg(SAMPLE_CHART);
-    expect(svg.startsWith('<svg')).toBe(true);
-    expect(svg).toContain('মৌজা নমুনাপুর');
-    expect(svg).toContain('দলিল ১২৩৪');
-    expect(svg).toContain('২৮.০৫ শতক');
-    expect(svg).not.toContain('⚠');
+  it('a deed with one buyer is one block: number, date, kind-area, then the buyer in bold', () => {
+    const d = L.nodes.find((n) => n.step === 'd5')!;
+    expect(d.lines.map((l) => l.text)).toEqual(['দলিল নং ৫০০৫', 'তাং ০৭/০৯/২০০৮ইং', 'সাফ কবলা- ৪.১২৫শ', 'পারভীন আক্তার', 'সিটি দাগ নং ৬০১']);
+    expect(d.lines[3].bold).toBe(true);
+  });
+  it('inheritance and purchase come together in one block, from every source', () => {
+    const m = L.nodes.find((n) => n.step === 'mk')!;
+    expect(m.lines[0].text).toBe('ওয়ারিশ ও খরিদসূত্রে মালিক'.replace(/য়/g, 'য়'));
+    const into = L.links.find((l) => l.to.includes(m.id))!;
+    expect(into.from).toHaveLength(4);
+  });
+  it('the page: heading, chain, notes; one ring around the highlighted person', () => {
+    const svg = chartPageSvg(SAMPLE_CHART);
+    expect(svg).toContain('viewBox="0 0 612 1008"');
+    expect(svg).toContain('অন্য মোকদ্দমা নং ০০/২০২৬');
+    expect((svg.match(/<ellipse/g) ?? []).length).toBe(1);
+    expect(chartSvg(SAMPLE_CHART)).not.toContain('⚠');
   });
 });

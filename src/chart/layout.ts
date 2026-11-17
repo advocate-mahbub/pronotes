@@ -1,84 +1,105 @@
 /**
- * Where every box and line of a title chart goes. Rules from Diagram Design (MIT): every coordinate on a
- * 4px grid, right-angle lines only, boxes of one size, at most one highlighted thing (today's owners).
- * Rows are steps of the chain: a box is an owner from the moment land reaches them.
+ * Where every block and line of a title chart goes, in the owner's format: rows from the first record
+ * down; a step's line drops from its sources to a bar, then an arrow down to each receiver.
+ * Rules from Diagram Design (MIT): every coordinate on a 4px grid, right-angle lines only, lines that skip
+ * rows run through slots between blocks, and a line crossing a bar jumps over it (drawn in svg.ts).
  */
-import { add, parseFrac, replay, toDecimal, ZERO, type Frac, type TitleChart } from './model';
+import { bnDigits, check, type Receiver, type TitleChart } from './model';
 
-export const G = 4; // grid
-export const BOX_W = 176;
-export const BOX_H = 72;
-export const GAP_X = 24;
-export const ROW_GAP = 120; // room for the deed line between two rows
-export const PAD = 24;
+export const G = 4;
+export const GAP_X = 16;
+export const ROW_GAP = 72; // room for bars between two rows
+export const LINE_H = 16;
+export const PAD = 8;
 
-/** One owner from the moment land reaches them: area received (শতক), and the records that name them. */
-export interface Box { id: string; person: string; step: string; rank: number; x: number; y: number; area: Frac; current: boolean; tags: string[]; pass?: boolean; parent?: string }
-/** One step drawn as lines: from the sources down to a bar, then down to each receiver. */
-export interface Link { step: string; from: string[]; to: string[]; barY: number; label: string[]; dashed: boolean; /** pass-through slots for a line that skips rows, by source */ via: Record<string, string[]> }
-export interface Layout { boxes: Box[]; links: Link[]; width: number; height: number; problems: { step: string; text: string }[]; passes: Box[] }
+export interface TextLine { text: string; bold?: boolean; small?: boolean }
+export interface Node {
+  id: string; step: string; person?: string; rank: number;
+  lines: TextLine[]; boxed?: boolean; ring?: boolean;
+  x: number; y: number; w: number; h: number;
+  pass?: boolean; parent?: string;
+}
+export interface Link { step: string; from: string[]; to: string[]; barY: number; via: Record<string, string[]> }
+export interface Layout { nodes: Node[]; passes: Node[]; links: Link[]; width: number; height: number; problems: { step: string; text: string }[] }
 
 const snap = (v: number) => Math.round(v / G) * G;
+/** Rough width of a line of Bangla text (no fonts in a test): enough room, never too tight. */
+// vowel signs, hasanta and the like share a letter's width, so only the letters count
+const letters = (t: string) => [...t.replace(/[\u0981-\u0983\u09bc\u09be-\u09cd\u09d7]/g, '')].length;
+const textW = (l: TextLine) => letters(l.text) * (l.small ? 6.2 : 7.8);
+const area = (a?: string) => (a ? bnDigits(a) + 'শ' : '');
 
 export function layoutChart(chart: TitleChart): Layout {
-  let passBoxes: Box[] = [];
-  const rp = replay(chart);
-  const boxes: Box[] = [];
-  const links: Link[] = [];
-  const latest = new Map<string, Box>(); // person → their newest box
   const name = (id: string) => chart.persons.find((p) => p.id === id)?.name ?? id;
+  const nodes: Node[] = [];
+  const links: Link[] = [];
+  const open = new Map<string, string[]>(); // person → their blocks the land now sits in
+  const byId = new Map<string, Node>();
 
-  const outgoing = new Set<string>(); // boxes something already comes out of
-  chart.steps.forEach((s, i) => {
-    const held = rp.after[i].holdings;
-    const areaOf = (person: string) => held.get(person) ?? { n: 0n, d: 1n };
-    /** A receiver's box: their open box if nothing has left it yet (moved below the givers), else a new one. */
-    const receive = (person: string, sources: Box[]): Box => {
-      const rank = sources.length ? Math.max(...sources.map((b) => b.rank)) + 1 : 0;
-      const open = latest.get(person);
-      if (open && !outgoing.has(open.id) && !sources.includes(open)) {
-        open.rank = Math.max(open.rank, rank);
-        open.area = areaOf(person);
-        return open;
-      }
-      const b: Box = { id: s.id + ':' + person, person, step: s.id, rank, x: 0, y: 0, area: areaOf(person), current: false, tags: [] };
-      boxes.push(b);
-      latest.set(person, b);
-      return b;
-    };
-    const give = (from: Box[]) => from.forEach((b) => outgoing.add(b.id));
+  const node = (step: string, lines: TextLine[], sources: string[], extra: Partial<Node> = {}): Node => {
+    const rank = sources.length ? Math.max(...sources.map((id) => byId.get(id)!.rank)) + 1 : 0;
+    const w = snap(Math.max(84, ...lines.map(textW)) + (extra.boxed ? 24 : 8));
+    const n: Node = { id: `${step}:${nodes.length}`, step, rank, lines, x: 0, y: 0, w, h: snap(lines.length * LINE_H + (extra.boxed ? 16 : 4)), ...extra };
+    nodes.push(n);
+    byId.set(n.id, n);
+    return n;
+  };
+  const receiverLines = (r: Receiver, top?: string): TextLine[] => [
+    ...(top ? [{ text: top, small: true }] : []),
+    ...(r.relation ? [{ text: bnDigits(r.relation), small: true }] : []),
+    { text: name(r.person), bold: true },
+    ...(r.area ? [{ text: area(r.area), small: true }] : []),
+    ...(r.lines ?? []).map((t) => ({ text: bnDigits(t), small: true })),
+  ];
+  const land = (person: string, n: Node) => open.set(person, [...(open.get(person) ?? []), n.id]);
+  const ring = (step: string, person: string) => chart.highlight?.step === step && chart.highlight.person === person;
+
+  for (const s of chart.steps) {
     if (s.kind === 'record') {
-      // a survey record names who holds the land: a tag on their boxes; only someone new gets a box
       for (const o of s.owners) {
-        const b = latest.get(o.person) ?? receive(o.person, []);
-        b.tags.push(`${s.survey} খতিয়ান ${s.khatian}`);
+        const n = node(s.id, receiverLines(o, o.label ?? `${s.survey} রেকর্ডিয় মালিক`), [], { person: o.person, boxed: s.boxed, ring: ring(s.id, o.person) });
+        land(o.person, n);
       }
-    } else if (s.kind === 'deed') {
-      const src = s.from.map((f) => latest.get(f.person)).filter((b): b is Box => !!b);
-      const made = s.to.map((t) => receive(t.person, src));
-      give(src);
-      const given = s.from.map((f) => parseFrac(f.area)).reduce(add, ZERO);
-      links.push({ step: s.id, from: src.map((b) => b.id), to: made.map((b) => b.id), barY: 0, dashed: false, via: {},
-        label: [`দলিল ${s.no}${s.date ? ' · ' + s.date : ''}`, `${s.type} · ${toDecimal(given)} শতক`] });
     } else if (s.kind === 'inheritance') {
-      const src = latest.get(s.deceased);
-      const made = s.heirs.map((x) => receive(x.person, src ? [src] : []));
-      if (src) give([src]);
-      links.push({ step: s.id, from: src ? [src.id] : [], to: made.map((b) => b.id), barY: 0, dashed: false, via: {},
-        label: [`${name(s.deceased)}-এর ওয়ারিশ${s.date ? ' · ' + s.date : ''}`] });
+      const src = open.get(s.deceased) ?? [];
+      open.delete(s.deceased);
+      const made = s.heirs.map((h) => { const n = node(s.id, receiverLines(h), src, { person: h.person, ring: ring(s.id, h.person) }); land(h.person, n); return n; });
+      if (src.length) links.push({ step: s.id, from: src, to: made.map((n) => n.id), barY: 0, via: {} });
+    } else if (s.kind === 'deed') {
+      const src = s.from.flatMap((p) => open.get(p) ?? []);
+      const deed: TextLine[] = [
+        { text: `দলিল নং ${bnDigits(s.no)}`, small: true },
+        ...(s.date ? [{ text: `তাং ${bnDigits(s.date)}ইং`, small: true }] : []),
+        ...(s.type || s.area ? [{ text: [s.type, area(s.area)].filter(Boolean).join('- '), small: true }] : []),
+      ];
+      const tail = (s.lines ?? []).map((t) => ({ text: bnDigits(t), small: true }));
+      if (s.to.length === 1) {
+        // one buyer: the deed and the buyer are one block, the buyer's name in bold
+        const r = s.to[0];
+        const n = node(s.id, [...deed, ...receiverLines({ ...r, area: undefined }), ...tail], src, { person: r.person, ring: ring(s.id, r.person) });
+        land(r.person, n);
+        if (src.length) links.push({ step: s.id, from: src, to: [n.id], barY: 0, via: {} });
+      } else {
+        const d = node(s.id, [...deed, { text: `গ্রহীতা- ${bnDigits(String(s.to.length))}জন`, small: true }, ...tail], src);
+        if (src.length) links.push({ step: s.id, from: src, to: [d.id], barY: 0, via: {} });
+        const made = s.to.map((r) => { const n = node(s.id, receiverLines(r), [d.id], { person: r.person, ring: ring(s.id, r.person) }); land(r.person, n); return n; });
+        links.push({ step: s.id + '+', from: [d.id], to: made.map((n) => n.id), barY: 0, via: {} });
+      }
+    } else if (s.kind === 'merge') {
+      const src = open.get(s.person) ?? [];
+      const n = node(s.id, [...(s.caption ? [{ text: s.caption, small: true }] : []), { text: name(s.person), bold: true }, ...(s.lines ?? []).map((t) => ({ text: bnDigits(t), small: true }))], src, { person: s.person, ring: ring(s.id, s.person) });
+      open.set(s.person, [n.id]);
+      if (src.length) links.push({ step: s.id, from: src, to: [n.id], barY: 0, via: {} });
     } else {
-      for (const o of s.owners) latest.get(o)?.tags.push(`নামজারি খতিয়ান ${s.khatian}`);
+      const src = s.through.flatMap((p) => open.get(p) ?? []);
+      const n = node(s.id, s.lines.map((t) => ({ text: bnDigits(t), small: true })), src, { boxed: true });
+      for (const p of s.through) open.set(p, [n.id]);
+      if (src.length) links.push({ step: s.id, from: src, to: [n.id], barY: 0, via: {} });
     }
-  });
+  }
 
-  // today's owners
-  const finalIds = new Set(rp.owners.map((o) => o.person));
-  for (const b of latest.values()) if (finalIds.has(b.person)) b.current = true;
-
-  // a line that skips rows gets a narrow pass-through slot in each row it crosses, so it runs between boxes
-  const PASS_W = 16;
-  const passes: Box[] = [];
-  const byId = new Map(boxes.map((b) => [b.id, b]));
+  // a line that skips rows gets a narrow slot in each row it crosses, so it runs between blocks
+  const passes: Node[] = [];
   for (const l of links) {
     const toRank = Math.min(...l.to.map((id) => byId.get(id)!.rank));
     for (const f of l.from) {
@@ -86,7 +107,7 @@ export function layoutChart(chart: TitleChart): Layout {
       const chain: string[] = [];
       let prev = src.id;
       for (let r = src.rank + 1; r < toRank; r++) {
-        const v: Box = { id: `${l.step}~${f}~${r}`, person: '', step: l.step, rank: r, x: 0, y: 0, area: ZERO, current: false, tags: [], pass: true, parent: prev };
+        const v: Node = { id: `${l.step}~${f}~${r}`, step: l.step, rank: r, lines: [], x: 0, y: 0, w: 12, h: 0, pass: true, parent: prev };
         passes.push(v);
         byId.set(v.id, v);
         chain.push(v.id);
@@ -95,47 +116,73 @@ export function layoutChart(chart: TitleChart): Layout {
       if (chain.length) l.via[f] = chain;
     }
   }
-  const all = [...boxes, ...passes];
-  const w = (b: Box) => (b.pass ? PASS_W : BOX_W);
-
-  // rows, ordered so that children sit under their parents (two passes of the barycentre rule)
-  const ranks = new Map<number, Box[]>();
-  for (const b of all) ranks.set(b.rank, [...(ranks.get(b.rank) ?? []), b]);
+  const all = [...nodes, ...passes];
+  const ranks = new Map<number, Node[]>();
+  for (const n of all) ranks.set(n.rank, [...(ranks.get(n.rank) ?? []), n]);
   const parentsOf = new Map<string, string[]>();
   for (const l of links) for (const t of l.to) parentsOf.set(t, [...(parentsOf.get(t) ?? []), ...l.from.map((f) => l.via[f]?.at(-1) ?? f)]);
   for (const v of passes) parentsOf.set(v.id, [v.parent!]);
-  const maxRank = Math.max(0, ...all.map((b) => b.rank));
-  const rowW = (row: Box[]) => row.reduce((a, b) => a + w(b), 0) + Math.max(0, row.length - 1) * GAP_X;
-  const width = snap(PAD * 2 + Math.max(BOX_W, ...[...ranks.values()].map(rowW)));
-  const place = (row: Box[]) => {
-    let x = (width - rowW(row)) / 2;
-    for (const b of row) { b.x = snap(x); x += w(b) + GAP_X; }
-  };
-  const mid = (b: Box) => b.x + w(b) / 2;
-  for (let pass = 0; pass < 2; pass++) {
+  const maxRank = Math.max(0, ...all.map((n) => n.rank));
+  const rowW = (row: Node[]) => row.reduce((a, n) => a + n.w, 0) + Math.max(0, row.length - 1) * GAP_X;
+  const width = snap(PAD * 2 + Math.max(0, ...[...ranks.values()].map(rowW)));
+  const mid = (n: Node) => n.x + n.w / 2;
+  // children under their parents: barycentre order, then each row pushed towards its parents where there is room
+  for (let pass = 0; pass < 3; pass++) {
     for (let r = 0; r <= maxRank; r++) {
       const row = ranks.get(r) ?? [];
+      const want = (n: Node) => {
+        const ps = (parentsOf.get(n.id) ?? []).map((id) => byId.get(id)!).filter(Boolean);
+        return ps.length ? ps.reduce((a, p) => a + mid(p), 0) / ps.length : mid(n);
+      };
+      if (r > 0 || pass > 0) row.sort((a, b) => want(a) - want(b));
+      // start centred, then slide each block towards its wish without overlapping its neighbours
+      let x = (width - rowW(row)) / 2;
+      for (const n of row) { n.x = x; x += n.w + GAP_X; }
       if (r > 0 || pass > 0) {
-        const centre = (b: Box) => {
-          const ps = (parentsOf.get(b.id) ?? []).map((id) => byId.get(id)!).filter(Boolean);
-          return ps.length ? ps.reduce((a, p) => a + mid(p), 0) / ps.length : mid(b);
-        };
-        row.sort((a, b) => centre(a) - centre(b));
+        for (let i = 0; i < row.length; i++) {
+          const n = row[i];
+          const lo = i ? row[i - 1].x + row[i - 1].w + GAP_X : PAD;
+          n.x = Math.max(lo, want(n) - n.w / 2);
+        }
+        for (let i = row.length - 1; i >= 0; i--) {
+          const n = row[i];
+          const hi = i < row.length - 1 ? row[i + 1].x - GAP_X - n.w : width - PAD - n.w;
+          n.x = Math.min(n.x, hi);
+        }
       }
-      place(row);
+      for (const n of row) n.x = snap(n.x);
     }
   }
-  for (const b of all) b.y = snap(PAD + b.rank * (BOX_H + ROW_GAP));
-  // each step's bar sits in the gap above its receivers; steps sharing a gap get their own height
-  const perGap = new Map<number, number>();
-  for (const l of [...links].reverse()) {
-    const top = Math.min(...l.to.map((id) => byId.get(id)!.y));
-    const k = perGap.get(top) ?? 0;
-    perGap.set(top, k + 1);
-    l.barY = snap(top - 20 - k * 40);
+  // rows as tall as their tallest block
+  let y = PAD;
+  const rowY = new Map<number, number>();
+  for (let r = 0; r <= maxRank; r++) {
+    rowY.set(r, snap(y));
+    const row = ranks.get(r) ?? [];
+    y += Math.max(LINE_H, ...row.filter((n) => !n.pass).map((n) => n.h)) + ROW_GAP;
   }
-  const height = snap(PAD * 2 + (maxRank + 1) * BOX_H + maxRank * ROW_GAP);
-  passBoxes = passes;
-  return { boxes, links, width, height, problems: rp.problems, passes: passBoxes };
+  for (const n of all) { n.y = rowY.get(n.rank)!; if (n.pass) n.h = Math.max(LINE_H, ...(ranks.get(n.rank) ?? []).filter((m) => !m.pass).map((m) => m.h)); }
+  // a step's bar sits in the gap above its receivers; steps sharing a gap get their own height
+  const gaps = new Map<number, Link[]>();
+  for (const l of links) {
+    const top = Math.min(...l.to.map((id) => byId.get(id)!.y));
+    gaps.set(top, [...(gaps.get(top) ?? []), l]);
+  }
+  const span = (l: Link) => {
+    const xs = [...l.from, ...l.to].map((id) => byId.get(id)!).map(mid);
+    return [Math.min(...xs), Math.max(...xs)];
+  };
+  for (const [top, ls] of gaps) {
+    // a bar only needs its own height when it overlaps another one sideways
+    const levels: [number, number][][] = [];
+    for (const l of ls.sort((a, b) => span(a)[0] - span(b)[0])) {
+      const [a, b] = span(l);
+      let k = levels.findIndex((lv) => lv.every(([x1, x2]) => b < x1 - 8 || a > x2 + 8));
+      if (k < 0) { levels.push([]); k = levels.length - 1; }
+      levels[k].push([a, b]);
+      l.barY = snap(top - 20 - k * 20);
+    }
+  }
+  const height = snap(y - ROW_GAP + PAD);
+  return { nodes, passes, links, width, height, problems: check(chart).problems };
 }
-

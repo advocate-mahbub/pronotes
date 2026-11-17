@@ -1,26 +1,38 @@
 import type { TitleChart } from './model';
 
-/** A made-up chain (no real people or land): CS record → inheritance → SA record → two deeds → mutation. */
+/**
+ * A made-up chain in the owner's format (no real people, land or case): two CS owners, inheritance down
+ * three generations, several deeds into one buyer who becomes owner by inheritance and purchase, and a
+ * line of sale from one heir. Used for tests and the preview.
+ */
 export const SAMPLE_CHART: TitleChart = {
-  title: 'টাইটেল চার্ট (নমুনা)',
-  plot: { district: 'ঢাকা', upazila: 'সাভার', mouza: 'নমুনাপুর', jl: '45', dag: { CS: '120', SA: '135', RS: '210' }, area: '33' },
+  heading: ['বিজ্ঞ সিনিয়র সহকারী জজ আদালত, নমুনাপুর', 'অন্য মোকদ্দমা নং ০০/২০২৬'],
   persons: [
-    { id: 'karim', name: 'করিম উদ্দিন', relation: 'পিতা: মৃত জব্বার' },
-    { id: 'rahim', name: 'রহিম উদ্দিন', relation: 'পিতা: মৃত জব্বার' },
-    { id: 'jamila', name: 'জমিলা খাতুন', relation: 'স্বামী: করিম' },
-    { id: 'abdul', name: 'আব্দুল করিম', relation: 'পিতা: করিম' },
-    { id: 'alam', name: 'আলম মিয়া', relation: 'পিতা: করিম' },
-    { id: 'salma', name: 'সালমা বেগম', relation: 'পিতা: করিম' },
-    { id: 'hasan', name: 'হাসান আলী', relation: 'পিতা: মোতালেব' },
-  ],
+    ['a', 'শেখ আকবর'], ['b', 'শেখ বাদল'], ['c', 'চম্পা বিবি'], ['d', 'দেলোয়ার উদ্দিন'], ['e', 'এনায়েত শেখ'],
+    ['f', 'ফাতেমা বিবি'], ['g', 'গিয়াস উদ্দিন'], ['h', 'হাসনা বিবি'], ['i', 'ইদ্রিস আলী'], ['j', 'জাহানারা'],
+    ['k', 'কামাল উদ্দিন'], ['l', 'লাইলী বেগম'], ['m', 'মরিয়ম বিবি'], ['n', 'নাসিমা খাতুন'], ['o', 'ওয়াহিদ গং'],
+    ['p', 'পারভীন আক্তার'], ['q', 'কাশেম আলী'], ['r', 'রুবিনা বেগম'],
+  ].map(([id, name]) => ({ id, name })),
   steps: [
-    { id: 'cs', kind: 'record', survey: 'CS', khatian: '55', owners: [{ person: 'karim', share: '1/2' }, { person: 'rahim', share: '1/2' }] },
-    { id: 'w1', kind: 'inheritance', deceased: 'karim', date: '1961', heirs: [
-      { person: 'jamila', share: '1/8' }, { person: 'abdul', share: '7/20' }, { person: 'alam', share: '7/20' }, { person: 'salma', share: '7/40' }] },
-    { id: 'sa', kind: 'record', survey: 'SA', khatian: '88', owners: [
-      { person: 'jamila', share: '1/16' }, { person: 'abdul', share: '7/40' }, { person: 'alam', share: '7/40' }, { person: 'salma', share: '7/80' }, { person: 'rahim', share: '1/2' }] },
-    { id: 'd1', kind: 'deed', no: '1234', date: '12.03.1985', office: 'সাভার', type: 'সাফ কবলা', from: [{ person: 'rahim', area: '16.5' }], to: [{ person: 'hasan' }] },
-    { id: 'd2', kind: 'deed', no: '567', date: '04.11.1992', office: 'সাভার', type: 'সাফ কবলা', from: [{ person: 'abdul', area: '5.775' }, { person: 'alam', area: '5.775' }], to: [{ person: 'hasan' }] },
-    { id: 'm1', kind: 'mutation', caseNo: '3021/1993', khatian: '410', owners: ['hasan'] },
+    { id: 'cs', kind: 'record', survey: 'CS', owners: [
+      { person: 'a', label: 'সিএস রেকর্ডিয় মালিক', area: '50' }, { person: 'b', label: 'সিএস রেকর্ডিয় মালিক', area: '50' }] },
+    { id: 'w1', kind: 'inheritance', deceased: 'a', heirs: [{ person: 'c', relation: 'স্ত্রী', share: '1/4' }, { person: 'd', relation: 'পুত্র', share: '3/4' }] },
+    { id: 'w2', kind: 'inheritance', deceased: 'd', heirs: [{ person: 'c', relation: 'মাতা', share: '1/6' }, { person: 'e', relation: 'চাচা', share: '5/12' }, { person: 'b', relation: 'চাচা', share: '5/12' }] },
+    { id: 'w3', kind: 'inheritance', deceased: 'c', heirs: [{ person: 'g', relation: 'পুত্র', share: '1' }] },
+    { id: 'd1', kind: 'deed', no: '1001', date: '12/03/1986', type: 'সাফ কবলা', area: '18.75', from: ['g'], to: [{ person: 'h' }] },
+    { id: 'd2', kind: 'deed', no: '2002', date: '07/10/1997', type: 'হেবা', area: '18.75', from: ['h'], to: [{ person: 'k' }] },
+    { id: 'w4', kind: 'inheritance', deceased: 'b', heirs: [
+      { person: 'f', relation: 'স্ত্রী', share: '1/8' }, { person: 'i', relation: 'পুত্র', share: '7/16' }, { person: 'j', relation: 'কন্যা', share: '7/32' }, { person: 'l', relation: 'কন্যা', share: '7/32' }] },
+    { id: 'w5', kind: 'inheritance', deceased: 'l', heirs: [{ person: 'o', relation: '৪পুত্র', share: '1' }] },
+    { id: 'd3', kind: 'deed', no: '3003', date: '23/08/1998', type: 'পরিমাণ', area: '14.35', from: ['o'], to: [{ person: 'k' }] },
+    { id: 'd4', kind: 'deed', no: '4004', date: '05/09/1999', type: 'দানপত্র', area: '14.35', from: ['j'], to: [{ person: 'k' }] },
+    { id: 'w6', kind: 'inheritance', deceased: 'i', heirs: [
+      { person: 'k', relation: 'পুত্র', area: '12.6' }, { person: 'm', relation: 'কন্যা', area: '6.3', lines: ['সিটি রেকর্ডীয় মালিক'] }, { person: 'n', relation: 'কন্যা', area: '6.3' }, { person: 'f', relation: 'স্ত্রী', area: '3.5' }] },
+    { id: 'mk', kind: 'merge', person: 'k', caption: 'ওয়ারিশ ও খরিদসূত্রে মালিক', lines: ['সিটি দাগ নং 601'] },
+    { id: 'd5', kind: 'deed', no: '5005', date: '07/09/2008', type: 'সাফ কবলা', area: '4.125', from: ['m'], to: [{ person: 'p' }], lines: ['সিটি দাগ নং 601'] },
+    { id: 'd6', kind: 'deed', no: '6006', date: '24/12/2010', type: 'সাফ কবলা', area: '4.125', from: ['p'], to: [{ person: 'r' }], lines: ['সিটি দাগ নং 601'] },
   ],
+  highlight: { step: 'w6', person: 'm' },
+  notes: ['এই নমুনা চার্টের সব নাম, দাগ ও মোকদ্দমা কাল্পনিক।'],
+  preparedBy: ['Research & Prepared By:', 'ADVOCATE NAME', 'Advocate, Dhaka Judge Court'],
 };
