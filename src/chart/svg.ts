@@ -1,90 +1,129 @@
 /**
- * The title chart as one SVG (for the screen, print, PDF and Word). Look from Diagram Design (MIT):
- * hairline boxes, right-angle lines, one accent (today's owners), a summary block on top.
+ * The title chart as one SVG page in the owner's format (Legal paper by default): heading, the chain,
+ * the argument under it and the "Prepared By" block. Lines with filled arrowheads; a bar jumps over a
+ * line it crosses (Diagram Design); one ring around the person the case is about.
  */
-import { layoutChart, BOX_H, BOX_W, PAD } from './layout';
-import { toDecimal, type TitleChart, SURVEYS } from './model';
+import { layoutChart, LINE_H, type Node } from './layout';
+import { bnDigits, type TitleChart } from './model';
 
 const esc = (s: string) => s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]!);
-const bn = (s: string) => s.replace(/\d/g, (d) => '০১২৩৪৫৬৭৮৯'[Number(d)]);
 
-export interface ChartStyle { font: string; ink: string; muted: string; line: string; paper: string; accent: string; accentInk: string }
-export const CHART_STYLE: ChartStyle = {
-  font: '"Noto Sans Bengali", "Kalpurush", sans-serif',
-  ink: '#0b1b33', muted: '#5f6878', line: '#b9c0cc', paper: '#ffffff', accent: '#c8a45d', accentInk: '#3d2e0c',
-};
+export interface ChartStyle { font: string; ink: string; muted: string; paper: string }
+export const CHART_STYLE: ChartStyle = { font: '"SutonnyOMJ", "Noto Sans Bengali", "Kalpurush", sans-serif', ink: '#111111', muted: '#333333', paper: '#ffffff' };
 
-const HEAD_H = 88;
+/** Paper in points (Legal 8.5 × 14 in, as the owner's charts). */
+export const PAPER = { legal: { w: 612, h: 1008 }, a4: { w: 595, h: 842 }, folio: { w: 595, h: 935 } } as const;
 
-export function chartSvg(chart: TitleChart, st: ChartStyle = CHART_STYLE): string {
-  const L = layoutChart(chart);
-  const width = Math.max(L.width, 560);
-  const dx = (width - L.width) / 2;
-  const top = HEAD_H + 16;
-  const name = (id: string) => chart.persons.find((p) => p.id === id)?.name ?? id;
-  const rel = (id: string) => chart.persons.find((p) => p.id === id)?.relation ?? '';
-  const byId = new Map([...L.boxes, ...L.passes].map((b) => [b.id, b]));
+/** Wraps a paragraph to about `max` characters a line. */
+function wrap(text: string, max: number): string[] {
   const out: string[] = [];
-  const W = width;
-  const H = top + L.height + (L.problems.length ? 24 + L.problems.length * 18 : 0) + 8;
-  out.push(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" font-family='${st.font}' role="img" aria-label="${esc(chart.title)}">`);
-  out.push(`<rect width="${W}" height="${H}" fill="${st.paper}"/>`);
+  let line = '';
+  for (const w of text.split(/\s+/)) {
+    if (line && [...(line + ' ' + w)].length > max) { out.push(line); line = w; } else line = line ? line + ' ' + w : w;
+  }
+  if (line) out.push(line);
+  return out;
+}
 
-  // summary block (Diagram Design "high-level"): what land this is
-  const p = chart.plot;
-  const dags = SURVEYS.filter((s) => p.dag[s]).map((s) => `${s} ${p.dag[s]}`).join(' · ');
-  out.push(`<rect x="${PAD}" y="${PAD}" width="${W - PAD * 2}" height="${HEAD_H - PAD}" rx="6" fill="none" stroke="${st.line}"/>`);
-  out.push(`<text x="${PAD + 12}" y="${PAD + 24}" font-size="16" font-weight="700" fill="${st.ink}">${esc(chart.title)}</text>`);
-  out.push(`<text x="${PAD + 12}" y="${PAD + 46}" font-size="12" fill="${st.muted}">${esc(bn([p.district, p.upazila, 'মৌজা ' + p.mouza, p.jl ? 'জে.এল. ' + p.jl : ''].filter(Boolean).join(' · ')))}</text>`);
-  out.push(`<text x="${W - PAD - 12}" y="${PAD + 24}" font-size="12" text-anchor="end" fill="${st.ink}">${esc(bn('দাগ ' + dags))}</text>`);
-  out.push(`<text x="${W - PAD - 12}" y="${PAD + 46}" font-size="12" text-anchor="end" fill="${st.muted}">${esc(bn('জমি ' + p.area + ' শতক'))}</text>`);
+/** The chain alone (no page): for the screen. */
+export function chainSvg(chart: TitleChart, st: ChartStyle = CHART_STYLE): { svg: string; width: number; height: number } {
+  const L = layoutChart(chart);
+  const byId = new Map<string, Node>([...L.nodes, ...L.passes].map((n) => [n.id, n]));
+  const out: string[] = [];
+  const cx = (n: Node) => n.x + n.w / 2;
+  const vertical: { x: number; y1: number; y2: number }[] = [];
+  const bars: { y: number; x1: number; x2: number }[] = [];
+  const paths: string[] = [];
+  const heads: string[] = [];
 
-  // lines first, boxes on top
   for (const l of L.links) {
-    const from = l.from.map((id) => byId.get(id)!).filter(Boolean);
-    const to = l.to.map((id) => byId.get(id)!).filter(Boolean);
-    const y = top + l.barY;
-    const xs = to.map((b) => dx + b.x + BOX_W / 2);
-    const dash = l.dashed ? ' stroke-dasharray="4 4"' : '';
-    const path: string[] = [];
-    for (const b of from) {
-      // down from the giver, through the pass-through slots of the rows in between, to the bar
-      let cx = dx + b.x + BOX_W / 2;
-      let cy = top + b.y + BOX_H;
-      let d = `M${cx} ${cy}`;
-      for (const id of l.via[b.id] ?? []) {
+    const from = l.from.map((id) => byId.get(id)!);
+    const to = l.to.map((id) => byId.get(id)!);
+    const y = l.barY;
+    const xs = to.map(cx);
+    for (const f of from) {
+      let x = cx(f);
+      let yy = f.y + f.h;
+      let d = `M${x} ${yy}`;
+      for (const id of l.via[f.id] ?? []) {
         const v = byId.get(id)!;
-        const vx = dx + v.x + 8;
-        // step aside right under the giver (clear of the bars lower down), then straight down the slot
-        const jog = cx === vx ? '' : `V${cy + 16}H${vx}`;
-        d += `${jog}V${top + v.y + BOX_H + 8}`;
-        cx = vx;
-        cy = top + v.y + BOX_H + 8;
+        const vx = cx(v);
+        if (vx !== x) { d += `V${yy + 8}H${vx}`; bars.push({ y: yy + 8, x1: Math.min(x, vx), x2: Math.max(x, vx) }); vertical.push({ x, y1: yy, y2: yy + 8 }); yy += 8; x = vx; }
+        vertical.push({ x, y1: yy, y2: v.y + v.h + 8 });
+        yy = v.y + v.h + 8;
+        d += `V${yy}`;
       }
-      path.push(d + `V${y}`);
-      xs.push(cx);
+      vertical.push({ x, y1: yy, y2: y });
+      paths.push(d + `V${y}`);
+      xs.push(x);
     }
-    if (xs.length > 1) path.push(`M${Math.min(...xs)} ${y}H${Math.max(...xs)}`);
-    for (const b of to) path.push(`M${dx + b.x + BOX_W / 2} ${y}V${top + b.y - 4}`);
-    out.push(`<path d="${path.join('')}" fill="none" stroke="${st.muted}" stroke-width="1"${dash}/>`);
-    for (const b of to) out.push(`<path d="M${dx + b.x + BOX_W / 2 - 4} ${top + b.y - 8}l4 6 4-6" fill="none" stroke="${st.muted}"/>`);
-    // the step's label, on a paper patch across the bar
-    const lx = Math.min(...xs) + 8;
-    const ly = y - 8 - (l.label.length - 1) * 13;
-    l.label.forEach((t, i) => out.push(`<text x="${lx}" y="${ly + i * 13}" font-size="11" fill="${st.ink}" paint-order="stroke" stroke="${st.paper}" stroke-width="4">${esc(bn(t))}</text>`));
+    const x1 = Math.min(...xs), x2 = Math.max(...xs);
+    if (x2 > x1) bars.push({ y, x1, x2 });
+    for (const t of to) {
+      vertical.push({ x: cx(t), y1: y, y2: t.y - 2 });
+      paths.push(`M${cx(t)} ${y}V${t.y - 9}`);
+      heads.push(`<path d="M${cx(t) - 5} ${t.y - 10}L${cx(t) + 5} ${t.y - 10}L${cx(t)} ${t.y - 2}Z" fill="${st.ink}"/>`);
+    }
   }
-  for (const b of L.boxes) {
-    const x = dx + b.x, y = top + b.y;
-    const fill = b.current ? st.accent : st.paper;
-    const ink = b.current ? st.accentInk : st.ink;
-    out.push(`<rect x="${x}" y="${y}" width="${BOX_W}" height="${BOX_H}" rx="6" fill="${fill}" stroke="${b.current ? st.accent : st.line}"/>`);
-    out.push(`<text x="${x + 12}" y="${y + 22}" font-size="13" font-weight="600" fill="${ink}">${esc(name(b.person))}</text>`);
-    const sub = [rel(b.person), toDecimal(b.area) + ' শতক'].filter(Boolean).join(' · ');
-    out.push(`<text x="${x + 12}" y="${y + 42}" font-size="11" fill="${b.current ? ink : st.muted}">${esc(bn(sub))}</text>`);
-    if (b.tags.length) out.push(`<text x="${x + 12}" y="${y + 60}" font-size="10" fill="${b.current ? ink : st.muted}">${esc(bn(b.tags.join(' · ')))}</text>`);
+  // bars, jumping over the lines they cross
+  for (const b of bars) {
+    const cuts = vertical.filter((v) => v.x > b.x1 + 6 && v.x < b.x2 - 6 && v.y1 < b.y - 1 && v.y2 > b.y + 1).map((v) => v.x).sort((a, c) => a - c);
+    let d = `M${b.x1} ${b.y}`;
+    for (const x of cuts) d += `H${x - 5}A5 5 0 0 1 ${x + 5} ${b.y}`;
+    paths.push(d + `H${b.x2}`);
   }
-  // what does not add up, under the chart
-  L.problems.forEach((pr, i) => out.push(`<text x="${PAD}" y="${top + L.height + 16 + i * 18}" font-size="12" fill="#b3261e">⚠ ${esc(bn(pr.text))}</text>`));
-  out.push('</svg>');
-  return out.join('\n');
+  out.push(`<g fill="none" stroke="${st.ink}" stroke-width="1.4">${paths.map((d) => `<path d="${d}"/>`).join('')}</g>`);
+  out.push(...heads);
+
+  for (const n of L.nodes) {
+    if (n.boxed) out.push(`<rect x="${n.x}" y="${n.y}" width="${n.w}" height="${n.h}" fill="${st.paper}" stroke="${st.ink}" stroke-width="1"/>`);
+    const top = n.y + (n.boxed ? 8 : 2);
+    n.lines.forEach((l, i) => out.push(`<text x="${cx(n)}" y="${top + (i + 1) * LINE_H - 4}" text-anchor="middle" font-size="${l.bold ? 14 : 11.5}"${l.bold ? ' font-weight="700"' : ''} fill="${l.small ? st.muted : st.ink}">${esc(l.text)}</text>`));
+    if (n.ring) {
+      const bi = n.lines.findIndex((l) => l.bold);
+      const ry = (n.h - (bi > 0 ? LINE_H * bi : 0)) / 2 + 6;
+      out.push(`<ellipse cx="${cx(n)}" cy="${n.y + (bi > 0 ? LINE_H * bi : 0) + ry - 4}" rx="${n.w / 2 + 6}" ry="${ry}" fill="none" stroke="${st.ink}" stroke-width="1.2"/>`);
+    }
+  }
+  L.problems.forEach((p, i) => out.push(`<text x="4" y="${L.height + 16 + i * 16}" font-size="12" fill="#b3261e">⚠ ${esc(p.text)}</text>`));
+  const height = L.height + (L.problems.length ? 8 + L.problems.length * 16 : 0);
+  return { svg: out.join('\n'), width: L.width, height };
+}
+
+/** The whole page: heading, the chain scaled to fit, the argument and the Prepared By block. */
+export function chartPageSvg(chart: TitleChart, paper: keyof typeof PAPER = 'legal', st: ChartStyle = CHART_STYLE): string {
+  const P = PAPER[paper];
+  const M = 30;
+  const out: string[] = [];
+  let y = M;
+  const head = chart.heading ?? [];
+  head.forEach((t, i) => { y += i === 0 ? 20 : 14; out.push(`<text x="${P.w / 2}" y="${y}" text-anchor="middle" font-size="${i === 0 ? 18 : 12}" font-weight="700" fill="${st.ink}">${esc(bnDigits(t))}</text>`); });
+  if (head.length) y += 16;
+  // what goes under the chain
+  const foot: string[] = [];
+  let fy = 0;
+  for (const para of chart.notes ?? []) {
+    for (const line of wrap(bnDigits(para), 64)) { fy += 15; foot.push(`<text x="${P.w / 2}" y="FY${fy}" text-anchor="middle" font-size="11" fill="${st.ink}">${esc(line)}</text>`); }
+    fy += 8;
+  }
+  if (chart.preparedBy?.length) {
+    fy += 12;
+    chart.preparedBy.forEach((t, i) => { fy += i === 1 ? 22 : 13; foot.push(`<text x="${M + 60}" y="FY${fy}" font-size="${i === 1 ? 11 : 10}"${i === 1 ? ' font-weight="700"' : ''} fill="${st.ink}">${esc(t)}</text>`); });
+  }
+  const chain = chainSvg(chart, st);
+  const roomH = P.h - y - M - fy - 12;
+  // fill the page: grow a small chain (up to 1.4×), shrink a big one to fit
+  const scale = Math.min(1.4, (P.w - M * 2) / chain.width, roomH / chain.height);
+  const cw = chain.width * scale, ch = chain.height * scale;
+  out.push(`<g transform="translate(${(P.w - cw) / 2} ${y}) scale(${scale.toFixed(4)})">${chain.svg}</g>`);
+  const footTop = y + ch + 12;
+  out.push(...foot.map((s) => s.replace(/y="FY([\d.]+)"/, (_m, v) => `y="${footTop + Number(v)}"`)));
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${P.w} ${P.h}" width="${P.w}pt" height="${P.h}pt" font-family='${st.font}'>`
+    + `<rect width="${P.w}" height="${P.h}" fill="${st.paper}"/>` + out.join('\n') + '</svg>';
+}
+
+/** The chain alone as a standalone SVG. */
+export function chartSvg(chart: TitleChart, st: ChartStyle = CHART_STYLE): string {
+  const c = chainSvg(chart, st);
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="-8 -8 ${c.width + 16} ${c.height + 16}" width="${c.width + 16}" height="${c.height + 16}" font-family='${st.font}'><rect x="-8" y="-8" width="${c.width + 16}" height="${c.height + 16}" fill="${st.paper}"/>${c.svg}</svg>`;
 }
