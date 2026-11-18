@@ -103,7 +103,9 @@ export function charFor(map: LayoutMap, code: string, shift: boolean, alt = fals
 /** Decide what a physical key press does (v8 `keydown` handler). */
 export function resolveKey(ev: KeyInput, state: EngineState): KeyAction {
   if (isToggleKey(ev, state.toggleKey)) return { kind: 'toggle-language' };
-  const alt = !ev.metaKey && (ev.altKey || Boolean(ev.altGraph));
+  // AltGr (Windows reports it as Ctrl+Alt, but with the AltGraph state) or Option (Mac, iPad). Left Ctrl+Alt
+  // without AltGraph is a shortcut (Ctrl+Alt+1 = Heading 1, as in Word), not a character.
+  const alt = !ev.metaKey && (Boolean(ev.altGraph) || (ev.altKey && !ev.ctrlKey));
   const map = state.map;
   if (state.suspended || !state.bangla || ev.isComposing || ev.metaKey || (ev.ctrlKey && !alt) || (alt && !hasAltLayer(map))) return null;
   let code = ev.code;

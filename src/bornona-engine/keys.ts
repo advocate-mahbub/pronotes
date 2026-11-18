@@ -42,10 +42,14 @@ export const PHONE_ROWS: string[][] = [
   ['#Shift', 'KeyZ', 'KeyX', 'KeyC', 'KeyV', 'KeyB', 'KeyN', 'KeyM', '#Back'],
   BOTTOM,
 ];
-/** The second layer: same height as the letters, so nothing jumps when it opens. */
+/**
+ * The second layer: same height as the letters, so nothing jumps when it opens. Its number row types the
+ * AltGr character of each key (the anna-ganda signs in the ProNotes layout; the digits stay on the letters
+ * layer), and ৸ and ১৲ (AltGr of - and =) sit next to - = [ ]. "Alt+" codes = that key's AltGr character.
+ */
 export const PHONE_SYMBOL_ROWS: string[][] = [
-  NUMBERS,
-  ['Minus', 'Equal', 'BracketLeft', 'BracketRight'],
+  NUMBERS.map((c) => 'Alt+' + c),
+  ['Minus', 'Equal', 'BracketLeft', 'BracketRight', 'Alt+Minus', 'Alt+Equal'],
   ['Semicolon', 'Quote', '#Enter'],
   ['#Shift', 'Comma', 'Period', 'Slash', '#Back'],
   BOTTOM,

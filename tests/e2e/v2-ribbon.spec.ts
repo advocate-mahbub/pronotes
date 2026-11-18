@@ -222,6 +222,7 @@ test('title box types Bangla through Bornona (physical and on-screen keys)', asy
   await page.getByTestId('kb-toggle').click();
   await page.getByTestId('title').click();
   await page.locator('.kb [data-code="KeyL"]').dispatchEvent('pointerdown');
+  await page.locator('.kb').dispatchEvent('pointerup');
   await expect(page.getByTestId('title')).toHaveValue('কমরল');
   await expect(editor(page).locator('p').first()).toHaveText('');
 });

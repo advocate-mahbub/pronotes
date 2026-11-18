@@ -1036,4 +1036,10 @@ export const EN: Record<string, string> = {
   "প্রতিটা ব্যাকআপে এই নাম লেখা থাকে, তাই তালিকায় দেখা যায় কোনটা কোন ডিভাইস থেকে। খালি রাখলে ডিভাইসের ধরন নিজে বসে (যেমন iPad)। নামটা শুধু এই ডিভাইসে থাকে, ব্যাকআপ থেকে ফেরত আনলে অন্য ডিভাইসে যায় না।": "Each backup carries this name, so the list shows which device it came from. Left empty, the kind of device is used (such as iPad). The name stays on this device only; restoring a backup does not take it to another device.",
   "Drive-এর ব্যাকআপগুলো": "Backups in Drive",
   "{n}টা": "{n}",
+  "বাঁ হাতে লেখা": "Left-handed keyboard",
+  "পুরো চওড়া কিবোর্ড": "Full-width keyboard",
+  "ডান হাতে লেখা": "Right-handed keyboard",
+  "কিবোর্ড নিচে বসান": "Dock the keyboard",
+  "ভাসমান কিবোর্ড": "Floating keyboard",
+  "অন্য হাতে নিন": "Switch hands",
 };

@@ -26,6 +26,8 @@ import { deliver, MIME } from '../export/deliver';
 import { tr } from '../i18n';
 import { attachBornona } from './bornona-input';
 import { OnScreenKeyboard } from './OnScreenKeyboard';
+import { FloatingKeyboard } from './FloatingKeyboard';
+import type { Hand } from './kb-gestures';
 import { AiVoiceKey } from './AiVoiceKey';
 import type { FontLists } from './FontPicker';
 import { SuggestionBar } from './SuggestionBar';
@@ -139,6 +141,11 @@ export function Workspace(p: Props) {
   const deskRef = useRef<HTMLDivElement>(null);
   /** On-screen keyboard put down for reading (not saved; a tap on the page brings it back). */
   const [kbDown, setKbDown] = useState(false);
+  // phones: one-handed keyboard; iPad and computers: a small floating keyboard (both: long-press the language key)
+  const [hand, setHand0] = useState<Hand>(() => load('kb.hand', null));
+  const setHand = (h: Hand) => { setHand0(h); save('kb.hand', h); };
+  const [floating, setFloating0] = useState<boolean>(() => load('kb.float', false));
+  const setFloating = (f: boolean) => { setFloating0(f); save('kb.float', f); };
   const [desk, setDesk] = useState({ w: 900, h: 700 });
   useEffect(() => {
     const el = deskRef.current;
@@ -713,10 +720,15 @@ export function Workspace(p: Props) {
         ) : (
           p.ansiTyping || kbDown ? null : <SuggestionBar editor={editor} bank={p.bank} version={p.bankVersion} />
         )}
-        {p.kbVisible && !deviceKb && !kbDown && (
-          <OnScreenKeyboard compact={p.phone} onHide={() => setKbDown(true)} editor={editor} map={p.map} bangla={p.bangla} getConfig={getConfig} onToggleLanguage={p.onToggleLanguage}
-            onWordDone={(before) => { if (learnTail(p.bank, before)) p.onBankChanged(); }} flash={flash} />
-        )}
+        {p.kbVisible && !deviceKb && !kbDown && (() => {
+          const float = floating && !p.phone;
+          const kb = (
+            <OnScreenKeyboard compact={p.phone || float} onHide={() => setKbDown(true)} editor={editor} map={p.map} bangla={p.bangla} getConfig={getConfig} onToggleLanguage={p.onToggleLanguage}
+              onWordDone={(before) => { if (learnTail(p.bank, before)) p.onBankChanged(); }} flash={flash}
+              hand={p.phone ? hand : null} setHand={p.phone ? setHand : undefined} floating={float} setFloating={p.phone ? undefined : setFloating} />
+          );
+          return float ? <FloatingKeyboard onDock={() => setFloating(false)}>{kb}</FloatingKeyboard> : kb;
+        })()}
       </footer>
     </>
   );

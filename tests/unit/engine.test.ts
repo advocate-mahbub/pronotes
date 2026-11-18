@@ -7,7 +7,8 @@ describe('layouts', () => {
     expect([PRO_NOTES_LAYOUT, PRO_NOTES_PHONETIC_LAYOUT, ...BUILTIN_LAYOUTS].map((l) => l.id)).toEqual(['pronotes', 'pronotes-phonetic', 'bijoy-classic', 'unibijoy']);
   });
   it('AltGr layer detection', () => {
-    expect(hasAltLayer(PRO_NOTES_LAYOUT.map)).toBe(false);
+    expect(hasAltLayer(PRO_NOTES_LAYOUT.map)).toBe(true); // the anna-ganda signs on the number row
+    expect(hasAltLayer(findLayout('bornona').map)).toBe(false);
     expect(hasAltLayer(findLayout('unibijoy').map)).toBe(true);
   });
 });
