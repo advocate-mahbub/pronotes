@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import type { Editor } from '@tiptap/react';
 import { TextSelection } from '@tiptap/pm/state';
-import { ANNA_ALT, PHONE_ROWS, PHONE_SYMBOL_ROWS, ROWS, US, charFor, hasAltBeyondAnna, hasAltLayer, type LayoutMap } from '../bornona-engine';
+import { ANNA_ALT, NUMPAD_ROWS, PHONE_ROWS, PHONE_SYMBOL_ROWS, ROWS, US, charFor, hasAltBeyondAnna, hasAltLayer, splitRow, type LayoutMap } from '../bornona-engine';
 import { typeText, deleteBackward, textBeforeCaret, typeRulesKey, type BornonaConfig } from '../editor';
 import { useT } from '../i18n';
 import { activeBornonaBox, backspaceBox, typeIntoBox, typeKeyIntoBox } from './bornona-input';
@@ -23,16 +23,22 @@ interface Props {
   onHide?: () => void;
   /** Phone layout: punctuation on a second layer (#Sym), wider letter keys. */
   compact?: boolean;
-  /** Phones: one-handed keyboard (long-press the language key). */
+  /** Phones: one-handed keyboard (from the language key's menu). */
   hand?: Hand;
   setHand?: (h: Hand) => void;
-  /** iPad and computers: the keyboard floats, small and movable (long-press the language key). */
-  floating?: boolean;
-  setFloating?: (f: boolean) => void;
+  /** The keyboard in two halves, one for each thumb. */
+  split?: boolean;
+  /** What a long-press of the language key offers on this device (one-handed, floating, split…). */
+  menuItems?: KbMenuItem[];
+  /** The live-voice mic key at the end of the bottom row: shown when given. */
+  live?: { on: boolean; toggle: () => void };
 }
+
+export interface KbMenuItem { id: string; label: string; on?: boolean; act: () => void }
 
 /** The key back to the letters shows letters of the language being typed (like iOS's "ABC"). */
 const LETTERS_KEY = { bn: 'অআ', en: 'ABC' } as const;
+const NUM_KEY = { bn: '\u09e7\u09e8\u09e9', en: '123' } as const;
 /** "Alt+Digit5" = the AltGr character of Digit5 (the phone's symbol layer). */
 const baseOf = (code: string) => (code.startsWith('Alt+') ? code.slice(4) : code);
 
@@ -62,16 +68,18 @@ interface Touch {
  * left = the word; two spaces = "। "; slide from #+= to a mark and lift = that mark, back to letters;
  * ⇧ twice = Shift lock; long-press the language key = one-handed (phones) or floating (iPad).
  */
-export function OnScreenKeyboard({ editor, map, bangla, getConfig, onToggleLanguage, onWordDone, flash, onHide, compact, hand, setHand, floating, setFloating }: Props) {
+export function OnScreenKeyboard({ editor, map, bangla, getConfig, onToggleLanguage, onWordDone, flash, onHide, compact, hand, setHand, split, menuItems, live }: Props) {
   const { t } = useT();
   const [shift, setShift] = useState(0); // 0 off, 1 next key, 2 locked
   const [alt, setAlt] = useState(false);
   // phones: the punctuation layer is open (stays open for several marks, closes on space or enter, like iOS)
   const [sym, setSym] = useState(false);
+  // the numpad (#Num): stays open for several numbers and signs, until #Num is pressed again
+  const [num, setNum] = useState(false);
   const [popup, setPopup] = useState<{ opts: string[]; idx: number; left: number; top: number; w: number } | null>(null);
   const [menu, setMenu] = useState(false);
   const [tracking, setTracking] = useState(false);
-  const rows = compact ? (sym ? PHONE_SYMBOL_ROWS : PHONE_ROWS) : ROWS;
+  const rows = num ? NUMPAD_ROWS : compact ? (sym ? PHONE_SYMBOL_ROWS : PHONE_ROWS) : ROWS;
   const [phys, setPhys] = useState({ shift: false, alt: false });
   const lastShift = useRef(0);
   const lastSpace = useRef(0);
@@ -139,11 +147,14 @@ export function OnScreenKeyboard({ editor, map, bangla, getConfig, onToggleLangu
   };
   /** The character a key gives now (Alt+ codes: its AltGr character, the plain one if there is none). */
   const charOf = (code: string, shiftOn = sh) => {
+    if (code.startsWith('Np')) return bangla ? String.fromCharCode(0x09e6 + Number(code[2])) : code[2];
+    if (code.startsWith('Txt:')) return code.slice(4);
     const c = baseOf(code);
     const a = code.startsWith('Alt+') || al;
     return charFor(map, c, shiftOn, a, bangla) || (a ? charFor(map, c, shiftOn, false, bangla) : '');
   };
   const typeKey = (code: string, shiftOn = sh) => {
+    if (code.startsWith('Np') || code.startsWith('Txt:')) { type(charOf(code)); return; }
     if (rulesOn()) rulesKey({ code: baseOf(code), shift: shiftOn, alt: code.startsWith('Alt+') || al });
     else {
       const out = charOf(code, shiftOn);
@@ -153,7 +164,7 @@ export function OnScreenKeyboard({ editor, map, bangla, getConfig, onToggleLangu
     if (alt) setAlt(false);
   };
   const space = () => {
-    setSym(false);
+    setSym(false); // the numpad stays open (numbers and signs come in runs)
     const now = Date.now();
     if (!rulesOn() && now - lastSpace.current < DOUBLE_SPACE && doubleSpaceDari(before())) {
       back();
@@ -229,17 +240,18 @@ export function OnScreenKeyboard({ editor, map, bangla, getConfig, onToggleLangu
     const code = g.code;
     if (g.mode === 'track') { setTracking(false); return; }
     if (g.mode === 'menu') return;
-    if (code === '#Space') return space();
+    if (code === '#Space' || code === '#Space2') return space();
     if (code === '#Enter') return enter();
     if (code === '#Dari') return type(bangla ? '।' : '.');
     if (code === '#Mode') return onToggleLanguage();
-    if (code === '#Back') return;
-    if (code === '#Sym') {
-      // slid from #+= to a mark and lifted there: that mark, then back to the letters (iOS)
+    if (code === '#Back' || code === '#BackL') return;
+    if (code === '#Live') return live?.toggle();
+    if (code === '#Sym' || code === '#Num') {
+      // slid from #+= (or ১২৩) to a key and lifted there: that key, then back to the letters (iOS)
       const over = x !== undefined && y !== undefined ? keyAt(x, y) : null;
-      if (over && over !== '#Sym' && !over.startsWith('#')) {
+      if (over && over !== code && !over.startsWith('#')) {
         typeKey(over);
-        if (g.opened) setSym(false);
+        if (g.opened) (code === '#Sym' ? setSym : setNum)(false);
       }
       return;
     }
@@ -280,7 +292,8 @@ export function OnScreenKeyboard({ editor, map, bangla, getConfig, onToggleLangu
       }
       case '#Alt':
         return setAlt((a) => !a);
-      case '#Back': {
+      case '#Back':
+      case '#BackL': {
         back();
         // held: one by one, faster after a moment, then whole words (iOS)
         repeat.current.t = window.setTimeout(() => {
@@ -299,14 +312,20 @@ export function OnScreenKeyboard({ editor, map, bangla, getConfig, onToggleLangu
         g.opened = !sym;
         setSym((v) => !v);
         break;
+      case '#Num':
+        g.opened = !num;
+        setNum((v) => !v);
+        setSym(false);
+        break;
       case '#Mode':
-        if (setHand || setFloating) g.timer = window.setTimeout(() => { g.mode = 'menu'; setMenu(true); }, LONG + 80);
+        if (menuItems?.length) g.timer = window.setTimeout(() => { g.mode = 'menu'; setMenu(true); }, LONG + 80);
         break;
       case '#Space':
+      case '#Space2':
         g.timer = window.setTimeout(() => startTrack(g), LONG);
         break;
       default:
-        if (!code.startsWith('#')) {
+        if (!code.startsWith('#') && !code.startsWith('Np') && !code.startsWith('Txt:')) {
           g.timer = window.setTimeout(() => {
             if (g.mode !== 'press') return;
             const opts = keyAlternatives(map, baseOf(code), bangla, sh);
@@ -328,7 +347,7 @@ export function OnScreenKeyboard({ editor, map, bangla, getConfig, onToggleLangu
     const g = touch.current;
     if (!g) return;
     const dx = e.clientX - g.x0, dy = e.clientY - g.y0;
-    if (g.code === '#Space') {
+    if (g.code === '#Space' || g.code === '#Space2') {
       if (g.mode !== 'track' && Math.abs(dx) > MOVE) startTrack(g);
       if (g.mode !== 'track') return;
       g.ax = (g.ax ?? 0) + (e.clientX - (g.lx ?? g.x0));
@@ -338,11 +357,11 @@ export function OnScreenKeyboard({ editor, map, bangla, getConfig, onToggleLangu
       while (Math.abs(g.ay) >= STEP_Y) { const s = Math.sign(g.ay); g.ay -= s * STEP_Y; caretStep(0, s, Boolean(g.select), g.anchor); }
       return;
     }
-    if (g.code === '#Back') {
+    if (g.code === '#Back' || g.code === '#BackL') {
       if (!g.swiped && dx < -30 && Math.abs(dx) > Math.abs(dy)) { g.swiped = true; stopRepeat(); backWord(); }
       return;
     }
-    if (g.code.startsWith('#')) return;
+    if (g.code.startsWith('#') || g.code.startsWith('Np') || g.code.startsWith('Txt:')) return;
     if (g.mode === 'popup' && popup && root.current) {
       const k = root.current.getBoundingClientRect();
       const idx = Math.max(0, Math.min(popup.opts.length - 1, Math.floor((e.clientX - k.left - popup.left) / popup.w)));
@@ -367,45 +386,62 @@ export function OnScreenKeyboard({ editor, map, bangla, getConfig, onToggleLangu
   };
 
   const label = (code: string) =>
-    ({ '#Enter': '↵', '#Shift': shift === 2 ? '⇪' : '⇧', '#Back': '⌫', '#Space': t('স্পেস'), '#Dari': bangla ? '।' : '.', '#Mode': bangla ? 'EN' : 'বাং', '#Alt': 'Alt', '#Sym': sym ? LETTERS_KEY[bangla ? 'bn' : 'en'] : '#+=' })[code];
+    ({ '#Enter': '↵', '#Shift': shift === 2 ? '⇪' : '⇧', '#Back': '⌫', '#BackL': '⌫', '#Space': t('স্পেস'), '#Space2': t('স্পেস'),
+      '#Num': num ? LETTERS_KEY[bangla ? 'bn' : 'en'] : NUM_KEY[bangla ? 'bn' : 'en'], '#Live': live?.on ? '●' : '🎙', '#Dari': bangla ? '।' : '.', '#Mode': bangla ? 'EN' : 'বাং', '#Alt': 'Alt', '#Sym': sym ? LETTERS_KEY[bangla ? 'bn' : 'en'] : '#+=' })[code];
 
-  const rowsEl = rows.map((row, ri) => (
-    <div className="kb-row" key={ri}>
-      {row.filter((c) => (c !== '#Alt' || altKey) && (!c.startsWith('Alt+') || ri === 0 || (bangla && charFor(map, baseOf(c), false, true, true)))).map((code) => {
-        const fn = code.startsWith('#');
-        const main = fn ? '' : show(charOf(code));
-        const base = baseOf(code);
-        // the anna-ganda sign a number key gives with Alt, shown small in its corner (Bangla, full keyboard)
-        const hint = !fn && !compact && bangla && !al && base in ANNA_ALT && code === base ? charFor(map, base, false, true, true) : '';
-        const cls = ['k', fn && code !== '#Dari' ? 'fn' : '', code === '#Space' ? 'w6' : '', ['#Enter', '#Shift', '#Back', '#Mode', '#Sym'].includes(code) ? 'w15' : '', code === '#Sym' && sym ? 'on' : '',
-          (code === '#Shift' && shift > 0) || (code === '#Alt' && alt) ? 'on' : '', flash === code ? 'hit' : '', code.startsWith('Alt+') ? 'sign' : ''].filter(Boolean).join(' ');
-        return (
-          <button key={code} type="button" tabIndex={-1} className={cls} data-code={code}
-            aria-label={fn ? label(code) : main}
-            onPointerDown={(e) => down(e, code)}>
-            {fn ? (
-              <span className="m">{label(code)}</span>
-            ) : (
-              <>
-                <span className={'m' + (/^ZW/.test(main) ? ' tiny' : '')}>{main}</span>
-                {code.startsWith('Alt+') ? <span className="s">{show(charFor(map, base, false, false, bangla))}</span> : <span className="s">{show(charFor(map, base, !sh, al, bangla))}</span>}
-                {hint ? <span className="a">{hint}</span> : <span className="l">{US[base]?.[1]}</span>}
-              </>
-            )}
-          </button>
-        );
-      })}
-      {onHide && ri === rows.length - 1 && (
-        <button type="button" tabIndex={-1} className="k fn hide" data-testid="kb-hide" aria-label={t('কিবোর্ড নামান')} title={t('কিবোর্ড নামান')}
-          onPointerDown={(e) => e.preventDefault()} onClick={onHide}>
-          <span className="m">⌄</span>
-        </button>
-      )}
-    </div>
-  ));
+  const keyEl = (code: string) => {
+    const fn = code.startsWith('#');
+    const main = fn ? '' : show(charOf(code));
+    const base = baseOf(code);
+    // the anna-ganda sign a number key gives with Alt, shown small in its corner (Bangla, full keyboard)
+    const hint = !fn && !compact && bangla && !al && base in ANNA_ALT && code === base ? charFor(map, base, false, true, true) : '';
+    const plain = code.startsWith('Np') || code.startsWith('Txt:');
+    const cls = ['k', fn && code !== '#Dari' ? 'fn' : '', code === '#Space' && !split ? 'w6' : '', code.startsWith('#Space') && split ? 'w3' : '',
+      ['#Enter', '#Shift', '#Back', '#Mode', '#Sym', '#Num'].includes(code) ? 'w15' : '', (code === '#Sym' && sym) || (code === '#Num' && num) ? 'on' : '',
+      (code === '#Shift' && shift > 0) || (code === '#Alt' && alt) || (code === '#Live' && live?.on) ? 'on' : '', flash === code ? 'hit' : '',
+      code.startsWith('Alt+') ? 'sign' : '', plain ? 'pad' : '', code === '#Live' ? 'live' : ''].filter(Boolean).join(' ');
+    return (
+      <button key={code} type="button" tabIndex={-1} className={cls} data-code={code}
+        aria-label={fn ? label(code) : main}
+        onPointerDown={(e) => down(e, code)}>
+        {fn ? (
+          <span className="m">{label(code)}</span>
+        ) : plain ? (
+          <span className="m">{main}</span>
+        ) : (
+          <>
+            <span className={'m' + (/^ZW/.test(main) ? ' tiny' : '')}>{main}</span>
+            {code.startsWith('Alt+') ? <span className="s">{show(charFor(map, base, false, false, bangla))}</span> : <span className="s">{show(charFor(map, base, !sh, al, bangla))}</span>}
+            {hint ? <span className="a">{hint}</span> : <span className="l">{US[base]?.[1]}</span>}
+          </>
+        )}
+      </button>
+    );
+  };
+  const hideEl = onHide && (
+    <button type="button" tabIndex={-1} className="k fn hide" data-testid="kb-hide" aria-label={t('কিবোর্ড নামান')} title={t('কিবোর্ড নামান')}
+      onPointerDown={(e) => e.preventDefault()} onClick={onHide}>
+      <span className="m">⌄</span>
+    </button>
+  );
+  const shown = (c: string, ri: number) => (c !== '#Alt' || altKey) && (c !== '#Live' || Boolean(live))
+    && (!c.startsWith('Alt+') || ri === 0 || (bangla && Boolean(charFor(map, baseOf(c), false, true, true))));
+  const rowsEl = rows.map((row0, ri) => {
+    const row = row0.filter((c) => shown(c, ri));
+    const last = ri === rows.length - 1;
+    if (!split) return <div className="kb-row" key={ri}>{row.map(keyEl)}{last && hideEl}</div>;
+    const [l, r] = splitRow(row, Boolean(compact));
+    return (
+      <div className="kb-row split" key={ri}>
+        <div className="half">{l.map(keyEl)}</div>
+        <div className="gap" aria-hidden="true" />
+        <div className="half">{r.map(keyEl)}{last && hideEl}</div>
+      </div>
+    );
+  });
 
   return (
-    <div ref={root} className={'kb' + (sh ? ' shift' : '') + (compact ? ' compact' : '') + (sym ? ' sym' : '') + (tracking ? ' track' : '') + (hand ? ' hand-' + hand : '')}
+    <div ref={root} className={'kb' + (sh ? ' shift' : '') + (compact ? ' compact' : '') + (sym ? ' sym' : '') + (num ? ' num' : '') + (split ? ' split' : '') + (tracking ? ' track' : '') + (hand ? ' hand-' + hand : '')}
       role="group" aria-label={t('বর্ণনা অন-স্ক্রিন কিবোর্ড')} data-testid="osk"
       onPointerMove={moveTo} onPointerUp={up} onPointerCancel={cancel}>
       {hand === 'right' && <HandStrip t={t} onFull={() => setHand?.(null)} onSwap={() => setHand?.('left')} side="left" />}
@@ -416,19 +452,12 @@ export function OnScreenKeyboard({ editor, map, bangla, getConfig, onToggleLangu
           {popup.opts.map((c, i) => <span key={c} className={i === popup.idx ? 'on' : ''} style={{ width: popup.w }}>{show(c)}</span>)}
         </div>
       )}
-      {menu && (
+      {menu && menuItems && (
         <div className="kb-menu" data-testid="kb-menu" onPointerDown={(e) => e.preventDefault()}>
-          {setHand && compact && !floating ? (
-            <>
-              <button type="button" tabIndex={-1} data-testid="kb-hand-left" className={hand === 'left' ? 'on' : ''} aria-label={t('বাঁ হাতে লেখা')} onClick={() => { setHand('left'); setMenu(false); }}>◧</button>
-              <button type="button" tabIndex={-1} data-testid="kb-hand-full" className={!hand ? 'on' : ''} aria-label={t('পুরো চওড়া কিবোর্ড')} onClick={() => { setHand(null); setMenu(false); }}>▭</button>
-              <button type="button" tabIndex={-1} data-testid="kb-hand-right" className={hand === 'right' ? 'on' : ''} aria-label={t('ডান হাতে লেখা')} onClick={() => { setHand('right'); setMenu(false); }}>◨</button>
-            </>
-          ) : setFloating ? (
-            <button type="button" tabIndex={-1} data-testid="kb-float" className="wide" onClick={() => { setFloating(!floating); setMenu(false); }}>
-              {floating ? t('কিবোর্ড নিচে বসান') : t('ভাসমান কিবোর্ড')}
-            </button>
-          ) : null}
+          {menuItems.map((m) => (
+            <button key={m.id} type="button" tabIndex={-1} data-testid={'kb-' + m.id} className={(m.on ? 'on ' : '') + (m.label.length > 2 ? 'wide' : '')}
+              aria-label={m.label} onClick={() => { m.act(); setMenu(false); }}>{m.label}</button>
+          ))}
         </div>
       )}
     </div>

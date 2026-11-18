@@ -942,3 +942,35 @@ input.cf[data-testid$="-type"] { flex: 0 1 112px; width: 112px; }
 .kb-float-bar .grip { width: 44px; height: 5px; border-radius: 3px; background: var(--muted); opacity: .5; }
 .kb-float-bar button { position: absolute; right: 6px; top: 0; height: 22px; border: 0; background: none; color: var(--muted); font-size: 16px; padding: 0 6px; }
 .kb-float .k .m.tiny, .kb.compact .k .m.tiny { font-size: 9px; letter-spacing: -0.5px; }
+/* split keyboard: two halves, a gap for the hands in between */
+.kb-row.split { display: flex; gap: 0; }
+.kb-row.split .half { display: flex; gap: inherit; flex: 1 1 0; min-width: 0; }
+.kb-row.split .half { gap: 5px; }
+.kb-row.split .gap { flex: 0 0 28%; }
+.kb.compact .kb-row.split .gap { flex-basis: 22%; }
+.kb .k.w3 { flex: 3 1 0; }
+/* numpad: big keys like a phone's keypad */
+.kb.num .k { height: 50px; }
+.kb.num .k.pad .m { font-size: 24px; }
+.kb .k.live .m { font-size: 18px; }
+.kb .k.live.on { background: #c62828; color: #fff; }
+/* iPad: raise the docked keyboard */
+.kb-liftwrap { position: relative; background: var(--key-2); }
+.kb-grip { height: 16px; display: flex; align-items: center; justify-content: center; cursor: ns-resize; touch-action: none; }
+.kb-grip .grip { width: 48px; height: 5px; border-radius: 3px; background: var(--muted); opacity: .45; }
+/* a phone turned sideways: lower keys so the page keeps some room */
+@media (max-height: 500px) and (orientation: landscape) and (pointer: coarse) {
+  .kb .k { height: 28px; border-radius: 5px; }
+  .kb .kb-row { gap: 3px; }
+  .kb { padding-top: 2px; padding-bottom: 2px; gap: 3px; }
+  .kb .k .m { font-size: 16px; }
+  .kb .k .s { font-size: 9px; }
+}
+/* a phone turned sideways with the keyboard up: the screen is short, so the top bar and the ribbon's
+   second row step aside (the ribbon's tab row stays: undo, redo, the keyboard toggle); keys lose the
+   small US letters */
+@media (max-height: 500px) and (orientation: landscape) and (pointer: coarse) {
+  body:has([data-testid="osk"]) header.top { display: none; }
+  body:has([data-testid="osk"]) .ribbon-body { display: none; }
+  .kb .k .l { display: none; }
+}

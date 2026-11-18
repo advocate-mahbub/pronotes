@@ -41,3 +41,58 @@ export function FloatingKeyboard({ children, onDock }: { children: ReactNode; on
     </div>
   );
 }
+
+export type KbMode = 'dock' | 'float' | 'split' | 'splitPhone';
+
+/** True while the screen is wider than tall (iPad or phone turned sideways). */
+export function useLandscape(): boolean {
+  const q = () => typeof window !== 'undefined' && window.matchMedia?.('(orientation: landscape)').matches;
+  const [l, setL] = useState(q);
+  useEffect(() => {
+    const m = window.matchMedia?.('(orientation: landscape)');
+    const on = () => setL(Boolean(m?.matches));
+    m?.addEventListener?.('change', on);
+    window.addEventListener('resize', on);
+    return () => { m?.removeEventListener?.('change', on); window.removeEventListener('resize', on); };
+  }, []);
+  return Boolean(l);
+}
+
+/**
+ * iPad: the docked keyboard (whole or split) can be raised from the bottom edge, so two thumbs reach it
+ * while the hands hold the iPad. Drag the bar above it; the height is remembered for upright and
+ * sideways separately.
+ */
+export function LiftableKeyboard({ children, landscape }: { children: ReactNode; landscape: boolean }) {
+  const { t } = useT();
+  const key = landscape ? 'kb.lift.land' : 'kb.lift.port';
+  const [lift, setLift] = useState<number>(() => load(key, 0));
+  useEffect(() => setLift(load(key, 0)), [key]);
+  const drag = useRef<{ y: number; l: number } | null>(null);
+  const max = () => Math.round(window.innerHeight * 0.4);
+  return (
+    <div className="kb-liftwrap" style={{ paddingBottom: Math.min(lift, max()) }} data-testid="kb-liftwrap">
+      <div className="kb-grip" data-testid="kb-grip" role="separator" aria-label={t('কিবোর্ড ওপরে-নিচে সরান')} title={t('কিবোর্ড ওপরে-নিচে সরান')}
+        onPointerDown={(e) => { e.preventDefault(); e.currentTarget.setPointerCapture(e.pointerId); drag.current = { y: e.clientY, l: lift }; }}
+        onPointerMove={(e) => { if (drag.current) setLift(Math.max(0, Math.min(max(), drag.current.l + drag.current.y - e.clientY))); }}
+        onPointerUp={() => { if (drag.current) { drag.current = null; save(key, lift); } }}
+        onDoubleClick={() => { setLift(0); save(key, 0); }}>
+        <span className="grip" aria-hidden="true" />
+      </div>
+      {children}
+    </div>
+  );
+}
+
+/** A phone held sideways: wide but short, with a finger for a pointer. It still gets the phone keyboard. */
+export function useShortTouch(): boolean {
+  const Q = '(max-height: 500px) and (orientation: landscape) and (pointer: coarse)';
+  const [v, setV] = useState(() => typeof window !== 'undefined' && Boolean(window.matchMedia?.(Q).matches));
+  useEffect(() => {
+    const m = window.matchMedia?.(Q);
+    const on = () => setV(Boolean(m?.matches));
+    m?.addEventListener?.('change', on);
+    return () => m?.removeEventListener?.('change', on);
+  }, []);
+  return v;
+}

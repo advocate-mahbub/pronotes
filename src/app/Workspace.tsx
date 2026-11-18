@@ -26,7 +26,8 @@ import { deliver, MIME } from '../export/deliver';
 import { tr } from '../i18n';
 import { attachBornona } from './bornona-input';
 import { OnScreenKeyboard } from './OnScreenKeyboard';
-import { FloatingKeyboard } from './FloatingKeyboard';
+import { FloatingKeyboard, LiftableKeyboard, useLandscape, useShortTouch, type KbMode } from './FloatingKeyboard';
+import type { KbMenuItem } from './OnScreenKeyboard';
 import type { Hand } from './kb-gestures';
 import { AiVoiceKey } from './AiVoiceKey';
 import type { FontLists } from './FontPicker';
@@ -48,6 +49,8 @@ interface Props {
   coarse: boolean;
   /** Phone-size screen: the page reflows to the screen width (no paper view). */
   phone: boolean;
+  /** The live-voice mic on the keyboard (absent when it can't work on this device). */
+  live?: { on: boolean; toggle: () => void };
   /** Which voice the one microphone key uses. */
   voiceEngine: 'ai' | 'device';
   bank: WordBank;
@@ -144,8 +147,15 @@ export function Workspace(p: Props) {
   // phones: one-handed keyboard; iPad and computers: a small floating keyboard (both: long-press the language key)
   const [hand, setHand0] = useState<Hand>(() => load('kb.hand', null));
   const setHand = (h: Hand) => { setHand0(h); save('kb.hand', h); };
-  const [floating, setFloating0] = useState<boolean>(() => load('kb.float', false));
-  const setFloating = (f: boolean) => { setFloating0(f); save('kb.float', f); };
+  // iPad and computers: docked, floating, split (the full keyboard in two), split-phone (the phone keyboard in two)
+  const [kbMode, setKbMode0] = useState<KbMode>(() => load('kb.mode', load('kb.float', false) ? 'float' : 'dock'));
+  const setKbMode = (m: KbMode) => { setKbMode0(m); save('kb.mode', m); };
+  // phones held sideways may split the keyboard
+  const [splitLand, setSplitLand0] = useState<boolean>(() => load('kb.splitLand', false));
+  const setSplitLand = (v: boolean) => { setSplitLand0(v); save('kb.splitLand', v); };
+  const landscape = useLandscape();
+  // the phone keyboard also for a phone turned sideways (wide, but short)
+  const shortTouch = useShortTouch();
   const [desk, setDesk] = useState({ w: 900, h: 700 });
   useEffect(() => {
     const el = deskRef.current;
@@ -721,13 +731,31 @@ export function Workspace(p: Props) {
           p.ansiTyping || kbDown ? null : <SuggestionBar editor={editor} bank={p.bank} version={p.bankVersion} />
         )}
         {p.kbVisible && !deviceKb && !kbDown && (() => {
-          const float = floating && !p.phone;
+          const phoneKb = p.phone || shortTouch;
+          const float = !phoneKb && kbMode === 'float';
+          const split = phoneKb ? landscape && splitLand : kbMode === 'split' || kbMode === 'splitPhone';
+          const compact = phoneKb || float || kbMode === 'splitPhone';
+          const items: KbMenuItem[] = phoneKb
+            ? landscape
+              ? [{ id: 'split', label: splitLand ? t('জোড়া কিবোর্ড') : t('Split কিবোর্ড'), act: () => setSplitLand(!splitLand) }]
+              : [
+                { id: 'hand-left', label: '◧', on: hand === 'left', act: () => setHand('left') },
+                { id: 'hand-full', label: '▭', on: !hand, act: () => setHand(null) },
+                { id: 'hand-right', label: '◨', on: hand === 'right', act: () => setHand('right') },
+              ]
+            : [
+              { id: 'dock', label: t('স্থির'), on: kbMode === 'dock', act: () => setKbMode('dock') },
+              { id: 'float', label: t('ভাসমান'), on: kbMode === 'float', act: () => setKbMode('float') },
+              { id: 'split', label: t('Split (পুরো)'), on: kbMode === 'split', act: () => setKbMode('split') },
+              { id: 'split-phone', label: t('Split (ফোন)'), on: kbMode === 'splitPhone', act: () => setKbMode('splitPhone') },
+            ];
           const kb = (
-            <OnScreenKeyboard compact={p.phone || float} onHide={() => setKbDown(true)} editor={editor} map={p.map} bangla={p.bangla} getConfig={getConfig} onToggleLanguage={p.onToggleLanguage}
+            <OnScreenKeyboard compact={compact} onHide={() => setKbDown(true)} editor={editor} map={p.map} bangla={p.bangla} getConfig={getConfig} onToggleLanguage={p.onToggleLanguage}
               onWordDone={(before) => { if (learnTail(p.bank, before)) p.onBankChanged(); }} flash={flash}
-              hand={p.phone ? hand : null} setHand={p.phone ? setHand : undefined} floating={float} setFloating={p.phone ? undefined : setFloating} />
+              hand={phoneKb && !landscape ? hand : null} setHand={phoneKb ? setHand : undefined} split={split} menuItems={items} live={p.live} />
           );
-          return float ? <FloatingKeyboard onDock={() => setFloating(false)}>{kb}</FloatingKeyboard> : kb;
+          if (float) return <FloatingKeyboard onDock={() => setKbMode('dock')}>{kb}</FloatingKeyboard>;
+          return phoneKb ? kb : <LiftableKeyboard landscape={landscape}>{kb}</LiftableKeyboard>;
         })()}
       </footer>
     </>

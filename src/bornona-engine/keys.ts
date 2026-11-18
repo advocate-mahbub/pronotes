@@ -34,12 +34,17 @@ export const ROWS: string[][] = [
  * wider keys. #Sym sits bottom-left next to the language key, where iOS keeps "123".
  */
 const NUMBERS = ['Backquote', 'Digit1', 'Digit2', 'Digit3', 'Digit4', 'Digit5', 'Digit6', 'Digit7', 'Digit8', 'Digit9', 'Digit0'];
-const BOTTOM = ['#Mode', '#Sym', '#Alt', '#Space', '#Dari'];
+// #Live: the live-voice mic (shown only when it can work); #BackL: a second ⌫ for the left thumb
+const BOTTOM = ['#Mode', '#Sym', '#Alt', '#Space', '#Dari', '#Live'];
+/**
+ * Phone letters (the owner's arrangement, decisions.md 73): ⌫ in the top-left corner for the left thumb
+ * (where ৱ was), ⌫ at the end of the A row with the numpad key (#Num) before it, ↵ at the end of the Z row.
+ */
 export const PHONE_ROWS: string[][] = [
-  NUMBERS,
+  ['#BackL', 'Digit1', 'Digit2', 'Digit3', 'Digit4', 'Digit5', 'Digit6', 'Digit7', 'Digit8', 'Digit9', 'Digit0'],
   ['KeyQ', 'KeyW', 'KeyE', 'KeyR', 'KeyT', 'KeyY', 'KeyU', 'KeyI', 'KeyO', 'KeyP', 'Backslash'],
-  ['KeyA', 'KeyS', 'KeyD', 'KeyF', 'KeyG', 'KeyH', 'KeyJ', 'KeyK', 'KeyL', '#Enter'],
-  ['#Shift', 'KeyZ', 'KeyX', 'KeyC', 'KeyV', 'KeyB', 'KeyN', 'KeyM', '#Back'],
+  ['KeyA', 'KeyS', 'KeyD', 'KeyF', 'KeyG', 'KeyH', 'KeyJ', 'KeyK', 'KeyL', '#Num', '#Back'],
+  ['#Shift', 'KeyZ', 'KeyX', 'KeyC', 'KeyV', 'KeyB', 'KeyN', 'KeyM', '#Enter'],
   BOTTOM,
 ];
 /**
@@ -50,7 +55,34 @@ export const PHONE_ROWS: string[][] = [
 export const PHONE_SYMBOL_ROWS: string[][] = [
   NUMBERS.map((c) => 'Alt+' + c),
   ['Minus', 'Equal', 'BracketLeft', 'BracketRight', 'Alt+Minus', 'Alt+Equal'],
-  ['Semicolon', 'Quote', '#Enter'],
-  ['#Shift', 'Comma', 'Period', 'Slash', '#Back'],
+  ['Semicolon', 'Quote', '#Num', '#Back'],
+  ['#Shift', 'Comma', 'Period', 'Slash', '#Enter'],
   BOTTOM,
 ];
+/**
+ * The numpad (#Num), laid out like a phone's keypad with the arithmetic signs beside it. "Np" keys type
+ * the digit of the language being typed (১ or 1); "Txt:" keys type the text after the colon.
+ */
+export const NUMPAD_ROWS: string[][] = [
+  ['Np1', 'Np2', 'Np3', 'Txt:÷'],
+  ['Np4', 'Np5', 'Np6', 'Txt:×'],
+  ['Np7', 'Np8', 'Np9', 'Txt:-'],
+  ['Txt:,', 'Np0', 'Txt:.', 'Txt:+'],
+  ['#Num', 'Txt:%', '#Space', '#Back', '#Enter'],
+];
+/** Where the right hand's half starts in a split keyboard (iOS splits after T, G and V). */
+const RIGHT_HALF = new Set(['Digit7', 'KeyY', 'KeyH', 'KeyB', 'Alt+Digit6']);
+const RIGHT_HALF_PHONE = new Set(['Digit6', 'KeyY', 'KeyH', 'KeyB', 'Alt+Digit6']);
+/**
+ * A row cut in two for the split keyboard. The bottom row gets a space bar in each half (#Space2 types a
+ * space too), so both thumbs reach one.
+ */
+export function splitRow(row: string[], phone: boolean): [string[], string[]] {
+  const at = row.findIndex((c) => (phone ? RIGHT_HALF_PHONE : RIGHT_HALF).has(c));
+  if (row.includes('#Space')) {
+    const i = row.indexOf('#Space');
+    return [row.slice(0, i + 1), ['#Space2', ...row.slice(i + 1)]];
+  }
+  const cut = at > 0 ? at : Math.ceil(row.length / 2);
+  return [row.slice(0, cut), row.slice(cut)];
+}

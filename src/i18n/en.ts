@@ -1042,4 +1042,11 @@ export const EN: Record<string, string> = {
   "কিবোর্ড নিচে বসান": "Dock the keyboard",
   "ভাসমান কিবোর্ড": "Floating keyboard",
   "অন্য হাতে নিন": "Switch hands",
+  "জোড়া কিবোর্ড": "Join the keyboard",
+  "Split কিবোর্ড": "Split keyboard",
+  "স্থির": "Docked",
+  "ভাসমান": "Floating",
+  "Split (পুরো)": "Split (full)",
+  "Split (ফোন)": "Split (phone)",
+  "কিবোর্ড ওপরে-নিচে সরান": "Move the keyboard up or down",
 };
