@@ -191,7 +191,11 @@ button:focus-visible, select:focus-visible { outline: 2px solid var(--gold); out
 .btn.warn { border-color: #c62828; color: #c62828; }
 .btn.ghost { border-color: transparent; background: none; color: var(--muted); padding-inline: 4px; }
 .btn.ghost:hover { color: inherit; text-decoration: underline; }
-.drive-item small { color: var(--muted); font-size: 12px; white-space: nowrap; }
+.drive-item small { color: var(--muted); font-size: 12px; }
+.drive-item .drive-meta { display: block; margin-top: 1px; }
+.drive-item .drive-meta b { font-weight: 600; color: inherit; }
+.drive-item .drive-meta b.here { color: var(--accent, #c8a45c); }
+.srow input[type=text] { min-width: 0; width: 13em; max-width: 55%; }
 .drive-foot { margin-top: 2px; }
 .btn.live { background: #c62828; border-color: #c62828; color: #fff; font-weight: 600; }
 

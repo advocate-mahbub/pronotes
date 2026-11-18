@@ -1,6 +1,6 @@
 // @vitest-environment happy-dom
 import { describe, it, expect, beforeEach } from 'vitest';
-import { authUrl, takeRedirect, currentToken, uploadBackup, listBackups, downloadBackup, DriveError, DRIVE_SCOPE, pruneBackups, trashBackup, driveBackupName } from '../../src/storage/gdrive';
+import { authUrl, takeRedirect, currentToken, uploadBackup, listBackups, downloadBackup, DriveError, DRIVE_SCOPE, pruneBackups, trashBackup, driveBackupName, autoDeviceName, fitDevice } from '../../src/storage/gdrive';
 
 beforeEach(() => sessionStorage.clear());
 
@@ -36,7 +36,7 @@ describe('Drive calls', () => {
   function fakeDrive() {
     const calls: { url: string; init: RequestInit }[] = [];
     let folder: string | null = null;
-    const files: { id: string; name: string; createdTime: string; body: string }[] = [];
+    const files: { id: string; name: string; createdTime: string; body: string; appProperties?: Record<string, string> }[] = [];
     const json = (o: unknown, status = 200) => new Response(JSON.stringify(o), { status, headers: { 'content-type': 'application/json' } });
     const f = (async (url: string, init: RequestInit = {}) => {
       calls.push({ url, init });
@@ -49,9 +49,9 @@ describe('Drive calls', () => {
       if (u.pathname === '/drive/v3/files' && init.method === 'POST') { folder = 'F1'; return json({ id: folder }); }
       if (u.pathname === '/upload/drive/v3/files') {
         const body = String(init.body);
-        const name = JSON.parse(body.split('\r\n')[3]).name;
+        const meta = JSON.parse(body.split('\r\n')[3]);
         const content = body.split('\r\n')[7];
-        files.push({ id: 'B' + files.length, name, createdTime: new Date(files.length * 1000).toISOString(), body: content });
+        files.push({ id: 'B' + files.length, name: meta.name, appProperties: meta.appProperties, createdTime: new Date(files.length * 1000).toISOString(), body: content });
         return json({ id: 'B' + (files.length - 1), name });
       }
       const m = u.pathname.match(/^\/drive\/v3\/files\/(.+)$/);
@@ -105,6 +105,32 @@ describe('Drive calls', () => {
 
   it('names Drive backups with the time, so a day can hold several', () => {
     expect(driveBackupName(new Date(2026, 10, 18, 8, 46))).toBe('pronotes-backup-2026-11-18-0846.json');
+  });
+
+  it('each backup carries the device it came from', async () => {
+    const d = fakeDrive();
+    await uploadBackup('T', 'pronotes-backup-a.json', '{}', d.f, 'iPad');
+    await uploadBackup('T', 'pronotes-backup-b.json', '{}', d.f);
+    const list = await listBackups('T', d.f);
+    expect(list.map((b) => b.appProperties?.device)).toEqual([undefined, 'iPad']);
+  });
+
+  it('a long Bangla device name is cut to what Drive accepts, never mid-letter', () => {
+    const long = 'অফিসের পুরোনো কম্পিউটার যেটা জানালার পাশে রাখা আছে';
+    const fit = fitDevice(long);
+    expect(new TextEncoder().encode('device' + fit).length).toBeLessThanOrEqual(124);
+    expect(long.startsWith(fit)).toBe(true);
+    expect(fitDevice('  Office   PC ')).toBe('Office PC');
+    expect(fitDevice('অফিসের PC')).toBe('অফিসের PC');
+  });
+
+  it('knows the device from the browser (an iPad says Mac but has touch)', () => {
+    const mac = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 Version/18.0 Safari/605.1.15';
+    expect(autoDeviceName(mac, 5)).toBe('iPad');
+    expect(autoDeviceName(mac, 0)).toBe('Mac');
+    expect(autoDeviceName('Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X)', 5)).toBe('iPhone');
+    expect(autoDeviceName('Mozilla/5.0 (Linux; Android 14; SM-S918B) Mobile Safari/537.36', 5)).toBe('Android phone');
+    expect(autoDeviceName('Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/130', 0)).toBe('Windows PC');
   });
 });
 

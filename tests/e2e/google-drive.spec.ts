@@ -8,7 +8,7 @@ test.beforeEach(async ({ page }) => {
     const u = new URL(r.request().url());
     if (r.request().method() === 'PATCH') return r.fulfill({ json: { id: 'B1' } });
     if (u.searchParams.get('q')?.includes('folder')) return r.fulfill({ json: { files: [{ id: 'F1' }] } });
-    return r.fulfill({ json: { files: [{ id: 'B1', name: 'pronotes-backup-test.json', createdTime: '2026-11-18T10:00:00Z' }] } });
+    return r.fulfill({ json: { files: [{ id: 'B1', name: 'pronotes-backup-test.json', createdTime: '2026-11-18T10:00:00Z', size: '52000', appProperties: { device: 'Office PC' } }] } });
   });
   await page.route('https://accounts.google.com/**', (r) => r.abort());
 });
@@ -29,6 +29,11 @@ test('back from Google: the token is kept for this session only and the address 
   expect(kept.l).toEqual([]); // nothing about Google in lasting storage
   if (await page.getByTestId('drive-off').isVisible()) return; // build without a Client ID
   await expect(page.getByTestId('drive-list').locator('li')).toHaveCount(1);
+  // which device made it: "this device" once our name matches
+  await expect(page.getByTestId('drive-list')).toContainText('Office PC');
+  await expect(page.getByTestId('drive-list')).not.toContainText(/this device|এই ডিভাইস/);
+  await page.getByTestId('device-name').fill('Office PC');
+  await expect(page.getByTestId('drive-list')).toContainText(/this device|এই ডিভাইস/);
   // how many to keep: a choice, remembered
   await page.getByTestId('drive-keep').selectOption('5');
   expect(await page.evaluate(() => localStorage.getItem('pronotes.drive.keep'))).toBe('5');

@@ -1031,4 +1031,7 @@ export const EN: Record<string, string> = {
   "সবগুলো": "All",
   "মুছবেন?": "Delete?",
   "Google Drive থেকে বিচ্ছিন্ন করুন": "Disconnect from Google Drive",
+  "এই ডিভাইসের নাম": "This device's name",
+  "এই ডিভাইস": "this device",
+  "প্রতিটা ব্যাকআপে এই নাম লেখা থাকে, তাই তালিকায় দেখা যায় কোনটা কোন ডিভাইস থেকে। খালি রাখলে ডিভাইসের ধরন নিজে বসে (যেমন iPad)। নামটা শুধু এই ডিভাইসে থাকে, ব্যাকআপ থেকে ফেরত আনলে অন্য ডিভাইসে যায় না।": "Each backup carries this name, so the list shows which device it came from. Left empty, the kind of device is used (such as iPad). The name stays on this device only; restoring a backup does not take it to another device.",
 };
