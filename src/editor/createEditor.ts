@@ -62,9 +62,11 @@ export function editorExtensions(bornona: Partial<BornonaOptions> & Pick<Bornona
         const c = bornona.getConfig();
         const ki = { code: e.code, key: e.key, shiftKey: e.shiftKey, altKey: e.altKey, ctrlKey: e.ctrlKey, metaKey: e.metaKey };
         if (isToggleKey(ki, c.toggleKey) || isAnsiKey(ki, c.ansiKey)) return true;
-        // Ctrl+Alt is AltGr on Windows: when the Bangla layout has AltGr letters, they come first
+        // Windows reports AltGr as Ctrl+Alt: when the Bangla layout has AltGr characters, real AltGr (the
+        // AltGraph state) types them; left Ctrl+Alt stays Word's shortcut (© —, Heading 1…)
         const typing = c.bangla && !c.suspended;
-        return e.ctrlKey && e.altKey && typing && (!!c.rules || hasAltLayer(c.map ?? {}));
+        const altGr = Boolean(e.getModifierState?.('AltGraph'));
+        return e.ctrlKey && e.altKey && typing && (!!c.rules || (altGr && hasAltLayer(c.map ?? {})));
       },
     }),
   ];

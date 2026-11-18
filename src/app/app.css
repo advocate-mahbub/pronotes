@@ -197,6 +197,9 @@ button:focus-visible, select:focus-visible { outline: 2px solid var(--gold); out
 .drive-item .drive-meta b.here { color: var(--accent, #c8a45c); }
 .srow input[type=text] { min-width: 0; width: 13em; max-width: 55%; }
 .drive-foot { margin-top: 2px; }
+.fold { display: flex; align-items: center; gap: 6px; width: 100%; min-height: 40px; padding: 6px 2px; border: 0; border-top: 1px solid var(--line); background: none; color: inherit; font: inherit; text-align: left; cursor: pointer; }
+.fold small { color: var(--muted); }
+.fold-arrow { width: 1em; color: var(--muted); }
 .btn.live { background: #c62828; border-color: #c62828; color: #fff; font-weight: 600; }
 
 .deskwrap { flex: 1; min-height: 120px; position: relative; display: flex; flex-direction: column; }
@@ -908,3 +911,90 @@ input.cf[data-testid$="-type"] { flex: 0 1 112px; width: 112px; }
 /* the iOS-style layer key, and the wider keys of the punctuation layer */
 .kb.compact .k[data-code="#Sym"] .m { font: 600 14px var(--f-sans); }
 .kb.compact.sym .kb-row:not(:first-child):not(:last-child) .k:not(.fn) .m { font-size: 20px; }
+
+/* ---- keyboard gestures, one-handed and floating keyboards ---- */
+.kb { position: relative; }
+.kb-main { display: flex; flex-direction: column; gap: inherit; flex: 1 1 auto; min-width: 0; }
+.kb[class*="hand-"] { flex-direction: row; }
+.kb-hand { flex: 0 0 16%; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px; }
+.kb-hand button { width: 40px; height: 40px; border-radius: 50%; border: 1px solid var(--line); background: var(--key); font-size: 18px; color: var(--muted); }
+/* the anna-ganda sign a number key gives with Alt, small in its corner */
+.k .a { position: absolute; bottom: 3px; right: 5px; font-size: 11px; color: var(--gold); line-height: 1; font-family: "Noto Sans Bengali", var(--f-display); }
+.k.sign .m { font-family: "Noto Sans Bengali", var(--f-display); font-size: 17px; letter-spacing: -1px; }
+.kb.compact.sym .kb-row:first-child .k .s { font-size: 9px; }
+/* space trackpad: the letters fade, as on iOS */
+.kb.track .k .m, .kb.track .k .s, .kb.track .k .l, .kb.track .k .a { opacity: .15; }
+.kb.track .k[data-code="#Space"] { background: var(--accent-soft); }
+/* long-press choices */
+.kb-pop { position: absolute; z-index: 30; display: flex; background: var(--sheet); border: 1px solid var(--line); border-radius: 10px; box-shadow: 0 6px 20px rgba(0,0,0,.22); overflow: hidden; }
+.kb-pop span { height: 48px; display: flex; align-items: center; justify-content: center; font: 600 22px "SutonnyOMJ", "Noto Sans Bengali", var(--f-display); }
+.kb-pop span.on { background: var(--accent); color: var(--accent-fg); }
+/* long-press the language key */
+.kb-menu { position: absolute; z-index: 30; left: 6px; bottom: 56px; display: flex; gap: 6px; padding: 6px; background: var(--sheet); border: 1px solid var(--line); border-radius: 12px; box-shadow: 0 6px 20px rgba(0,0,0,.22); }
+.kb-menu button { min-width: 48px; height: 44px; border-radius: 8px; border: 1px solid var(--line); background: var(--key); font-size: 22px; color: inherit; }
+.kb-menu button.wide { font: 500 15px var(--f-sans); padding: 0 14px; }
+.kb-menu button.on { background: var(--accent); color: var(--accent-fg); }
+/* the floating keyboard (iPad, computers) */
+.kb-float { position: fixed; z-index: 60; width: min(360px, calc(100vw - 8px)); border-radius: 14px; background: var(--key-2); box-shadow: 0 10px 34px rgba(0,0,0,.28); border: 1px solid var(--line); overflow: visible; touch-action: none; }
+.kb-float .kb { border: 0; border-radius: 0 0 14px 14px; margin: 0; }
+.kb-float .k { height: 40px; } .kb-float .k .m { font-size: 17px; } .kb-float .k .s { font-size: 9px; } .kb-float .k .l { display: none; }
+.kb-float-bar { height: 22px; display: flex; align-items: center; justify-content: center; position: relative; cursor: grab; touch-action: none; }
+.kb-float-bar .grip { width: 44px; height: 5px; border-radius: 3px; background: var(--muted); opacity: .5; }
+.kb-float-bar button { position: absolute; right: 6px; top: 0; height: 22px; border: 0; background: none; color: var(--muted); font-size: 16px; padding: 0 6px; }
+.kb-float .k .m.tiny, .kb.compact .k .m.tiny { font-size: 9px; letter-spacing: -0.5px; }
+/* split keyboard: two halves, a gap for the hands in between */
+.kb-row.split { display: flex; gap: 0; }
+.kb-row.split .half { display: flex; gap: inherit; flex: 1 1 0; min-width: 0; }
+.kb-row.split .half { gap: 5px; }
+.kb-row.split .gap { flex: 0 0 28%; }
+.kb.compact .kb-row.split .gap { flex-basis: 22%; }
+.kb .k.w3 { flex: 3 1 0; }
+/* numpad: big keys like a phone's keypad */
+.kb.num .k { height: 50px; }
+.kb.num .k.pad .m { font-size: 24px; }
+.kb .k.live .m { font-size: 18px; }
+.kb .k.live.on { background: #c62828; color: #fff; }
+/* iPad: raise the docked keyboard */
+.kb-liftwrap { position: relative; background: var(--key-2); }
+.kb-grip { height: 16px; display: flex; align-items: center; justify-content: center; cursor: ns-resize; touch-action: none; }
+.kb-grip .grip { width: 48px; height: 5px; border-radius: 3px; background: var(--muted); opacity: .45; }
+/* a phone turned sideways: lower keys so the page keeps some room */
+@media (max-height: 500px) and (orientation: landscape) and (pointer: coarse) {
+  .kb .k { height: 28px; border-radius: 5px; }
+  .kb .kb-row { gap: 3px; }
+  .kb { padding-top: 2px; padding-bottom: 2px; gap: 3px; }
+  .kb .k .m { font-size: 16px; }
+  .kb .k .s { font-size: 9px; }
+}
+/* a phone turned sideways with the keyboard up: the screen is short, so the top bar and the ribbon's
+   second row step aside (the ribbon's tab row stays: undo, redo, the keyboard toggle); keys lose the
+   small US letters */
+@media (max-height: 500px) and (orientation: landscape) and (pointer: coarse) {
+  body:has([data-testid="osk"]) header.top { display: none; }
+  body:has([data-testid="osk"]) .ribbon-body { display: none; }
+  .kb .k .l { display: none; }
+}
+/* AI voice bar: pause, write, throw away (and the kept-recording states) */
+.ai-voice-bar { flex-wrap: wrap; max-width: min(520px, calc(100vw - 96px)); }
+.ai-voice-bar .aiv-text { flex: 1 1 140px; min-width: 0; }
+.ai-voice-bar .btn { min-height: 36px; min-width: 40px; padding: 4px 10px; border-color: rgba(255,255,255,.35); background: rgba(255,255,255,.08); color: inherit; font-size: 14px; }
+.ai-voice-bar .btn.primary { background: var(--gold); color: #1a1a1a; border-color: transparent; }
+.ai-voice-bar .btn.warn { background: #c62828; color: #fff; border-color: transparent; }
+.ai-voice-bar.cut, .ai-voice-bar.held { background: #7a5200; color: #fff; }
+@media (max-width: 640px) { .ai-voice-bar { left: 8px; right: 60px; max-width: none; } }
+/* live voice: the words as they are heard, above the keyboard / the page bottom */
+.live-strip { position: absolute; left: 12px; right: 76px; bottom: 86px; z-index: 7; display: flex; align-items: center; gap: 8px; padding: 8px 10px;
+  border-radius: 12px; background: var(--sheet); border: 1px solid var(--line); box-shadow: 0 6px 20px rgba(0,0,0,.18); font-size: 16px; }
+.live-strip .live-text { flex: 1; min-width: 0; color: var(--muted); font-family: "SutonnyOMJ", "Noto Sans Bengali", var(--f-display); font-size: 19px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; direction: rtl; text-align: left; }
+.live-strip .btn { min-width: 40px; min-height: 36px; padding: 4px 10px; }
+.live-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--muted); flex: none; }
+.live-dot.live { background: #c62828; animation: livepulse 1.2s infinite; }
+.live-dot.cut { background: #b26a00; }
+@keyframes livepulse { 50% { opacity: .35; } }
+.live-mic { position: absolute; right: 18px; bottom: 156px; z-index: 5; width: 48px; height: 48px; border-radius: 50%; border: 1px solid var(--line);
+  background: var(--sheet); font-size: 20px; box-shadow: 0 4px 14px rgba(0,0,0,.18); }
+.live-mic.on { background: #c62828; color: #fff; }
+.live-mic .live-badge { position: absolute; left: 50%; bottom: -7px; transform: translateX(-50%); font: 700 8px var(--f-sans); letter-spacing: .5px; background: #c62828; color: #fff; padding: 1px 4px; border-radius: 4px; }
+@media (max-width: 640px) { .live-mic { right: 12px; bottom: 120px; width: 42px; height: 42px; } .live-strip { left: 6px; right: 6px; bottom: 8px; } }
+.dock .live-strip { bottom: calc(100% + 6px); }
+@media (max-width: 640px) { .ai-voice-bar .aiv-text { flex-basis: 100%; } .ai-voice-bar .btn { flex: 1 1 0; } }

@@ -7,6 +7,7 @@ import type { VoicePrefs } from './prefs-types';
 import { layoutAccept } from './layout-files';
 import { load, save } from './prefs';
 import { formatDateTime, num, useT, type UiLang } from '../i18n';
+import { AUTO_MODEL, FREE_MODELS, readAuto, type AutoOrder } from '../ai/gemini';
 import { KEEP_CHOICES, type DriveBackup } from '../storage/gdrive';
 import { WORD_SHORTCUTS, showKeys } from '../editor/word-shortcuts';
 
@@ -129,6 +130,12 @@ function AiKeyBox({ ai, voice }: { ai: AiSettings; voice: { corrections: string;
       setStatus({ kind: 'warn', text: c === 'key' ? t('key ঠিক নেই') : c === 'network' ? t('ইন্টারনেট নেই') : t('যাচাই করা গেল না') });
     }
   };
+  // "auto": time the free models, show which one is in use
+  const [auto, setAuto] = useState<AutoOrder | null>(() => readAuto());
+  const measure = async () => {
+    const { measureFreeModels } = await import('../ai/gemini');
+    setAuto(await measureFreeModels(ai.key));
+  };
   // the list once a key is there, so the model box is a real choice
   useEffect(() => { if (ai.key && !models.length) void fetchModels(); }, [ai.key]); // eslint-disable-line react-hooks/exhaustive-deps
   const choices = [...new Set([ai.model, ...models].filter(Boolean))];
@@ -169,9 +176,20 @@ function AiKeyBox({ ai, voice }: { ai: AiSettings; voice: { corrections: string;
       {status && <p className={'state-line ' + status.kind} data-testid="ai-key-status" role="status">{status.text}</p>}
       <label className="srow"><span>{t('মডেল')}</span>
         <select data-testid="ai-model" value={ai.model} onChange={(e) => ai.setModel(e.target.value)}>
-          {choices.map((m, i) => <option key={m} value={m}>{short(m) + (i === 0 && models[0] === m ? ' · ' + t('প্রস্তাবিত') : '')}</option>)}
+          <option value={AUTO_MODEL}>{t('স্বয়ংক্রিয় (দ্রুততম ফ্রি)')}</option>
+          {choices.filter((m) => m !== AUTO_MODEL).map((m, i) => <option key={m} value={m}>{short(m) + (i === 0 && models[0] === m ? ' · ' + t('প্রস্তাবিত') : '') + (FREE_MODELS.includes(m) ? ' · ' + t('ফ্রি') : '')}</option>)}
         </select>
       </label>
+      {ai.model === AUTO_MODEL && (
+        <p className="state-line" data-testid="ai-auto-status">
+          {(() => {
+            const best = auto?.order.filter((x) => x.ms > 0 && x.ms < 1e9).sort((p, q) => p.ms - q.ms)[0];
+            return best ? t('এখন: {m}', { m: short(best.model) }) + ' · ' + t('{s} সেকেন্ড', { s: (best.ms / 1000).toFixed(1) })
+              : t('প্রথমে Flash-Lite; আপনার কাজের সময় মেপে দ্রুততমটা আগে আসবে');
+          })()}
+          {' '}<button type="button" className="btn small" data-testid="ai-auto-measure" onClick={() => void measure()}>{t('আবার মাপুন')}</button>
+        </p>
+      )}
       <VoiceTest ai={ai} voice={voice} />
     </>
   );
@@ -278,6 +296,8 @@ const FONT_ACCEPT = '.ttf,.otf,.woff,.woff2,font/ttf,font/otf,font/woff,font/wof
 
 export function Settings(p: Props) {
   const { t } = useT();
+  // the Drive backup list is folded away until asked for
+  const [driveOpen, setDriveOpen] = useState(false);
   const uniFonts = p.fonts.filter((f) => f.role === 'uni');
   const ansiFonts = p.fonts.filter((f) => f.role === 'ansi');
   const here = (name: string, ansi = false) => p.fonts.some((f) => f.family === name) || WEB_FONTS.includes(name) || isFontAvailable(name, ansi);
@@ -542,7 +562,6 @@ export function Settings(p: Props) {
               <>
                 <div className="row">
                   <button type="button" className="btn primary" data-testid="drive-backup" disabled={p.drive.busy} onClick={p.drive.onBackup}>{p.drive.busy ? t('কাজ চলছে…') : t('Drive-এ ব্যাকআপ নিন')}</button>
-                  <button type="button" className="btn" data-testid="drive-refresh" disabled={p.drive.busy} onClick={p.drive.onRefresh}>{t('Drive-এর ব্যাকআপ দেখুন')}</button>
                 </div>
                 <Line info="নতুন ব্যাকআপ Drive-এ ঠিকমতো রাখা হলে তবেই সবচেয়ে পুরোনোগুলো Drive-এর Trash-এ যায়; ৩০ দিন পর্যন্ত drive.google.com-এর Trash থেকে ফেরত আনা যায়। সংখ্যা কমালে পরের ব্যাকআপের সময় বাড়তিগুলো সরে।">
                   <label className="srow"><span>{t('Drive-এ রাখুন')}</span>
@@ -556,7 +575,13 @@ export function Settings(p: Props) {
                     <input type="text" data-testid="device-name" maxLength={30} value={p.drive.deviceName} placeholder={p.drive.autoDevice} onChange={(e) => p.drive.setDeviceName(e.target.value)} />
                   </label>
                 </Line>
-                {p.drive.list && (
+                <button type="button" className="fold" data-testid="drive-refresh" aria-expanded={driveOpen} disabled={p.drive.busy && !p.drive.list}
+                  onClick={() => { if (!driveOpen && !p.drive.list) p.drive.onRefresh(); setDriveOpen(!driveOpen); }}>
+                  <span className="fold-arrow" aria-hidden="true">{driveOpen ? '▾' : '▸'}</span>
+                  {t('Drive-এর ব্যাকআপগুলো')}
+                  {p.drive.list && <small> · {t('{n}টা', { n: p.drive.list.length })}</small>}
+                </button>
+                {driveOpen && p.drive.list && (
                   p.drive.list.length === 0 ? <p className="muted">{t('Drive-এ এখনো কোনো ব্যাকআপ নেই')}</p> : (
                     <ul className="itemlist" data-testid="drive-list">
                       {p.drive.list.map((b) => (

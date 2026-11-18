@@ -28,6 +28,10 @@ test('back from Google: the token is kept for this session only and the address 
   expect(kept.s).toContain('TEST');
   expect(kept.l).toEqual([]); // nothing about Google in lasting storage
   if (await page.getByTestId('drive-off').isVisible()) return; // build without a Client ID
+  // the list is folded away until opened
+  await expect(page.getByTestId('drive-list')).toHaveCount(0);
+  await expect(page.getByTestId('drive-refresh')).toContainText(/[1১]/);
+  await page.getByTestId('drive-refresh').click();
   await expect(page.getByTestId('drive-list').locator('li')).toHaveCount(1);
   // which device made it: "this device" once our name matches
   await expect(page.getByTestId('drive-list')).toContainText('Office PC');

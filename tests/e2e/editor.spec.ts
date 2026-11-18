@@ -74,7 +74,7 @@ test.describe('touch screen (iPad-like)', () => {
     await expect(page.getByTestId('osk')).toBeVisible();
     await expect(editor(page)).toHaveAttribute('inputmode', 'none');
     await editor(page).tap();
-    const key = (c: string) => page.locator(`[data-testid=osk] [data-code="${c}"]`).dispatchEvent('pointerdown');
+    const key = async (c: string) => { await page.locator(`[data-testid=osk] [data-code="${c}"]`).dispatchEvent('pointerdown'); await page.locator('[data-testid=osk]').dispatchEvent('pointerup'); };
     for (const c of ['KeyK', '#Shift', 'KeyF', 'KeyM', '#Space', 'KeyI']) await key(c);
     expect(await text(page)).toBe('কর্ম ই');
     await key('#Back');

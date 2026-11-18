@@ -26,6 +26,10 @@ import { deliver, MIME } from '../export/deliver';
 import { tr } from '../i18n';
 import { attachBornona } from './bornona-input';
 import { OnScreenKeyboard } from './OnScreenKeyboard';
+import { useLiveVoice } from './LiveVoice';
+import { FloatingKeyboard, LiftableKeyboard, useLandscape, useShortTouch, type KbMode } from './FloatingKeyboard';
+import type { KbMenuItem } from './OnScreenKeyboard';
+import type { Hand } from './kb-gestures';
 import { AiVoiceKey } from './AiVoiceKey';
 import type { FontLists } from './FontPicker';
 import { SuggestionBar } from './SuggestionBar';
@@ -139,6 +143,18 @@ export function Workspace(p: Props) {
   const deskRef = useRef<HTMLDivElement>(null);
   /** On-screen keyboard put down for reading (not saved; a tap on the page brings it back). */
   const [kbDown, setKbDown] = useState(false);
+  // phones: one-handed keyboard; iPad and computers: a small floating keyboard (both: long-press the language key)
+  const [hand, setHand0] = useState<Hand>(() => load('kb.hand', null));
+  const setHand = (h: Hand) => { setHand0(h); save('kb.hand', h); };
+  // iPad and computers: docked, floating, split (the full keyboard in two), split-phone (the phone keyboard in two)
+  const [kbMode, setKbMode0] = useState<KbMode>(() => load('kb.mode', load('kb.float', false) ? 'float' : 'dock'));
+  const setKbMode = (m: KbMode) => { setKbMode0(m); save('kb.mode', m); };
+  // phones held sideways may split the keyboard
+  const [splitLand, setSplitLand0] = useState<boolean>(() => load('kb.splitLand', false));
+  const setSplitLand = (v: boolean) => { setSplitLand0(v); save('kb.splitLand', v); };
+  const landscape = useLandscape();
+  // the phone keyboard also for a phone turned sideways (wide, but short)
+  const shortTouch = useShortTouch();
   const [desk, setDesk] = useState({ w: 900, h: 700 });
   useEffect(() => {
     const el = deskRef.current;
@@ -215,6 +231,10 @@ export function Workspace(p: Props) {
       timer.current = window.setTimeout(() => flush(editor), 600);
     },
   });
+
+  // live voice typing: words appear as they are spoken (🎙 on the keyboard, or the round button by the page)
+  const live = useLiveVoice({ editor: editor as Editor, geminiKey: p.gemini.key, bangla: p.bangla, say: p.say,
+    voice: { corrections: p.corrections, banglaDigits: p.voice.banglaDigits }, disabled: p.ansiTyping });
 
   // Pinch (two fingers, or a trackpad pinch) zooms only the page; the rest of the app stays as it is.
   // While the fingers move only a CSS variable changes; the zoom is kept when they lift.
@@ -678,6 +698,12 @@ export function Workspace(p: Props) {
           disabled={p.ansiTyping}
           onPointerDown={(e) => e.preventDefault()} onClick={toggleVoice}>{MIC}</button>}
         {p.voiceEngine === 'ai' && <AiVoiceKey editor={editor} gemini={p.gemini} say={p.say} onOpenSettings={p.onOpenSettings} disabled={p.ansiTyping} voice={{ corrections: p.corrections, banglaDigits: p.voice.banglaDigits }} icon={MIC} />}
+        {live.ui}
+        {live.available && !(p.kbVisible && !deviceKb && !kbDown) && (
+          <button type="button" className={'live-mic' + (live.on ? ' on' : '')} data-testid="live-mic" aria-pressed={live.on}
+            aria-label={t('Live ভয়েস: বলার সাথে সাথে লেখা')} title={t('Live ভয়েস: বলার সাথে সাথে লেখা')}
+            onPointerDown={(e) => e.preventDefault()} onClick={live.toggle}>{live.on ? '●' : '🎙'}<span className="live-badge" aria-hidden="true">LIVE</span></button>
+        )}
         {kbDown && p.kbVisible && !deviceKb && (
           <button type="button" className="kb-up" data-testid="kb-show" aria-label={t('কিবোর্ড দেখান')} title={t('কিবোর্ড দেখান')}
             onPointerDown={(e) => e.preventDefault()} onClick={() => setKbDown(false)}>⌨</button>
@@ -713,10 +739,33 @@ export function Workspace(p: Props) {
         ) : (
           p.ansiTyping || kbDown ? null : <SuggestionBar editor={editor} bank={p.bank} version={p.bankVersion} />
         )}
-        {p.kbVisible && !deviceKb && !kbDown && (
-          <OnScreenKeyboard compact={p.phone} onHide={() => setKbDown(true)} editor={editor} map={p.map} bangla={p.bangla} getConfig={getConfig} onToggleLanguage={p.onToggleLanguage}
-            onWordDone={(before) => { if (learnTail(p.bank, before)) p.onBankChanged(); }} flash={flash} />
-        )}
+        {p.kbVisible && !deviceKb && !kbDown && (() => {
+          const phoneKb = p.phone || shortTouch;
+          const float = !phoneKb && kbMode === 'float';
+          const split = phoneKb ? landscape && splitLand : kbMode === 'split' || kbMode === 'splitPhone';
+          const compact = phoneKb || float || kbMode === 'splitPhone';
+          const items: KbMenuItem[] = phoneKb
+            ? landscape
+              ? [{ id: 'split', label: splitLand ? t('জোড়া কিবোর্ড') : t('Split কিবোর্ড'), act: () => setSplitLand(!splitLand) }]
+              : [
+                { id: 'hand-left', label: '◧', on: hand === 'left', act: () => setHand('left') },
+                { id: 'hand-full', label: '▭', on: !hand, act: () => setHand(null) },
+                { id: 'hand-right', label: '◨', on: hand === 'right', act: () => setHand('right') },
+              ]
+            : [
+              { id: 'dock', label: t('স্থির'), on: kbMode === 'dock', act: () => setKbMode('dock') },
+              { id: 'float', label: t('ভাসমান'), on: kbMode === 'float', act: () => setKbMode('float') },
+              { id: 'split', label: t('Split (পুরো)'), on: kbMode === 'split', act: () => setKbMode('split') },
+              { id: 'split-phone', label: t('Split (ফোন)'), on: kbMode === 'splitPhone', act: () => setKbMode('splitPhone') },
+            ];
+          const kb = (
+            <OnScreenKeyboard compact={compact} onHide={() => setKbDown(true)} editor={editor} map={p.map} bangla={p.bangla} getConfig={getConfig} onToggleLanguage={p.onToggleLanguage}
+              onWordDone={(before) => { if (learnTail(p.bank, before)) p.onBankChanged(); }} flash={flash}
+              hand={phoneKb && !landscape ? hand : null} setHand={phoneKb ? setHand : undefined} split={split} menuItems={items} live={live.available ? { on: live.on, toggle: live.toggle } : undefined} />
+          );
+          if (float) return <FloatingKeyboard onDock={() => setKbMode('dock')}>{kb}</FloatingKeyboard>;
+          return phoneKb ? kb : <LiftableKeyboard landscape={landscape}>{kb}</LiftableKeyboard>;
+        })()}
       </footer>
     </>
   );
