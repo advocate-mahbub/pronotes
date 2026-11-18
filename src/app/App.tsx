@@ -30,7 +30,7 @@ import { Sidebar } from './Sidebar';
 import { Workspace, type SaveState } from './Workspace';
 import { LawDictionary } from './LawDictionary';
 import { ChartWorkspace } from './ChartWorkspace';
-import { currentToken, downloadBackup, DriveError, driveEnabled, listBackups, signIn, signOut, takeRedirect, uploadBackup, type AfterSignIn, type DriveBackup } from '../storage/gdrive';
+import { currentToken, downloadBackup, DriveError, autoDeviceName, fitDevice, driveBackupName, driveEnabled, KEEP_DEFAULT, listBackups, pruneBackups, signIn, signOut, takeRedirect, trashBackup, uploadBackup, type AfterSignIn, type DriveBackup } from '../storage/gdrive';
 import { CraftWorkspace, type CraftHandoff, type CraftView } from '../craft/CraftWorkspace';
 import { craftApp } from '../craft/bridge';
 import { load, save, allPrefs, restorePrefs } from './prefs';
@@ -523,6 +523,12 @@ export function App() {
   const [driveTick, setDriveTick] = useState(0);
   const [driveList, setDriveList] = useState<DriveBackup[] | null>(null);
   const [driveBusy, setDriveBusy] = useState(false);
+  const [driveKeep, setDriveKeep0] = useState<number>(() => load('drive.keep', KEEP_DEFAULT));
+  const setDriveKeep = (n: number) => { setDriveKeep0(n); save('drive.keep', n); };
+  // this device's name on its Drive backups (kept out of backup files, see prefs.ts)
+  const [deviceName, setDeviceName0] = useState<string>(() => load('device.name', ''));
+  const setDeviceName = (s: string) => { setDeviceName0(s); save('device.name', s); };
+  const thisDevice = fitDevice(deviceName) || autoDeviceName(); // the same text that goes to Drive, so "this device" matches
   const driveConnected = driveTick >= 0 && Boolean(currentToken());
   const driveFail = (e: unknown) => {
     const c = e instanceof DriveError ? e.code : 'other';
@@ -546,8 +552,10 @@ export function App() {
     try {
       await flushAll();
       const f = await exportAll(prefs(), new Date());
-      await uploadBackup(tk, backupFileName(), JSON.stringify(f));
-      say('{n}টা ড্রাফট Google Drive-এ রাখা হলো', { n: f.docs.length });
+      await uploadBackup(tk, driveBackupName(), JSON.stringify(f), undefined, thisDevice);
+      // only after the new one is safely in Drive: the oldest beyond the chosen number go to the Trash
+      const gone = await pruneBackups(tk, driveKeep).catch(() => 0);
+      say(gone ? '{n}টা ড্রাফট Google Drive-এ রাখা হলো; পুরোনো {m}টা ব্যাকআপ Trash-এ গেল' : '{n}টা ড্রাফট Google Drive-এ রাখা হলো', { n: f.docs.length, m: gone });
       setDriveList(await listBackups(tk));
     } catch (e) { driveFail(e); } finally { setDriveBusy(false); }
   };
@@ -556,6 +564,16 @@ export function App() {
     if (!tk) return driveConnect('list');
     setDriveBusy(true);
     try { await restore(new File([await downloadBackup(tk, b.id)], b.name, { type: 'application/json' })); } catch (e) { driveFail(e); } finally { setDriveBusy(false); }
+  };
+  const driveDelete = async (b: DriveBackup) => {
+    const tk = currentToken();
+    if (!tk) return driveConnect('list');
+    setDriveBusy(true);
+    try {
+      await trashBackup(tk, b.id);
+      setDriveList((l) => l?.filter((x) => x.id !== b.id) ?? null);
+      say('ব্যাকআপটা Drive-এর Trash-এ গেল (৩০ দিন ফেরত আনা যায়)');
+    } catch (e) { driveFail(e); } finally { setDriveBusy(false); }
   };
   const driveDisconnect = async () => {
     await signOut();
@@ -869,7 +887,7 @@ export function App() {
 
 
       {settingsOpen && (
-        <Settings drive={{ enabled: driveEnabled(), connected: driveConnected, busy: driveBusy, list: driveList, onConnect: () => void driveConnect('list'), onBackup: () => void driveBackup(), onRefresh: () => void driveRefresh(), onRestore: (b) => void driveRestore(b), onDisconnect: () => void driveDisconnect() }}
+        <Settings drive={{ enabled: driveEnabled(), connected: driveConnected, busy: driveBusy, list: driveList, onConnect: () => void driveConnect('list'), onBackup: () => void driveBackup(), onRefresh: () => void driveRefresh(), onRestore: (b) => void driveRestore(b), onDelete: (b) => void driveDelete(b), keep: driveKeep, setKeep: setDriveKeep, deviceName, setDeviceName, autoDevice: autoDeviceName(), thisDevice, onDisconnect: () => void driveDisconnect() }}
           onClose={() => setSettingsOpen(false)} platform={coarse || phone ? 'mobile' : 'desktop'} vf={vf} setVf={setVf} oldReph={oldReph} setOldReph={setOldReph}
           keyboardLayouts={allKeyboardLayouts} hiddenDesktop={hiddenDesktop} setHiddenDesktop={setHiddenDesktop}
           hiddenMobile={hiddenMobile} setHiddenMobile={setHiddenMobile}

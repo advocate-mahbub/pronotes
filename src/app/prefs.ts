@@ -22,13 +22,16 @@ export function save(key: string, value: unknown): void {
   }
 }
 
+/** Settings that belong to this one device and never go into a backup (e.g. its name). */
+const LOCAL_ONLY = /^device\./;
+
 /** Every setting kept on this device (for the backup file). */
 export function allPrefs(): Record<string, unknown> {
   const out: Record<string, unknown> = {};
   try {
     for (let i = 0; i < localStorage.length; i++) {
       const k = localStorage.key(i);
-      if (!k || !k.startsWith(P)) continue;
+      if (!k || !k.startsWith(P) || LOCAL_ONLY.test(k.slice(P.length))) continue;
       try {
         out[k.slice(P.length)] = JSON.parse(localStorage.getItem(k) as string);
       } catch {
@@ -47,6 +50,7 @@ export function restorePrefs(store: Record<string, unknown>): number {
   for (const [k, v] of Object.entries(store)) {
     // Consent is a user decision, never an importable preference. Backup files are untrusted.
     if (/consent$/i.test(k)) continue;
+    if (LOCAL_ONLY.test(k)) continue; // this device's own name never moves to another device
     if (!/^[\w.-]{1,64}$/.test(k) || v === undefined) continue;
     try {
       localStorage.setItem(P + k, JSON.stringify(v));
