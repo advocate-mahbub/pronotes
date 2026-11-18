@@ -6,6 +6,7 @@ import { section } from './settings-tab';
 test.beforeEach(async ({ page }) => {
   await page.route('https://www.googleapis.com/**', (r) => {
     const u = new URL(r.request().url());
+    if (r.request().method() === 'PATCH') return r.fulfill({ json: { id: 'B1' } });
     if (u.searchParams.get('q')?.includes('folder')) return r.fulfill({ json: { files: [{ id: 'F1' }] } });
     return r.fulfill({ json: { files: [{ id: 'B1', name: 'pronotes-backup-test.json', createdTime: '2026-11-18T10:00:00Z' }] } });
   });
@@ -27,7 +28,16 @@ test('back from Google: the token is kept for this session only and the address 
   expect(kept.s).toContain('TEST');
   expect(kept.l).toEqual([]); // nothing about Google in lasting storage
   if (await page.getByTestId('drive-off').isVisible()) return; // build without a Client ID
-  await expect(page.getByTestId('drive-list')).toContainText('pronotes-backup-test.json');
+  await expect(page.getByTestId('drive-list').locator('li')).toHaveCount(1);
+  // how many to keep: a choice, remembered
+  await page.getByTestId('drive-keep').selectOption('5');
+  expect(await page.evaluate(() => localStorage.getItem('pronotes.drive.keep'))).toBe('5');
+  // delete asks once more, then the row goes
+  await page.getByTestId('drive-delete-B1').click();
+  await expect(page.getByTestId('drive-list')).toBeVisible();
+  await page.getByTestId('drive-delete-B1').click();
+  await expect(page.getByText(/Trash/).first()).toBeVisible();
+  await expect(page.getByTestId('drive-delete-B1')).toHaveCount(0);
 });
 
 test('a token with the wrong state is refused', async ({ page }) => {

@@ -1,6 +1,6 @@
 // @vitest-environment happy-dom
 import { describe, it, expect, beforeEach } from 'vitest';
-import { authUrl, takeRedirect, currentToken, uploadBackup, listBackups, downloadBackup, DriveError, DRIVE_SCOPE } from '../../src/storage/gdrive';
+import { authUrl, takeRedirect, currentToken, uploadBackup, listBackups, downloadBackup, DriveError, DRIVE_SCOPE, pruneBackups, trashBackup, driveBackupName } from '../../src/storage/gdrive';
 
 beforeEach(() => sessionStorage.clear());
 
@@ -55,6 +55,7 @@ describe('Drive calls', () => {
         return json({ id: 'B' + (files.length - 1), name });
       }
       const m = u.pathname.match(/^\/drive\/v3\/files\/(.+)$/);
+      if (m && init.method === 'PATCH') { const i = files.findIndex((x) => x.id === m[1]); files.splice(i, 1); return json({ id: m[1] }); }
       if (m) return new Response(files.find((x) => x.id === m[1])!.body, { headers: { 'content-type': 'application/json' } });
       return json({}, 404);
     }) as unknown as typeof fetch;
@@ -80,4 +81,30 @@ describe('Drive calls', () => {
     expect(e).toBeInstanceOf(DriveError);
     expect(e.code).toBe('network');
   });
+
+  it('keeps the newest N, sends only the older ones to the Trash', async () => {
+    const d = fakeDrive();
+    for (let i = 0; i < 7; i++) await uploadBackup('T', `pronotes-backup-${i}.json`, '{}', d.f);
+    expect(await pruneBackups('T', 5, d.f)).toBe(2);
+    expect((await listBackups('T', d.f)).map((x) => x.name)).toEqual([6, 5, 4, 3, 2].map((i) => `pronotes-backup-${i}.json`));
+    expect(d.calls.filter((c) => c.init.method === 'PATCH').every((c) => JSON.parse(String(c.init.body)).trashed === true)).toBe(true); // Trash, not delete
+    expect(await pruneBackups('T', 0, d.f)).toBe(0); // "all" never removes
+    expect(await pruneBackups('T', 10, d.f)).toBe(0);
+  });
+
+  it('never trashes a file that is not a ProNotes backup', async () => {
+    const d = fakeDrive();
+    await uploadBackup('T', 'my-notes.json', '{}', d.f);
+    await uploadBackup('T', 'pronotes-backup-a.json', '{}', d.f);
+    await uploadBackup('T', 'pronotes-backup-b.json', '{}', d.f);
+    expect(await pruneBackups('T', 1, d.f)).toBe(1);
+    expect((await listBackups('T', d.f)).map((x) => x.name)).toEqual(['pronotes-backup-b.json', 'my-notes.json']);
+    await trashBackup('T', d.files[0].id, d.f);
+    expect(d.files.map((x) => x.name)).toEqual(['pronotes-backup-b.json']);
+  });
+
+  it('names Drive backups with the time, so a day can hold several', () => {
+    expect(driveBackupName(new Date(2026, 10, 18, 8, 46))).toBe('pronotes-backup-2026-11-18-0846.json');
+  });
 });
+

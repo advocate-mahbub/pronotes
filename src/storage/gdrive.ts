@@ -132,6 +132,29 @@ export async function listBackups(token: string, f: Fetch = fetch, max = 15): Pr
   return r.files ?? [];
 }
 
+/** Into Drive's Trash (Google empties it after 30 days; until then it can be put back from drive.google.com). */
+export async function trashBackup(token: string, id: string, f: Fetch = fetch): Promise<void> {
+  await call(`${API}/files/${encodeURIComponent(id)}?fields=id`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ trashed: true }) }, token, f);
+}
+
+/** Keep the newest `keep` backups (0 = all); the older ones go to the Trash. Returns how many went. */
+export async function pruneBackups(token: string, keep: number, f: Fetch = fetch): Promise<number> {
+  if (!keep) return 0;
+  const all = await listBackups(token, f, 100);
+  const old = all.slice(keep).filter((b) => /^pronotes-backup-.*\.json$/.test(b.name)); // only our own backup files
+  for (const b of old) await trashBackup(token, b.id, f);
+  return old.length;
+}
+
+/** The Drive file name carries the time too, so several backups in a day are told apart. */
+export function driveBackupName(d = new Date()): string {
+  const z = (n: number) => String(n).padStart(2, '0');
+  return `pronotes-backup-${d.getFullYear()}-${z(d.getMonth() + 1)}-${z(d.getDate())}-${z(d.getHours())}${z(d.getMinutes())}.json`;
+}
+
+export const KEEP_CHOICES = [5, 10, 20, 30, 0] as const;
+export const KEEP_DEFAULT = 10;
+
 export async function downloadBackup(token: string, id: string, f: Fetch = fetch): Promise<string> {
   return call<string>(`${API}/files/${encodeURIComponent(id)}?alt=media`, { method: 'GET' }, token, f, true); // the file's own text, as it was saved
 }

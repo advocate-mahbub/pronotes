@@ -6,8 +6,8 @@ import { TOGGLE_KEYS, ANSI_KEYS, type Layout, type ToggleKey, type AnsiKey } fro
 import type { VoicePrefs } from './prefs-types';
 import { layoutAccept } from './layout-files';
 import { load, save } from './prefs';
-import { num, useT, type UiLang } from '../i18n';
-import type { DriveBackup } from '../storage/gdrive';
+import { formatDateTime, num, useT, type UiLang } from '../i18n';
+import { KEEP_CHOICES, type DriveBackup } from '../storage/gdrive';
 import { WORD_SHORTCUTS, showKeys } from '../editor/word-shortcuts';
 
 export interface FontInfo {
@@ -88,6 +88,10 @@ export interface DriveProps {
   onBackup: () => void;
   onRefresh: () => void;
   onRestore: (b: DriveBackup) => void;
+  onDelete: (b: DriveBackup) => void;
+  /** How many backups to keep in Drive (0 = all). */
+  keep: number;
+  setKeep: (n: number) => void;
   onDisconnect: () => void;
 }
 
@@ -534,21 +538,31 @@ export function Settings(p: Props) {
                 <div className="row">
                   <button type="button" className="btn primary" data-testid="drive-backup" disabled={p.drive.busy} onClick={p.drive.onBackup}>{p.drive.busy ? t('কাজ চলছে…') : t('Drive-এ ব্যাকআপ নিন')}</button>
                   <button type="button" className="btn" data-testid="drive-refresh" disabled={p.drive.busy} onClick={p.drive.onRefresh}>{t('Drive-এর ব্যাকআপ দেখুন')}</button>
-                  <button type="button" className="btn" data-testid="drive-disconnect" onClick={p.drive.onDisconnect}>{t('বিচ্ছিন্ন করুন')}</button>
                 </div>
+                <Line info="নতুন ব্যাকআপ Drive-এ ঠিকমতো রাখা হলে তবেই সবচেয়ে পুরোনোগুলো Drive-এর Trash-এ যায়; ৩০ দিন পর্যন্ত drive.google.com-এর Trash থেকে ফেরত আনা যায়। সংখ্যা কমালে পরের ব্যাকআপের সময় বাড়তিগুলো সরে।">
+                  <label className="srow"><span>{t('Drive-এ রাখুন')}</span>
+                    <select data-testid="drive-keep" value={p.drive.keep} onChange={(e) => p.drive.setKeep(Number(e.target.value))}>
+                      {KEEP_CHOICES.map((n) => <option key={n} value={n}>{n ? t('শেষ {n}টা', { n }) : t('সবগুলো')}</option>)}
+                    </select>
+                  </label>
+                </Line>
                 {p.drive.list && (
                   p.drive.list.length === 0 ? <p className="muted">{t('Drive-এ এখনো কোনো ব্যাকআপ নেই')}</p> : (
                     <ul className="itemlist" data-testid="drive-list">
                       {p.drive.list.map((b) => (
-                        <li key={b.id}>
-                          <span>{b.name}</span>
-                          <small>{new Date(b.createdTime).toLocaleString(p.uiLang === 'en' ? 'en-GB' : 'bn-BD')}</small>
+                        <li key={b.id} className="drive-item">
+                          <span>{formatDateTime(Date.parse(b.createdTime), p.uiLang)}
+                            {b.size && <small> · {num(Math.max(1, Math.round(Number(b.size) / 1024)), p.uiLang)} KB</small>}</span>
                           <ArmedButton label={t('ফেরত আনুন')} armedLabel={t('নিশ্চিত?')} testid={'drive-restore-' + b.id} onConfirm={() => p.drive.onRestore(b)} />
+                          <ArmedButton label="🗑" armedLabel={t('মুছবেন?')} testid={'drive-delete-' + b.id} onConfirm={() => p.drive.onDelete(b)} />
                         </li>
                       ))}
                     </ul>
                   )
                 )}
+                <div className="row drive-foot">
+                  <button type="button" className="btn ghost" data-testid="drive-disconnect" onClick={p.drive.onDisconnect}>{t('Google Drive থেকে বিচ্ছিন্ন করুন')}</button>
+                </div>
               </>
             )}
           </Group>
