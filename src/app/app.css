@@ -982,3 +982,18 @@ input.cf[data-testid$="-type"] { flex: 0 1 112px; width: 112px; }
 .ai-voice-bar .btn.warn { background: #c62828; color: #fff; border-color: transparent; }
 .ai-voice-bar.cut, .ai-voice-bar.held { background: #7a5200; color: #fff; }
 @media (max-width: 640px) { .ai-voice-bar { left: 8px; right: 60px; max-width: none; } }
+/* live voice: the words as they are heard, above the keyboard / the page bottom */
+.live-strip { position: absolute; left: 12px; right: 76px; bottom: 86px; z-index: 7; display: flex; align-items: center; gap: 8px; padding: 8px 10px;
+  border-radius: 12px; background: var(--sheet); border: 1px solid var(--line); box-shadow: 0 6px 20px rgba(0,0,0,.18); font-size: 16px; }
+.live-strip .live-text { flex: 1; min-width: 0; color: var(--muted); font-family: "SutonnyOMJ", "Noto Sans Bengali", var(--f-display); font-size: 19px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; direction: rtl; text-align: left; }
+.live-strip .btn { min-width: 40px; min-height: 36px; padding: 4px 10px; }
+.live-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--muted); flex: none; }
+.live-dot.live { background: #c62828; animation: livepulse 1.2s infinite; }
+.live-dot.cut { background: #b26a00; }
+@keyframes livepulse { 50% { opacity: .35; } }
+.live-mic { position: absolute; right: 18px; bottom: 156px; z-index: 5; width: 48px; height: 48px; border-radius: 50%; border: 1px solid var(--line);
+  background: var(--sheet); font-size: 20px; box-shadow: 0 4px 14px rgba(0,0,0,.18); }
+.live-mic.on { background: #c62828; color: #fff; }
+.live-mic .live-badge { position: absolute; left: 50%; bottom: -7px; transform: translateX(-50%); font: 700 8px var(--f-sans); letter-spacing: .5px; background: #c62828; color: #fff; padding: 1px 4px; border-radius: 4px; }
+@media (max-width: 640px) { .live-mic { right: 12px; bottom: 120px; width: 42px; height: 42px; } .live-strip { left: 6px; right: 6px; bottom: 8px; } }
+.dock .live-strip { bottom: calc(100% + 6px); }

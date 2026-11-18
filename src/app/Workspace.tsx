@@ -26,6 +26,7 @@ import { deliver, MIME } from '../export/deliver';
 import { tr } from '../i18n';
 import { attachBornona } from './bornona-input';
 import { OnScreenKeyboard } from './OnScreenKeyboard';
+import { useLiveVoice } from './LiveVoice';
 import { FloatingKeyboard, LiftableKeyboard, useLandscape, useShortTouch, type KbMode } from './FloatingKeyboard';
 import type { KbMenuItem } from './OnScreenKeyboard';
 import type { Hand } from './kb-gestures';
@@ -49,8 +50,6 @@ interface Props {
   coarse: boolean;
   /** Phone-size screen: the page reflows to the screen width (no paper view). */
   phone: boolean;
-  /** The live-voice mic on the keyboard (absent when it can't work on this device). */
-  live?: { on: boolean; toggle: () => void };
   /** Which voice the one microphone key uses. */
   voiceEngine: 'ai' | 'device';
   bank: WordBank;
@@ -232,6 +231,10 @@ export function Workspace(p: Props) {
       timer.current = window.setTimeout(() => flush(editor), 600);
     },
   });
+
+  // live voice typing: words appear as they are spoken (🎙 on the keyboard, or the round button by the page)
+  const live = useLiveVoice({ editor: editor as Editor, geminiKey: p.gemini.key, bangla: p.bangla, say: p.say,
+    voice: { corrections: p.corrections, banglaDigits: p.voice.banglaDigits }, disabled: p.ansiTyping });
 
   // Pinch (two fingers, or a trackpad pinch) zooms only the page; the rest of the app stays as it is.
   // While the fingers move only a CSS variable changes; the zoom is kept when they lift.
@@ -695,6 +698,12 @@ export function Workspace(p: Props) {
           disabled={p.ansiTyping}
           onPointerDown={(e) => e.preventDefault()} onClick={toggleVoice}>{MIC}</button>}
         {p.voiceEngine === 'ai' && <AiVoiceKey editor={editor} gemini={p.gemini} say={p.say} onOpenSettings={p.onOpenSettings} disabled={p.ansiTyping} voice={{ corrections: p.corrections, banglaDigits: p.voice.banglaDigits }} icon={MIC} />}
+        {live.ui}
+        {live.available && !(p.kbVisible && !deviceKb && !kbDown) && (
+          <button type="button" className={'live-mic' + (live.on ? ' on' : '')} data-testid="live-mic" aria-pressed={live.on}
+            aria-label={t('Live ভয়েস: বলার সাথে সাথে লেখা')} title={t('Live ভয়েস: বলার সাথে সাথে লেখা')}
+            onPointerDown={(e) => e.preventDefault()} onClick={live.toggle}>{live.on ? '●' : '🎙'}<span className="live-badge" aria-hidden="true">LIVE</span></button>
+        )}
         {kbDown && p.kbVisible && !deviceKb && (
           <button type="button" className="kb-up" data-testid="kb-show" aria-label={t('কিবোর্ড দেখান')} title={t('কিবোর্ড দেখান')}
             onPointerDown={(e) => e.preventDefault()} onClick={() => setKbDown(false)}>⌨</button>
@@ -752,7 +761,7 @@ export function Workspace(p: Props) {
           const kb = (
             <OnScreenKeyboard compact={compact} onHide={() => setKbDown(true)} editor={editor} map={p.map} bangla={p.bangla} getConfig={getConfig} onToggleLanguage={p.onToggleLanguage}
               onWordDone={(before) => { if (learnTail(p.bank, before)) p.onBankChanged(); }} flash={flash}
-              hand={phoneKb && !landscape ? hand : null} setHand={phoneKb ? setHand : undefined} split={split} menuItems={items} live={p.live} />
+              hand={phoneKb && !landscape ? hand : null} setHand={phoneKb ? setHand : undefined} split={split} menuItems={items} live={live.available ? { on: live.on, toggle: live.toggle } : undefined} />
           );
           if (float) return <FloatingKeyboard onDock={() => setKbMode('dock')}>{kb}</FloatingKeyboard>;
           return phoneKb ? kb : <LiftableKeyboard landscape={landscape}>{kb}</LiftableKeyboard>;
