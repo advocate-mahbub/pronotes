@@ -42,8 +42,101 @@ const fail = async (r: Response): Promise<never> => {
   throw new AiError('other', `${r.status}: ${msg}`);
 };
 
+// ---------- "auto": the fastest model of the free tier (decisions.md 73) ----------
+/** The choice in Settings that lets ProNotes pick. */
+export const AUTO_MODEL = 'auto';
+/**
+ * Models Google's pricing page lists as free of charge on the free tier (and their "latest" aliases).
+ * Only these are ever picked automatically: a model of unknown price is never chosen behind the user's back.
+ */
+export const FREE_MODELS = ['gemini-3.5-flash', 'gemini-3.1-flash-lite', 'gemini-2.5-flash', 'gemini-2.5-flash-lite', 'gemini-flash-latest', 'gemini-flash-lite-latest'];
+const AUTO_KEY = 'pronotes.geminiAuto';
+const WEEK = 7 * 24 * 3600 * 1000;
+export interface AutoOrder { at: number; order: { model: string; ms: number }[]; tired?: Record<string, number> }
+const ls = () => { try { return window.localStorage; } catch { return null; } };
+export const readAuto = (): AutoOrder | null => { try { return JSON.parse(ls()?.getItem(AUTO_KEY) ?? 'null'); } catch { return null; } };
+const writeAuto = (a: AutoOrder) => { try { ls()?.setItem(AUTO_KEY, JSON.stringify(a)); } catch { /* private mode */ } };
+
+/**
+ * Times a tiny request to each free model this key can use and keeps them fastest first. Done when
+ * the key is checked, then at most once a week (a few tiny requests: well within the free limits).
+ */
+export async function measureFreeModels(key: string, fetchImpl?: typeof fetch, now = Date.now): Promise<AutoOrder> {
+  const list = await geminiModels(key, fetchImpl).catch(() => [] as string[]);
+  const cands = FREE_MODELS.filter((m) => list.includes(m));
+  const order: AutoOrder['order'] = [];
+  for (const m of cands.length ? cands : [DEFAULT_GEMINI_MODEL]) {
+    const t0 = now();
+    try {
+      await generateOnce('Reply with the single word OK.', { key, model: m, fetchImpl, temperature: 0 });
+      order.push({ model: m, ms: now() - t0 });
+    } catch {
+      order.push({ model: m, ms: Number.MAX_SAFE_INTEGER }); // last, still tried if all else fails
+    }
+  }
+  order.sort((a, b) => a.ms - b.ms);
+  const res: AutoOrder = { at: now(), order };
+  writeAuto(res);
+  return res;
+}
+
+/** Before anything is timed: the models expected to be fastest first (lite before full). */
+const EXPECTED = ['gemini-3.1-flash-lite', 'gemini-2.5-flash-lite', 'gemini-flash-lite-latest', 'gemini-3.5-flash', 'gemini-2.5-flash', 'gemini-flash-latest'];
+
+/**
+ * The free models in the order to try now: fastest first (by the times of real requests, or of
+ * "measure again"), ones out of their daily limit last. Nothing is sent just to find out: the model
+ * list is read once a week, and speeds come from the user's own requests.
+ */
+export async function autoModels(key: string, fetchImpl?: typeof fetch, now = Date.now): Promise<string[]> {
+  let a = readAuto();
+  if (!a || now() - a.at > WEEK || !a.order.length) {
+    const list = await geminiModels(key, fetchImpl).catch(() => [] as string[]);
+    const cands = EXPECTED.filter((m) => list.includes(m));
+    a = { at: now(), order: (cands.length ? cands : [DEFAULT_GEMINI_MODEL]).map((model) => ({ model, ms: 0 })), tired: a?.tired };
+    writeAuto(a);
+  }
+  const tired = a.tired ?? {};
+  const fresh = (m: string) => !tired[m] || now() - tired[m] > 3600 * 1000;
+  // timed ones by speed; untimed (0) keep the expected order after the timed ones' best
+  const ms = a.order.map((x, i) => ({ ...x, i })).sort((p, q) => (p.ms || 1e12) - (q.ms || 1e12) || p.i - q.i).map((x) => x.model);
+  return [...ms.filter(fresh), ...ms.filter((m) => !fresh(m))];
+}
+const markTired = (m: string, now = Date.now()) => {
+  const a = readAuto();
+  if (!a) return;
+  writeAuto({ ...a, tired: { ...(a.tired ?? {}), [m]: now } });
+};
+/** A real request's time, folded into that model's speed (recent requests count most). */
+const recordSpeed = (m: string, ms: number) => {
+  const a = readAuto();
+  const x = a?.order.find((o) => o.model === m);
+  if (!a || !x) return;
+  x.ms = x.ms ? Math.round(x.ms * 0.6 + ms * 0.4) : ms;
+  writeAuto(a);
+};
+
 /** Text (and audio) generation. If the model is not available to this key, the next usable model is tried. */
 export async function geminiGenerate(prompt: string, o: GeminiOptions): Promise<string> {
+  if (o.model === AUTO_MODEL) {
+    // the fastest free model; when one is out of its daily limit (or gone), the next one
+    const ms = await autoModels(o.key, o.fetchImpl);
+    let last: unknown;
+    for (const m of ms) {
+      try {
+        const t0 = Date.now();
+        const out = await generateOnceRetry(prompt, { ...o, model: m });
+        // audio requests take longer by nature: only short text requests time the model
+        if (!o.audio) recordSpeed(m, Date.now() - t0);
+        return out;
+      } catch (e) {
+        last = e;
+        if (!(e instanceof AiError) || !['quota', 'model', 'other'].includes(e.code)) throw e;
+        if (e.code === 'quota') markTired(m);
+      }
+    }
+    throw last ?? new AiError('model', 'no free model');
+  }
   try {
     return await generateOnceRetry(prompt, o);
   } catch (e) {

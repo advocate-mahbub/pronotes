@@ -12,7 +12,7 @@ import {
 import { setAnsiFamilies } from '../bijoy';
 import { MAX_FONT_BYTES, familyFor, registerFont, unregisterFont, LOCAL_ANSI, readFontStyle } from '../fonts';
 import { decideVoice, detectVoiceEnv } from '../voice';
-import { DEFAULT_GEMINI_MODEL } from '../ai/gemini';
+import { AUTO_MODEL } from '../ai/gemini';
 import { Settings, type FontInfo } from './Settings';
 import { InfoSheet, VersionsSheet } from './DocSheets';
 import type { ListPrefs } from './Sidebar';
@@ -195,7 +195,7 @@ export function App() {
   const [settingsOpen, setSettingsOpen] = useState(false);
   /** AI assistant: Gemini key (IndexedDB, device only), model, words to hide. */
   const [geminiKey, setGeminiKeyState] = useState('');
-  const [geminiModel, setGeminiModel] = useState(() => load('geminiModel', DEFAULT_GEMINI_MODEL));
+  const [geminiModel, setGeminiModel] = useState(() => load('geminiModel', AUTO_MODEL));
   useEffect(() => save('geminiModel', geminiModel), [geminiModel]);
   const [privateWords, setPrivateWordsState] = useState<string[]>([]);
   const setGeminiKey = (k: string) => { setGeminiKeyState(k.trim()); saveAiKey(k).catch(() => say('key সেভ করা যায়নি')); };

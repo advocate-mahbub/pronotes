@@ -1075,4 +1075,11 @@ export const EN: Record<string, string> = {
   "মক্কেলের নাম, ঠিকানা, দলিল নম্বর বা গোপন তথ্য মুখে না বলে কিবোর্ডে লিখুন।": "Type clients' names, addresses, deed numbers and confidential details on the keyboard instead of saying them.",
   "Live ভয়েস: বলার সাথে সাথে লেখা": "Live voice: words as you speak",
   "Live ভয়েস: বলার সাথে সাথে লেখা": "Live voice: words as you speak",
+  "স্বয়ংক্রিয় (দ্রুততম ফ্রি)": "Automatic (fastest free)",
+  "ফ্রি": "free",
+  "এখন: {m}": "Now: {m}",
+  "{s} সেকেন্ড": "{s} s",
+  "ফ্রি মডেলগুলোর গতি মাপা হয়নি": "The free models' speed hasn't been measured",
+  "আবার মাপুন": "Measure again",
+  "প্রথমে Flash-Lite; আপনার কাজের সময় মেপে দ্রুততমটা আগে আসবে": "Flash-Lite first; the fastest moves up as your requests are timed",
 };
