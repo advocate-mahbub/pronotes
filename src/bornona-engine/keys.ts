@@ -27,3 +27,26 @@ export const ROWS: string[][] = [
   ['#Shift', 'KeyZ', 'KeyX', 'KeyC', 'KeyV', 'KeyB', 'KeyN', 'KeyM', 'Comma', 'Period', 'Slash', '#Back'],
   ['#Mode', '#Alt', '#Space', '#Dari'],
 ];
+
+/**
+ * Phones (iOS-style): the number row and \ stay; the punctuation keys - = [ ] ; ' , . / move to a second
+ * layer behind #Sym (they type punctuation in every built-in layout, Bangla included), so the letters get
+ * wider keys. #Sym sits bottom-left next to the language key, where iOS keeps "123".
+ */
+const NUMBERS = ['Backquote', 'Digit1', 'Digit2', 'Digit3', 'Digit4', 'Digit5', 'Digit6', 'Digit7', 'Digit8', 'Digit9', 'Digit0'];
+const BOTTOM = ['#Mode', '#Sym', '#Alt', '#Space', '#Dari'];
+export const PHONE_ROWS: string[][] = [
+  NUMBERS,
+  ['KeyQ', 'KeyW', 'KeyE', 'KeyR', 'KeyT', 'KeyY', 'KeyU', 'KeyI', 'KeyO', 'KeyP', 'Backslash'],
+  ['KeyA', 'KeyS', 'KeyD', 'KeyF', 'KeyG', 'KeyH', 'KeyJ', 'KeyK', 'KeyL', '#Enter'],
+  ['#Shift', 'KeyZ', 'KeyX', 'KeyC', 'KeyV', 'KeyB', 'KeyN', 'KeyM', '#Back'],
+  BOTTOM,
+];
+/** The second layer: same height as the letters, so nothing jumps when it opens. */
+export const PHONE_SYMBOL_ROWS: string[][] = [
+  NUMBERS,
+  ['Minus', 'Equal', 'BracketLeft', 'BracketRight'],
+  ['Semicolon', 'Quote', '#Enter'],
+  ['#Shift', 'Comma', 'Period', 'Slash', '#Back'],
+  BOTTOM,
+];

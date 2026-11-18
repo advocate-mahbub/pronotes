@@ -30,6 +30,7 @@ import { Sidebar } from './Sidebar';
 import { Workspace, type SaveState } from './Workspace';
 import { LawDictionary } from './LawDictionary';
 import { ChartWorkspace } from './ChartWorkspace';
+import { currentToken, downloadBackup, DriveError, driveEnabled, listBackups, signIn, signOut, takeRedirect, uploadBackup, type AfterSignIn, type DriveBackup } from '../storage/gdrive';
 import { CraftWorkspace, type CraftHandoff, type CraftView } from '../craft/CraftWorkspace';
 import { craftApp } from '../craft/bridge';
 import { load, save, allPrefs, restorePrefs } from './prefs';
@@ -518,6 +519,61 @@ export function App() {
       say('ব্যাকআপ তৈরি করা যায়নি');
     }
   };
+  // ---------- Google Drive backups (the Gemini key never goes to Drive) ----------
+  const [driveTick, setDriveTick] = useState(0);
+  const [driveList, setDriveList] = useState<DriveBackup[] | null>(null);
+  const [driveBusy, setDriveBusy] = useState(false);
+  const driveConnected = driveTick >= 0 && Boolean(currentToken());
+  const driveFail = (e: unknown) => {
+    const c = e instanceof DriveError ? e.code : 'other';
+    if (c === 'auth') { setDriveTick((n) => n + 1); return say('Google-এর অনুমতির মেয়াদ শেষ; আবার যুক্ত করুন'); }
+    say(c === 'network' ? 'ইন্টারনেট নেই, Google Drive-এ যাওয়া গেল না' : c === 'quota' ? 'Google Drive এখন নিচ্ছে না (জায়গা বা সীমা); পরে চেষ্টা করুন' : 'Google Drive-এ কাজটা হলো না');
+  };
+  const driveRefresh = async () => {
+    const tk = currentToken();
+    if (!tk) return setDriveTick((n) => n + 1);
+    setDriveBusy(true);
+    try { setDriveList(await listBackups(tk)); } catch (e) { driveFail(e); } finally { setDriveBusy(false); }
+  };
+  const driveConnect = async (after?: AfterSignIn) => {
+    await flushAll(); // the page leaves for Google's sign-in and comes back
+    signIn(after);
+  };
+  const driveBackup = async () => {
+    const tk = currentToken();
+    if (!tk) return driveConnect('backup');
+    setDriveBusy(true);
+    try {
+      await flushAll();
+      const f = await exportAll(prefs(), new Date());
+      await uploadBackup(tk, backupFileName(), JSON.stringify(f));
+      say('{n}টা ড্রাফট Google Drive-এ রাখা হলো', { n: f.docs.length });
+      setDriveList(await listBackups(tk));
+    } catch (e) { driveFail(e); } finally { setDriveBusy(false); }
+  };
+  const driveRestore = async (b: DriveBackup) => {
+    const tk = currentToken();
+    if (!tk) return driveConnect('list');
+    setDriveBusy(true);
+    try { await restore(new File([await downloadBackup(tk, b.id)], b.name, { type: 'application/json' })); } catch (e) { driveFail(e); } finally { setDriveBusy(false); }
+  };
+  const driveDisconnect = async () => {
+    await signOut();
+    setDriveList(null);
+    setDriveTick((n) => n + 1);
+    say('Google Drive থেকে বিচ্ছিন্ন হলো');
+  };
+  // back from Google's sign-in: keep the token for this session, then finish what was asked
+  useEffect(() => {
+    const back = takeRedirect();
+    if (!back) return;
+    save('settings.tab', 'app');
+    setSettingsOpen(true);
+    if (!back.ok) { setTimeout(() => say(back.error === 'access_denied' ? 'Google-এ অনুমতি দেওয়া হয়নি' : 'Google-এ যুক্ত হওয়া গেল না'), 300); return; }
+    setDriveTick((n) => n + 1);
+    setTimeout(() => { if (back.after === 'backup') void driveBackup(); else void driveRefresh(); }, 600);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   const restore = async (file: File) => {
     try {
       const f = parseBackup(await file.text());
@@ -813,7 +869,8 @@ export function App() {
 
 
       {settingsOpen && (
-        <Settings onClose={() => setSettingsOpen(false)} platform={coarse || phone ? 'mobile' : 'desktop'} vf={vf} setVf={setVf} oldReph={oldReph} setOldReph={setOldReph}
+        <Settings drive={{ enabled: driveEnabled(), connected: driveConnected, busy: driveBusy, list: driveList, onConnect: () => void driveConnect('list'), onBackup: () => void driveBackup(), onRefresh: () => void driveRefresh(), onRestore: (b) => void driveRestore(b), onDisconnect: () => void driveDisconnect() }}
+          onClose={() => setSettingsOpen(false)} platform={coarse || phone ? 'mobile' : 'desktop'} vf={vf} setVf={setVf} oldReph={oldReph} setOldReph={setOldReph}
           keyboardLayouts={allKeyboardLayouts} hiddenDesktop={hiddenDesktop} setHiddenDesktop={setHiddenDesktop}
           hiddenMobile={hiddenMobile} setHiddenMobile={setHiddenMobile}
           customLayouts={customLayouts} onAddLayout={addLayout} onDeleteLayout={deleteLayout}

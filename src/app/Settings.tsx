@@ -7,6 +7,7 @@ import type { VoicePrefs } from './prefs-types';
 import { layoutAccept } from './layout-files';
 import { load, save } from './prefs';
 import { num, useT, type UiLang } from '../i18n';
+import type { DriveBackup } from '../storage/gdrive';
 import { WORD_SHORTCUTS, showKeys } from '../editor/word-shortcuts';
 
 export interface FontInfo {
@@ -74,6 +75,20 @@ interface Props {
   voiceEngine: 'auto' | 'ai' | 'device';
   setVoiceEngine: (v: 'auto' | 'ai' | 'device') => void;
   onClose: () => void;
+  /** Google Drive backups (off when the build has no Google Client ID). */
+  drive: DriveProps;
+}
+
+export interface DriveProps {
+  enabled: boolean;
+  connected: boolean;
+  busy: boolean;
+  list: DriveBackup[] | null;
+  onConnect: () => void;
+  onBackup: () => void;
+  onRefresh: () => void;
+  onRestore: (b: DriveBackup) => void;
+  onDisconnect: () => void;
 }
 
 export interface AiSettings {
@@ -506,6 +521,36 @@ export function Settings(p: Props) {
               <button type="button" className="btn primary" data-testid="backup" onClick={() => p.onBackup(withKey)}>{t('সব কিছুর ব্যাকআপ নিন')}</button>
               <FileButton label={t('ব্যাকআপ থেকে ফেরত আনুন')} accept=".json,application/json" testid="restore" onFile={p.onRestore} />
             </div>
+          </Group>
+          <Group title="Google Drive" info="সব ড্রাফট, শেখা শব্দ আর সেটিংসের ব্যাকআপ আপনার নিজের Google Drive-এ, “ProNotes Backups” ফোল্ডারে (Gemini key যায় না)। ProNotes শুধু নিজের বানানো ফাইল দেখতে পায়, Drive-এর আর কিছু নয়। Google-এ ঢোকার অনুমতি শুধু এই ডিভাইসের এই সেশনে থাকে, প্রায় এক ঘণ্টা; পরে আবার যুক্ত করতে হয়।">
+            {!p.drive.enabled ? (
+              <Line info="সাইটের মালিক Google Cloud-এ OAuth Client ID বানিয়ে GitHub-এর Secrets-এ GOOGLE_CLIENT_ID নামে রাখলে পরের deploy থেকে চালু হবে।"><span className="muted" data-testid="drive-off">{t('এই সাইটে Google Drive চালু করা হয়নি')}</span></Line>
+            ) : !p.drive.connected ? (
+              <div className="row">
+                <button type="button" className="btn primary" data-testid="drive-connect" onClick={p.drive.onConnect}>{t('Google দিয়ে যুক্ত করুন')}</button>
+              </div>
+            ) : (
+              <>
+                <div className="row">
+                  <button type="button" className="btn primary" data-testid="drive-backup" disabled={p.drive.busy} onClick={p.drive.onBackup}>{p.drive.busy ? t('কাজ চলছে…') : t('Drive-এ ব্যাকআপ নিন')}</button>
+                  <button type="button" className="btn" data-testid="drive-refresh" disabled={p.drive.busy} onClick={p.drive.onRefresh}>{t('Drive-এর ব্যাকআপ দেখুন')}</button>
+                  <button type="button" className="btn" data-testid="drive-disconnect" onClick={p.drive.onDisconnect}>{t('বিচ্ছিন্ন করুন')}</button>
+                </div>
+                {p.drive.list && (
+                  p.drive.list.length === 0 ? <p className="muted">{t('Drive-এ এখনো কোনো ব্যাকআপ নেই')}</p> : (
+                    <ul className="itemlist" data-testid="drive-list">
+                      {p.drive.list.map((b) => (
+                        <li key={b.id}>
+                          <span>{b.name}</span>
+                          <small>{new Date(b.createdTime).toLocaleString(p.uiLang === 'en' ? 'en-GB' : 'bn-BD')}</small>
+                          <ArmedButton label={t('ফেরত আনুন')} armedLabel={t('নিশ্চিত?')} testid={'drive-restore-' + b.id} onConfirm={() => p.drive.onRestore(b)} />
+                        </li>
+                      ))}
+                    </ul>
+                  )
+                )}
+              </>
+            )}
           </Group>
           <Group title={t('অফলাইন ও ইনস্টল')}>
             <Line info={p.app.persisted ? 'স্থায়ী স্টোরেজ: চালু — ব্রাউজার নিজে থেকে এই সাইটের লেখা ও সেটিং মুছবে না।' : 'স্থায়ী স্টোরেজ: চালু নয় — জায়গা কমলে বা অনেকদিন না খুললে ব্রাউজার লেখা ও সেটিং মুছে দিতে পারে। নিয়মিত ব্যাকআপ নিন।'}>

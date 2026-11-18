@@ -26,6 +26,10 @@ jobs:
       - run: npm run typecheck
       - run: npm test
       - run: npm run build
+        env:
+          # Google Drive backups: the OAuth Client ID is kept in the repository's Actions secrets, never in the code.
+          # Empty (secret not set) = the Drive buttons stay off.
+          VITE_GOOGLE_CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID }}
       # the browser tests check the built page itself (CSP, home-screen tags, offline): no deploy if they fail
       - run: npx playwright install --with-deps chromium
       - run: npx playwright test --project=chromium

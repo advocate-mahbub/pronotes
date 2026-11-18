@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import type { Editor } from '@tiptap/react';
-import { ROWS, US, charFor, hasAltLayer, type LayoutMap } from '../bornona-engine';
+import { PHONE_ROWS, PHONE_SYMBOL_ROWS, ROWS, US, charFor, hasAltLayer, type LayoutMap } from '../bornona-engine';
 import { typeText, deleteBackward, textBeforeCaret, typeRulesKey, type BornonaConfig } from '../editor';
 import { useT } from '../i18n';
 import { activeBornonaBox, backspaceBox, typeIntoBox, typeKeyIntoBox } from './bornona-input';
@@ -19,13 +19,21 @@ interface Props {
   flash: string | null;
   /** Puts the keyboard down (it comes back when the page is tapped). */
   onHide?: () => void;
+  /** Phone layout: punctuation on a second layer (#Sym), wider letter keys. */
+  compact?: boolean;
 }
 
 /** Bornona on-screen keyboard. Keys never take focus, so the iPad's own keyboard stays closed. */
-export function OnScreenKeyboard({ editor, map, bangla, getConfig, onToggleLanguage, onWordDone, flash, onHide }: Props) {
+/** The key back to the letters shows letters of the language being typed (like iOS's "ABC"). */
+const LETTERS_KEY = { bn: '\u0985\u0986', en: 'ABC' } as const;
+
+export function OnScreenKeyboard({ editor, map, bangla, getConfig, onToggleLanguage, onWordDone, flash, onHide, compact }: Props) {
   const { t } = useT();
   const [shift, setShift] = useState(0); // 0 off, 1 next key, 2 locked
   const [alt, setAlt] = useState(false);
+  // phones: the punctuation layer is open (stays open for several marks, closes on space or enter, like iOS)
+  const [sym, setSym] = useState(false);
+  const rows = compact ? (sym ? PHONE_SYMBOL_ROWS : PHONE_ROWS) : ROWS;
   const [phys, setPhys] = useState({ shift: false, alt: false });
   const lastShift = useRef(0);
   const repeat = useRef<{ t?: number; i?: number }>({});
@@ -74,11 +82,14 @@ export function OnScreenKeyboard({ editor, map, bangla, getConfig, onToggleLangu
         return setAlt((a) => !a);
       case '#Mode':
         return onToggleLanguage();
+      case '#Sym':
+        return setSym((v) => !v);
       case '#Back':
         back();
         repeat.current.t = window.setTimeout(() => (repeat.current.i = window.setInterval(back, 70)), 450);
         return;
       case '#Enter':
+        setSym(false);
         if (box) {
           box.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
           return;
@@ -87,6 +98,7 @@ export function OnScreenKeyboard({ editor, map, bangla, getConfig, onToggleLangu
         editor.commands.enter();
         return;
       case '#Space':
+        setSym(false);
         if (rulesKey({ code: 'Space', shift: false, alt: false })) return;
         return type(' ');
       case '#Dari':
@@ -102,17 +114,17 @@ export function OnScreenKeyboard({ editor, map, bangla, getConfig, onToggleLangu
   };
 
   const label = (code: string) =>
-    ({ '#Enter': '↵', '#Shift': shift === 2 ? '⇪' : '⇧', '#Back': '⌫', '#Space': t('স্পেস'), '#Dari': bangla ? '।' : '.', '#Mode': bangla ? 'EN' : 'বাং', '#Alt': 'AltGr' })[code];
+    ({ '#Enter': '↵', '#Shift': shift === 2 ? '⇪' : '⇧', '#Back': '⌫', '#Space': t('স্পেস'), '#Dari': bangla ? '।' : '.', '#Mode': bangla ? 'EN' : 'বাং', '#Alt': 'AltGr', '#Sym': sym ? LETTERS_KEY[bangla ? 'bn' : 'en'] : '#+=' })[code];
 
   return (
-    <div className={'kb' + (sh ? ' shift' : '')} role="group" aria-label={t('বর্ণনা অন-স্ক্রিন কিবোর্ড')} data-testid="osk"
+    <div className={'kb' + (sh ? ' shift' : '') + (compact ? ' compact' : '') + (sym ? ' sym' : '')} role="group" aria-label={t('বর্ণনা অন-স্ক্রিন কিবোর্ড')} data-testid="osk"
       onPointerUp={stopRepeat} onPointerCancel={stopRepeat} onPointerLeave={stopRepeat}>
-      {ROWS.map((row, ri) => (
+      {rows.map((row, ri) => (
         <div className="kb-row" key={ri}>
           {row.filter((c) => c !== '#Alt' || altKeys).map((code) => {
             const fn = code.startsWith('#');
             const main = fn ? '' : show(charFor(map, code, sh, al, bangla));
-            const cls = ['k', fn && code !== '#Dari' ? 'fn' : '', code === '#Space' ? 'w6' : '', ['#Enter', '#Shift', '#Back', '#Mode'].includes(code) ? 'w15' : '',
+            const cls = ['k', fn && code !== '#Dari' ? 'fn' : '', code === '#Space' ? 'w6' : '', ['#Enter', '#Shift', '#Back', '#Mode', '#Sym'].includes(code) ? 'w15' : '', code === '#Sym' && sym ? 'on' : '',
               (code === '#Shift' && shift > 0) || (code === '#Alt' && alt) ? 'on' : '', flash === code ? 'hit' : ''].filter(Boolean).join(' ');
             return (
               <button key={code} type="button" tabIndex={-1} className={cls} data-code={code}
@@ -130,7 +142,7 @@ export function OnScreenKeyboard({ editor, map, bangla, getConfig, onToggleLangu
               </button>
             );
           })}
-          {onHide && ri === ROWS.length - 1 && (
+          {onHide && ri === rows.length - 1 && (
             <button type="button" tabIndex={-1} className="k fn hide" data-testid="kb-hide" aria-label={t('কিবোর্ড নামান')} title={t('কিবোর্ড নামান')}
               onPointerDown={(e) => e.preventDefault()} onClick={onHide}>
               <span className="m">⌄</span>
