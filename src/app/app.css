@@ -997,3 +997,4 @@ input.cf[data-testid$="-type"] { flex: 0 1 112px; width: 112px; }
 .live-mic .live-badge { position: absolute; left: 50%; bottom: -7px; transform: translateX(-50%); font: 700 8px var(--f-sans); letter-spacing: .5px; background: #c62828; color: #fff; padding: 1px 4px; border-radius: 4px; }
 @media (max-width: 640px) { .live-mic { right: 12px; bottom: 120px; width: 42px; height: 42px; } .live-strip { left: 6px; right: 6px; bottom: 8px; } }
 .dock .live-strip { bottom: calc(100% + 6px); }
+@media (max-width: 640px) { .ai-voice-bar .aiv-text { flex-basis: 100%; } .ai-voice-bar .btn { flex: 1 1 0; } }
