@@ -714,7 +714,7 @@ export function Workspace(p: Props) {
           p.ansiTyping || kbDown ? null : <SuggestionBar editor={editor} bank={p.bank} version={p.bankVersion} />
         )}
         {p.kbVisible && !deviceKb && !kbDown && (
-          <OnScreenKeyboard onHide={() => setKbDown(true)} editor={editor} map={p.map} bangla={p.bangla} getConfig={getConfig} onToggleLanguage={p.onToggleLanguage}
+          <OnScreenKeyboard compact={p.phone} onHide={() => setKbDown(true)} editor={editor} map={p.map} bangla={p.bangla} getConfig={getConfig} onToggleLanguage={p.onToggleLanguage}
             onWordDone={(before) => { if (learnTail(p.bank, before)) p.onBankChanged(); }} flash={flash} />
         )}
       </footer>
