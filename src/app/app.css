@@ -974,3 +974,11 @@ input.cf[data-testid$="-type"] { flex: 0 1 112px; width: 112px; }
   body:has([data-testid="osk"]) .ribbon-body { display: none; }
   .kb .k .l { display: none; }
 }
+/* AI voice bar: pause, write, throw away (and the kept-recording states) */
+.ai-voice-bar { flex-wrap: wrap; max-width: min(520px, calc(100vw - 96px)); }
+.ai-voice-bar .aiv-text { flex: 1 1 140px; min-width: 0; }
+.ai-voice-bar .btn { min-height: 36px; min-width: 40px; padding: 4px 10px; border-color: rgba(255,255,255,.35); background: rgba(255,255,255,.08); color: inherit; font-size: 14px; }
+.ai-voice-bar .btn.primary { background: var(--gold); color: #1a1a1a; border-color: transparent; }
+.ai-voice-bar .btn.warn { background: #c62828; color: #fff; border-color: transparent; }
+.ai-voice-bar.cut, .ai-voice-bar.held { background: #7a5200; color: #fff; }
+@media (max-width: 640px) { .ai-voice-bar { left: 8px; right: 60px; max-width: none; } }

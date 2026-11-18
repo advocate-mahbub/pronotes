@@ -98,7 +98,13 @@ export class PcmRecorder {
   private src: MediaStreamAudioSourceNode | null = null;
   private node: ScriptProcessorNode | null = null;
   private chunks: Float32Array[] = [];
+  /** How many chunks have been handed out by take() already (for saving on the device as it goes). */
+  private taken = 0;
   private rate = 48000;
+  /** The user paused (sound is not kept), or something took the microphone away (a call, another app). */
+  paused = false;
+  /** Called when the recording stops by itself: a phone call, another app taking the mic, the mic unplugged. */
+  onInterrupt?: () => void;
   static supported = () =>
     typeof navigator !== 'undefined' && !!navigator.mediaDevices?.getUserMedia && typeof window !== 'undefined'
     && !!(window.AudioContext || (window as unknown as { webkitAudioContext?: unknown }).webkitAudioContext);
@@ -109,26 +115,76 @@ export class PcmRecorder {
     const ctx = new AC();
     this.ctx = ctx;
     const resumed = ctx.resume().catch(() => {}); // still inside the tap
-    try {
-      this.stream = await withTimeout(navigator.mediaDevices.getUserMedia({ audio: { channelCount: 1, echoCancellation: true, noiseSuppression: true } }), 20_000, 'microphone');
-    } catch (e) {
-      this.cancel();
-      throw new VoiceError('mic', errText(e));
-    }
+    await this.openMic(() => this.cancel());
     await resumed;
     if (ctx.state !== 'running') await ctx.resume().catch(() => {});
     this.rate = ctx.sampleRate;
     this.chunks = [];
-    this.src = ctx.createMediaStreamSource(this.stream);
+    this.taken = 0;
+    this.paused = false;
+    // iOS: a call (or Siri, or another app's audio) "interrupts" the audio; desktop browsers suspend it
+    ctx.onstatechange = () => { if (!this.paused && ctx.state !== 'running' && ctx.state !== 'closed') this.interrupt(); };
+    this.connect();
+  }
+
+  private async openMic(onFail: () => void): Promise<void> {
+    try {
+      this.stream = await withTimeout(navigator.mediaDevices.getUserMedia({ audio: { channelCount: 1, echoCancellation: true, noiseSuppression: true } }), 20_000, 'microphone');
+    } catch (e) {
+      onFail();
+      throw new VoiceError('mic', errText(e));
+    }
+    for (const tr of this.stream.getAudioTracks()) tr.onended = () => { if (!this.paused) this.interrupt(); };
+  }
+
+  private connect(): void {
+    const ctx = this.ctx!;
+    this.src = ctx.createMediaStreamSource(this.stream!);
     this.node = ctx.createScriptProcessor(4096, 1, 1);
-    this.node.onaudioprocess = (e) => { this.chunks.push(new Float32Array(e.inputBuffer.getChannelData(0))); };
+    this.node.onaudioprocess = (e) => { if (!this.paused) this.chunks.push(new Float32Array(e.inputBuffer.getChannelData(0))); };
     this.src.connect(this.node);
     this.node.connect(ctx.destination); // Safari runs the node only when it is connected; its output is silence
   }
 
-  /** Seconds recorded so far. */
+  private interrupt(): void {
+    this.paused = true;
+    this.onInterrupt?.();
+  }
+
+  /** Stop keeping sound; what was said so far stays. */
+  pause(): void {
+    this.paused = true;
+  }
+
+  /**
+   * Go on recording after the same audio. After a call the microphone may have been taken away: it is
+   * asked for again (call this from a tap, so iOS allows it).
+   */
+  async resume(): Promise<void> {
+    const ctx = this.ctx;
+    if (!ctx) throw new VoiceError('audio', 'closed');
+    const lost = !this.stream || this.stream.getAudioTracks().every((t) => t.readyState === 'ended');
+    const resumed = ctx.resume().catch(() => {});
+    if (lost) {
+      try { this.src?.disconnect(); this.node?.disconnect(); } catch { /* already gone */ }
+      await this.openMic(() => {});
+      this.connect();
+    }
+    await resumed;
+    this.paused = false;
+  }
+
+  /** Seconds recorded so far (pauses not counted). */
   get seconds(): number {
     return this.chunks.reduce((n, c) => n + c.length, 0) / this.rate;
+  }
+
+  /** The audio recorded since the last take(), at 16 kHz: kept on the device as the recording goes. */
+  take(): Float32Array | null {
+    const fresh = this.chunks.slice(this.taken);
+    if (!fresh.length) return null;
+    this.taken = this.chunks.length;
+    return resampleTo16k(join(fresh), this.rate);
   }
 
   /** Stops and gives 16 kHz mono samples. */
@@ -137,23 +193,30 @@ export class PcmRecorder {
     const rate = this.rate;
     this.cancel();
     if (!parts.length) throw new VoiceError('audio', 'no audio frames');
-    const all = new Float32Array(parts.reduce((n, c) => n + c.length, 0));
-    let o = 0;
-    for (const c of parts) { all.set(c, o); o += c.length; }
-    return resampleTo16k(all, rate);
+    return resampleTo16k(join(parts), rate);
   }
 
   cancel(): void {
     try { this.src?.disconnect(); this.node?.disconnect(); } catch { /* already gone */ }
     if (this.node) this.node.onaudioprocess = null;
-    this.stream?.getTracks().forEach((t) => t.stop());
+    if (this.ctx) this.ctx.onstatechange = null;
+    this.stream?.getTracks().forEach((t) => { t.onended = null; t.stop(); });
     void this.ctx?.close().catch(() => {});
     this.ctx = null;
     this.stream = null;
     this.src = null;
     this.node = null;
     this.chunks = [];
+    this.taken = 0;
   }
+}
+
+/** Float32 pieces → one array. */
+export function join(parts: Float32Array[]): Float32Array {
+  const all = new Float32Array(parts.reduce((n, c) => n + c.length, 0));
+  let o = 0;
+  for (const c of parts) { all.set(c, o); o += c.length; }
+  return all;
 }
 
 /** The browser's own reason, short (e.g. "NotAllowedError"). */
