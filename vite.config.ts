@@ -9,7 +9,7 @@ import type { Plugin } from 'vite';
  * <meta>). Not added to the single-file claude.ai preview, which inlines its script.
  */
 const CSP = "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data: blob:; " +
-  "connect-src 'self' data: blob: https://generativelanguage.googleapis.com; worker-src 'self'; manifest-src 'self'; base-uri 'self'; form-action 'none'; object-src 'none'";
+  "connect-src 'self' data: blob: https://generativelanguage.googleapis.com https://www.googleapis.com https://oauth2.googleapis.com; worker-src 'self'; manifest-src 'self'; base-uri 'self'; form-action 'none'; object-src 'none'";
 const cspMeta = (): Plugin => ({
   name: 'pronotes-csp-meta',
   apply: 'build',
