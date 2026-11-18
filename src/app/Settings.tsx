@@ -278,6 +278,8 @@ const FONT_ACCEPT = '.ttf,.otf,.woff,.woff2,font/ttf,font/otf,font/woff,font/wof
 
 export function Settings(p: Props) {
   const { t } = useT();
+  // the Drive backup list is folded away until asked for
+  const [driveOpen, setDriveOpen] = useState(false);
   const uniFonts = p.fonts.filter((f) => f.role === 'uni');
   const ansiFonts = p.fonts.filter((f) => f.role === 'ansi');
   const here = (name: string, ansi = false) => p.fonts.some((f) => f.family === name) || WEB_FONTS.includes(name) || isFontAvailable(name, ansi);
@@ -542,7 +544,6 @@ export function Settings(p: Props) {
               <>
                 <div className="row">
                   <button type="button" className="btn primary" data-testid="drive-backup" disabled={p.drive.busy} onClick={p.drive.onBackup}>{p.drive.busy ? t('কাজ চলছে…') : t('Drive-এ ব্যাকআপ নিন')}</button>
-                  <button type="button" className="btn" data-testid="drive-refresh" disabled={p.drive.busy} onClick={p.drive.onRefresh}>{t('Drive-এর ব্যাকআপ দেখুন')}</button>
                 </div>
                 <Line info="নতুন ব্যাকআপ Drive-এ ঠিকমতো রাখা হলে তবেই সবচেয়ে পুরোনোগুলো Drive-এর Trash-এ যায়; ৩০ দিন পর্যন্ত drive.google.com-এর Trash থেকে ফেরত আনা যায়। সংখ্যা কমালে পরের ব্যাকআপের সময় বাড়তিগুলো সরে।">
                   <label className="srow"><span>{t('Drive-এ রাখুন')}</span>
@@ -556,7 +557,13 @@ export function Settings(p: Props) {
                     <input type="text" data-testid="device-name" maxLength={30} value={p.drive.deviceName} placeholder={p.drive.autoDevice} onChange={(e) => p.drive.setDeviceName(e.target.value)} />
                   </label>
                 </Line>
-                {p.drive.list && (
+                <button type="button" className="fold" data-testid="drive-refresh" aria-expanded={driveOpen} disabled={p.drive.busy && !p.drive.list}
+                  onClick={() => { if (!driveOpen && !p.drive.list) p.drive.onRefresh(); setDriveOpen(!driveOpen); }}>
+                  <span className="fold-arrow" aria-hidden="true">{driveOpen ? '▾' : '▸'}</span>
+                  {t('Drive-এর ব্যাকআপগুলো')}
+                  {p.drive.list && <small> · {t('{n}টা', { n: p.drive.list.length })}</small>}
+                </button>
+                {driveOpen && p.drive.list && (
                   p.drive.list.length === 0 ? <p className="muted">{t('Drive-এ এখনো কোনো ব্যাকআপ নেই')}</p> : (
                     <ul className="itemlist" data-testid="drive-list">
                       {p.drive.list.map((b) => (

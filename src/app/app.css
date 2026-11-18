@@ -197,6 +197,9 @@ button:focus-visible, select:focus-visible { outline: 2px solid var(--gold); out
 .drive-item .drive-meta b.here { color: var(--accent, #c8a45c); }
 .srow input[type=text] { min-width: 0; width: 13em; max-width: 55%; }
 .drive-foot { margin-top: 2px; }
+.fold { display: flex; align-items: center; gap: 6px; width: 100%; min-height: 40px; padding: 6px 2px; border: 0; border-top: 1px solid var(--line); background: none; color: inherit; font: inherit; text-align: left; cursor: pointer; }
+.fold small { color: var(--muted); }
+.fold-arrow { width: 1em; color: var(--muted); }
 .btn.live { background: #c62828; border-color: #c62828; color: #fff; font-weight: 600; }
 
 .deskwrap { flex: 1; min-height: 120px; position: relative; display: flex; flex-direction: column; }
