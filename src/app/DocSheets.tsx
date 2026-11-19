@@ -31,7 +31,7 @@ export function InfoSheet({ doc, folders, kindLabel, onClose }: { doc: Doc; fold
   );
 }
 
-const REASON_LABEL: Record<Version['reason'], string> = { auto: 'নিজে থেকে', manual: 'হাতে রাখা', restore: 'ফেরত আনার আগে' };
+const REASON_LABEL: Record<Version['reason'], string> = { auto: 'নিজে থেকে', manual: 'হাতে রাখা', restore: 'ফেরত আনার আগে', backup: 'ব্যাকআপ মেলানোর সময়' };
 
 export function VersionsSheet({ doc, onClose, onRestore, onSnapshot }: {
   doc: Doc;

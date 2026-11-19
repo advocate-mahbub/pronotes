@@ -82,19 +82,28 @@ describe('backup and restore', () => {
     expect(await listDocs({ trash: true })).toHaveLength(1);
     expect(await loadBank()).toEqual({ w: { দলিল: 3 }, b: { দলিল: { মূলে: 2 } } });
   });
-  it('never overwrites a changed document; restoring twice changes nothing', async () => {
+  it('the same draft is updated, never copied; the other state goes into its history (decisions.md 78)', async () => {
     const a = await createDoc('আরজি', para('পুরোনো'), 'পুরোনো', 1000);
     await saveBank({ w: { দলিল: 3 }, b: {} });
-    const file = await exportAll({});
+    const older = await exportAll({});
+    // changed here later: the backup is older, this device's text stays
     await saveContent(a.id, para('নতুন লেখা'), 'নতুন লেখা', 2000);
-    const r1 = await restoreAll(file);
-    expect(r1.copies).toBe(1);
+    const r1 = await restoreAll(older);
+    expect(r1).toMatchObject({ copies: 0, kept: 1, updated: 0 });
     expect((await getDoc(a.id))!.text).toBe('নতুন লেখা');
-    const titles = (await listDocs()).map((d) => d.title).sort();
-    expect(titles).toEqual(['আরজি', 'আরজি (ব্যাকআপ থেকে)']);
-    const r2 = await restoreAll(await exportAll({}));
-    expect(r2.copies).toBe(0);
-    expect(r2.unchanged).toBe(2);
+    expect((await listDocs()).map((d) => d.title)).toEqual(['আরজি']); // no "(ব্যাকআপ থেকে)" copy
+    expect((await listVersions(a.id)).some((v) => v.reason === 'backup' && v.text === 'পুরোনো')).toBe(true);
+    // a backup made later elsewhere: this device's draft is updated, its old text kept in the history
+    const newer = await exportAll({});
+    newer.docs[0] = { ...newer.docs[0], content: para('অন্য ডিভাইসে আরো নতুন'), text: 'অন্য ডিভাইসে আরো নতুন', updatedAt: 3000 };
+    const r2 = await restoreAll(newer);
+    expect(r2).toMatchObject({ updated: 1, kept: 0, copies: 0, updatedIds: [a.id] });
+    expect((await getDoc(a.id))!.text).toBe('অন্য ডিভাইসে আরো নতুন');
+    expect((await listDocs())).toHaveLength(1);
+    expect((await listVersions(a.id)).some((v) => v.reason === 'backup' && v.text === 'নতুন লেখা')).toBe(true);
+    // restoring the same again changes nothing
+    const r3 = await restoreAll(await exportAll({}));
+    expect(r3).toMatchObject({ unchanged: 1, updated: 0, kept: 0 });
     expect((await loadBank())!.w['দলিল']).toBe(3);
   });
   it('rejects files that are not ProNotes backups', () => {
