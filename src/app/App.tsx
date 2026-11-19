@@ -13,6 +13,7 @@ import { setAnsiFamilies } from '../bijoy';
 import { MAX_FONT_BYTES, familyFor, registerFont, unregisterFont, LOCAL_ANSI, readFontStyle } from '../fonts';
 import { decideVoice, detectVoiceEnv } from '../voice';
 import { AUTO_MODEL } from '../ai/gemini';
+import { agoKey, agoN, type BackupLast, type ToastAction } from './backup-status';
 import { Settings, type FontInfo } from './Settings';
 import { InfoSheet, VersionsSheet } from './DocSheets';
 import type { ListPrefs } from './Sidebar';
@@ -275,16 +276,21 @@ export function App() {
     } catch { /* blocked */ }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-  const say = useCallback((m0: string, vars?: Record<string, string | number>) => {
+  // a message may carry buttons ("ডিভাইসে নামান"…): then it stays until one is pressed or it is closed
+  const [toastActs, setToastActs] = useState<ToastAction[]>([]);
+  const say = useCallback((m0: string, vars?: Record<string, string | number>, acts: ToastAction[] = []) => {
     const m = tr(m0, vars);
     setToast(m);
+    setToastActs(acts);
     toastNow.current = m;
     clearTimeout(toastTimer.current);
+    if (acts.length) return;
     toastTimer.current = window.setTimeout(() => {
       setToast('');
       toastNow.current = '';
     }, m.length > 40 ? 4500 : 2200);
   }, []);
+  const closeToast = () => { clearTimeout(toastTimer.current); setToast(''); setToastActs([]); toastNow.current = ''; };
   /** A message that must not push away one the user is reading (background events). */
   const ansiTypingRef = useRef(ansiTyping);
   ansiTypingRef.current = ansiTyping;
@@ -510,15 +516,27 @@ export function App() {
 
   // every setting on this device goes into the backup (store), and comes back on restore
   const prefs = () => ({ layout: layoutId, bangla, vf, oldReph, kb: kbVisible, format, voice, autoBijoy, ansiFont, enFont, store: allPrefs() });
+  // ---------- one backup system, two places: this device (a file) and Google Drive (decisions.md 74) ----------
+  // when each was last done, on this device only (never in a backup file)
+  const [lastBackup, setLastBackup0] = useState<BackupLast>(() => load('device.backupLast', {}));
+  const markBackup = (where: keyof BackupLast) => setLastBackup0((b) => { const n = { ...b, [where]: Date.now() }; save('device.backupLast', n); return n; });
+  // remind after so many hours without any backup (0 = never); Drive backs up by itself while connected
+  const [backupRemind, setBackupRemind0] = useState<number>(() => load('device.backupRemind', 24));
+  const setBackupRemind = (h: number) => { setBackupRemind0(h); save('device.backupRemind', h); };
+  const [autoDrive, setAutoDrive0] = useState<boolean>(() => load('device.autoDrive', true));
+  const setAutoDrive = (v: boolean) => { setAutoDrive0(v); save('device.autoDrive', v); };
+
   const backup = async (withKey = false) => {
     try {
       const f = await exportAll(prefs(), new Date(), withKey && geminiKey ? geminiKey : undefined);
       const ok = await saveFile(backupFileName(), new Blob([JSON.stringify(f)], { type: 'application/json' }));
-      if (ok) say('{n}টা ড্রাফট আর শব্দভান্ডারের ব্যাকআপ তৈরি হয়েছে', { n: f.docs.length });
+      if (ok) { markBackup('device'); say('{n}টা ড্রাফট আর শব্দভান্ডারের ব্যাকআপ তৈরি হয়েছে', { n: f.docs.length }); }
     } catch {
       say('ব্যাকআপ তৈরি করা যায়নি');
     }
   };
+  /** The way out when Drive cannot take the backup: the same backup, saved on this device. */
+  const toDevice: ToastAction = { id: 'to-device', label: 'ডিভাইসে নামান', run: () => void backup() };
   // ---------- Google Drive backups (the Gemini key never goes to Drive) ----------
   const [driveTick, setDriveTick] = useState(0);
   const [driveList, setDriveList] = useState<DriveBackup[] | null>(null);
@@ -530,11 +548,20 @@ export function App() {
   const setDeviceName = (s: string) => { setDeviceName0(s); save('device.name', s); };
   const thisDevice = fitDevice(deviceName) || autoDeviceName(); // the same text that goes to Drive, so "this device" matches
   const driveConnected = driveTick >= 0 && Boolean(currentToken());
-  const driveFail = (e: unknown) => {
+  /** A Drive job failed. When it was a backup, the way out is offered right there: save it on this device. */
+  const driveFail = (e: unknown, wasBackup = false) => {
     const c = e instanceof DriveError ? e.code : 'other';
-    if (c === 'auth') { setDriveTick((n) => n + 1); return say('Google-এর অনুমতির মেয়াদ শেষ; আবার যুক্ত করুন'); }
-    say(c === 'network' ? 'ইন্টারনেট নেই, Google Drive-এ যাওয়া গেল না' : c === 'quota' ? 'Google Drive এখন নিচ্ছে না (জায়গা বা সীমা); পরে চেষ্টা করুন' : 'Google Drive-এ কাজটা হলো না');
+    const reconnect: ToastAction = { id: 'reconnect', label: 'আবার যুক্ত করুন', run: () => void driveConnect(wasBackup ? 'backup' : 'list') };
+    if (c === 'auth') setDriveTick((n) => n + 1);
+    if (!wasBackup) {
+      if (c === 'auth') return say('Google-এর অনুমতির মেয়াদ শেষ; আবার যুক্ত করুন', undefined, [reconnect]);
+      return say(c === 'network' ? 'ইন্টারনেট নেই, Google Drive-এ যাওয়া গেল না' : c === 'quota' ? 'Google Drive এখন নিচ্ছে না (জায়গা বা সীমা); পরে চেষ্টা করুন' : 'Google Drive-এ কাজটা হলো না');
+    }
+    if (c === 'auth') return say('Google-এর অনুমতির মেয়াদ শেষ; ব্যাকআপ Drive-এ যায়নি', undefined, [reconnect, toDevice]);
+    say(c === 'network' ? 'ইন্টারনেট নেই, ব্যাকআপ Drive-এ যায়নি' : c === 'quota' ? 'Google Drive এখন নিচ্ছে না (জায়গা বা সীমা); ব্যাকআপ যায়নি' : 'Google Drive-এ ব্যাকআপ হলো না', undefined, [toDevice]);
   };
+
+
   const driveRefresh = async () => {
     const tk = currentToken();
     if (!tk) return setDriveTick((n) => n + 1);
@@ -545,9 +572,11 @@ export function App() {
     await flushAll(); // the page leaves for Google's sign-in and comes back
     signIn(after);
   };
-  const driveBackup = async () => {
+  /** quiet: the automatic backup — no message on success, none on failure (the reminder covers a long gap). */
+  const driveBackup = async (quiet = false) => {
+    if (!navigator.onLine) return quiet ? undefined : say('ইন্টারনেট নেই, ব্যাকআপ Drive-এ যাবে না', undefined, [toDevice]);
     const tk = currentToken();
-    if (!tk) return driveConnect('backup');
+    if (!tk) return quiet ? undefined : driveConnect('backup');
     setDriveBusy(true);
     try {
       await flushAll();
@@ -555,10 +584,60 @@ export function App() {
       await uploadBackup(tk, driveBackupName(), JSON.stringify(f), undefined, thisDevice);
       // only after the new one is safely in Drive: the oldest beyond the chosen number go to the Trash
       const gone = await pruneBackups(tk, driveKeep).catch(() => 0);
-      say(gone ? '{n}টা ড্রাফট Google Drive-এ রাখা হলো; পুরোনো {m}টা ব্যাকআপ Trash-এ গেল' : '{n}টা ড্রাফট Google Drive-এ রাখা হলো', { n: f.docs.length, m: gone });
+      markBackup('drive');
+      if (!quiet) say(gone ? '{n}টা ড্রাফট Google Drive-এ রাখা হলো; পুরোনো {m}টা ব্যাকআপ Trash-এ গেল' : '{n}টা ড্রাফট Google Drive-এ রাখা হলো', { n: f.docs.length, m: gone });
       setDriveList(await listBackups(tk));
-    } catch (e) { driveFail(e); } finally { setDriveBusy(false); }
+    } catch (e) { if (!quiet) driveFail(e, true); } finally { setDriveBusy(false); }
   };
+  /** A Drive backup saved as a file on this device (to keep, or to restore from the file later). */
+  const driveDownload = async (b: DriveBackup) => {
+    const tk = currentToken();
+    if (!tk) return driveConnect('list');
+    try {
+      const json = await downloadBackup(tk, b.id);
+      if (await saveFile(b.name, new Blob([json], { type: 'application/json' }))) say('ব্যাকআপ ফাইলটা ডিভাইসে নামানো হলো');
+    } catch (e) { driveFail(e); }
+  };
+  // while connected to Drive: a quiet backup when the drafts changed since the last one — when ProNotes
+  // goes to the background, and every 15 minutes
+  const latestChange = docs.reduce((m, d) => Math.max(m, d.updatedAt), 0);
+  const autoRef = useRef({ run: () => {} });
+  autoRef.current.run = () => {
+    if (!autoDrive || !driveEnabled() || !currentToken() || driveBusy || !navigator.onLine) return;
+    if (latestChange > (lastBackup.drive ?? 0)) void driveBackup(true);
+  };
+  useEffect(() => {
+    const onHide = () => { if (document.visibilityState === 'hidden') autoRef.current.run(); };
+    document.addEventListener('visibilitychange', onHide);
+    const t = window.setInterval(() => autoRef.current.run(), 15 * 60 * 1000);
+    return () => { document.removeEventListener('visibilitychange', onHide); clearInterval(t); };
+  }, []);
+  // no backup for too long: say so when ProNotes opens or comes back, with the ways to do it now
+  const remindRef = useRef({ run: (_tries?: number) => {} });
+  remindRef.current.run = (tries = 0) => {
+    if (!backupRemind || !docs.length) return;
+    // another message is up (e.g. "works offline now"): ask a little later instead
+    if (toastNow.current) { if (tries < 6) window.setTimeout(() => remindRef.current.run(tries + 1), 5000); return; }
+    // a new install is not asked at once: the clock starts on the first day ProNotes is used here
+    let first = load('device.firstSeen', 0);
+    if (!first) save('device.firstSeen', (first = Date.now()));
+    const last = Math.max(lastBackup.drive ?? 0, lastBackup.device ?? 0, first);
+    const now = Date.now();
+    if (now - last < backupRemind * 3600_000 || now < load('device.backupSnooze', 0)) return;
+    const acts: ToastAction[] = [
+      ...(driveEnabled() && navigator.onLine ? [{ id: 'remind-drive', label: 'Drive-এ নিন', run: () => void driveBackup() }] : []),
+      { id: 'remind-device', label: 'ডিভাইসে নিন', run: () => void backup() },
+      { id: 'remind-later', label: 'পরে', run: () => save('device.backupSnooze', Date.now() + 12 * 3600_000) },
+    ];
+    if (!lastBackup.drive && !lastBackup.device) say('এখনো কোনো ব্যাকআপ নেওয়া হয়নি', undefined, acts);
+    else say('শেষ ব্যাকআপ {ago}', { ago: tr(agoKey(last, now), { n: agoN(last, now) }) }, acts);
+  };
+  useEffect(() => {
+    const t = window.setTimeout(() => remindRef.current.run(), 3000);
+    const onShow = () => { if (document.visibilityState === 'visible') remindRef.current.run(); };
+    document.addEventListener('visibilitychange', onShow);
+    return () => { clearTimeout(t); document.removeEventListener('visibilitychange', onShow); };
+  }, [docs.length > 0]); // eslint-disable-line react-hooks/exhaustive-deps
   const driveRestore = async (b: DriveBackup) => {
     const tk = currentToken();
     if (!tk) return driveConnect('list');
@@ -887,7 +966,8 @@ export function App() {
 
 
       {settingsOpen && (
-        <Settings drive={{ enabled: driveEnabled(), connected: driveConnected, busy: driveBusy, list: driveList, onConnect: () => void driveConnect('list'), onBackup: () => void driveBackup(), onRefresh: () => void driveRefresh(), onRestore: (b) => void driveRestore(b), onDelete: (b) => void driveDelete(b), keep: driveKeep, setKeep: setDriveKeep, deviceName, setDeviceName, autoDevice: autoDeviceName(), thisDevice, onDisconnect: () => void driveDisconnect() }}
+        <Settings drive={{ enabled: driveEnabled(), connected: driveConnected, busy: driveBusy, list: driveList, onConnect: () => void driveConnect('list'), onBackup: () => void driveBackup(), onDownload: (b) => void driveDownload(b), onRefresh: () => void driveRefresh(), onRestore: (b) => void driveRestore(b), onDelete: (b) => void driveDelete(b), keep: driveKeep, setKeep: setDriveKeep, deviceName, setDeviceName, autoDevice: autoDeviceName(), thisDevice, onDisconnect: () => void driveDisconnect(), auto: autoDrive, setAuto: setAutoDrive }}
+          backupInfo={{ last: lastBackup, remind: backupRemind, setRemind: setBackupRemind }}
           onClose={() => setSettingsOpen(false)} platform={coarse || phone ? 'mobile' : 'desktop'} vf={vf} setVf={setVf} oldReph={oldReph} setOldReph={setOldReph}
           keyboardLayouts={allKeyboardLayouts} hiddenDesktop={hiddenDesktop} setHiddenDesktop={setHiddenDesktop}
           hiddenMobile={hiddenMobile} setHiddenMobile={setHiddenMobile}
@@ -927,7 +1007,15 @@ export function App() {
         </div>
       )}
 
-      {toast && <div className="toast" role="status" data-testid="toast">{toast}</div>}
+      {toast && (
+        <div className={'toast' + (toastActs.length ? ' acts' : '')} role="status" data-testid="toast">
+          <span>{toast}</span>
+          {toastActs.map((a) => (
+            <button key={a.id} type="button" className="btn small" data-testid={'toast-' + a.id} onClick={() => { closeToast(); a.run(); }}>{tr(a.label)}</button>
+          ))}
+          {toastActs.length > 0 && <button type="button" className="toast-x" aria-label={tr('বন্ধ')} data-testid="toast-close" onClick={closeToast}>✕</button>}
+        </div>
+      )}
     </div>
     </I18nContext.Provider>
   );

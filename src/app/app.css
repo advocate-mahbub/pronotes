@@ -1057,3 +1057,10 @@ body:has([data-testid="osk"]) .sug.empty { display: flex; min-height: 46px; }
 .kb .k.pad { display: flex; flex-direction: column; align-items: center; justify-content: center; }
 .kb.pad-anna .kb-row:last-child .k.pad { flex: 1.2 1 0; }
 .kb.pad-anna .kb-row:last-child .k.w6 { flex: 3 1 0; }
+/* a message with buttons (backup fallbacks): stays until a button or ✕ */
+.toast.acts { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; pointer-events: auto; width: min(92vw, 520px); max-width: none; border-radius: 16px; padding: 12px 40px 12px 14px; text-align: left; }
+.toast.acts > span { flex: 1 1 100%; }
+.toast.acts .btn.small { flex: 1 1 auto; background: var(--bg); color: var(--fg); border-color: transparent; }
+.toast .toast-x { position: absolute; top: 6px; right: 6px; background: none; border: 0; color: inherit; font-size: 16px; width: 32px; height: 32px; cursor: pointer; }
+.backup-status { margin: 0 0 8px; }
+.backup-two > .btn { flex: 1 1 0; }
