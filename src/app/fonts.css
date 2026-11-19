@@ -8,3 +8,6 @@
 @import '@fontsource/hind-siliguri/700.css';
 @import '@fontsource/noto-serif-bengali/400.css';
 @import '@fontsource/noto-serif-bengali/700.css';
+/* Kalpurush (SIL OFL 1.1, src/assets/fonts/Kalpurush-OFL.txt): the app's own Bangla font for menus and the
+   keyboard keys (decisions.md 80), and a document font available on every device */
+@font-face { font-family: "Kalpurush"; src: url("../assets/fonts/kalpurush.woff2") format("woff2"); font-weight: 400; font-display: swap; }
