@@ -1,0 +1,1 @@
+rm -fields-backup-restore.patch
