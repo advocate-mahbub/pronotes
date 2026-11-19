@@ -69,7 +69,7 @@ export function readFontFamily(buf: ArrayBuffer): string | null {
 
 /** Family name for an uploaded font: from the file, else from the file name. */
 export function familyFor(buf: ArrayBuffer, fileName: string): string {
-  return (readFontFamily(buf) || fileName.replace(/\.(ttf|otf|woff2?|ttc)$/i, '')).replace(/["'\\;{}<>]/g, '').trim() || 'Custom font';
+  return (readFontFamily(buf) || fileName.replace(/\.(ttf|otf|woff2?|ttc|otc|eot)$/i, '')).replace(/["'\\;{}<>]/g, '').trim() || 'Custom font';
 }
 
 export interface FontStyle {
@@ -115,4 +115,75 @@ export function readFontStyle(buf: ArrayBuffer, fileName = ''): FontStyle {
     /* fall back to the name */
   }
   return byName();
+}
+
+/**
+ * Turn any font file into files the browser can use (decisions.md 80). The kind is read from the bytes, not
+ * the name: .ttf/.otf/.woff/.woff2 as they are; a collection (.ttc/.otc) is split into its fonts; an
+ * Embedded OpenType (.eot) is unwrapped when it is not MicroType-compressed. Bitmap (.fon), Type 1
+ * (.pfb/.pfa), Mac suitcase (.dfont) and other kinds get a clear "no".
+ */
+export type PreparedFonts = { ok: true; files: { data: ArrayBuffer; fileName: string }[] } | { ok: false; reason: string };
+
+export function prepareFontFile(buf: ArrayBuffer, fileName: string): PreparedFonts {
+  const kind = fontKind(buf);
+  if (kind === 'ttf' || kind === 'otf' || kind === 'woff' || kind === 'woff2') return { ok: true, files: [{ data: buf, fileName }] };
+  if (kind === 'collection') {
+    try {
+      const files = splitCollection(buf).map((data, i, all) => ({ data, fileName: all.length > 1 ? fileName.replace(/\.(ttc|otc)$/i, '') + '-' + (i + 1) + '.ttf' : fileName }));
+      return files.length ? { ok: true, files } : { ok: false, reason: 'এই ফন্ট-সংগ্রহে (.ttc) কোনো ফন্ট পাওয়া গেল না' };
+    } catch {
+      return { ok: false, reason: 'এই ফন্ট-সংগ্রহ (.ttc) খোলা গেল না' };
+    }
+  }
+  const eot = unwrapEot(buf);
+  if (eot === 'compressed') return { ok: false, reason: 'এই .eot ফাইলটা সংকুচিত (MicroType); ব্রাউজারে খোলা যায় না — .ttf বা .woff2 ফাইলটা যোগ করুন' };
+  if (eot) return { ok: true, files: [{ data: eot, fileName: fileName.replace(/\.eot$/i, '') + '.ttf' }] };
+  const b = new Uint8Array(buf, 0, Math.min(buf.byteLength, 16));
+  if (b[0] === 0x4d && b[1] === 0x5a) return { ok: false, reason: 'এটা পুরোনো Windows bitmap ফন্ট (.fon); ব্রাউজার এটা দেখাতে পারে না — একই ফন্টের .ttf বা .otf ফাইল যোগ করুন' };
+  if ((b[0] === 0x80 && b[1] === 0x01) || /^%!(PS-AdobeFont|FontType1)/.test(String.fromCharCode(...b))) return { ok: false, reason: 'এটা Type 1 ফন্ট (.pfb/.pfa); ব্রাউজার এটা দেখাতে পারে না — .otf বা .ttf ফাইল যোগ করুন' };
+  return { ok: false, reason: 'এই ফাইলটা ফন্ট হিসেবে খোলা গেল না (চলে: .ttf, .otf, .woff, .woff2, .ttc, .otc, .eot)' };
+}
+
+/** Each font of a TrueType/OpenType collection as a standalone sfnt file. */
+export function splitCollection(buf: ArrayBuffer): ArrayBuffer[] {
+  const v = new DataView(buf);
+  if (v.getUint32(0) !== 0x74746366) return [];
+  const n = v.getUint32(8);
+  const out: ArrayBuffer[] = [];
+  for (let i = 0; i < n && i < 64; i++) {
+    const off = v.getUint32(12 + i * 4);
+    const numTables = v.getUint16(off + 4);
+    const recs = Array.from({ length: numTables }, (_, k) => {
+      const r = off + 12 + k * 16;
+      return { tag: v.getUint32(r), sum: v.getUint32(r + 4), at: v.getUint32(r + 8), len: v.getUint32(r + 12) };
+    });
+    const head = 12 + numTables * 16;
+    const size = recs.reduce((s, r) => s + ((r.len + 3) & ~3), head);
+    const dst = new Uint8Array(size);
+    const dv = new DataView(dst.buffer);
+    dst.set(new Uint8Array(buf, off, 12), 0);
+    let pos = head;
+    recs.forEach((r, k) => {
+      const at = 12 + k * 16;
+      dv.setUint32(at, r.tag); dv.setUint32(at + 4, r.sum); dv.setUint32(at + 8, pos); dv.setUint32(at + 12, r.len);
+      dst.set(new Uint8Array(buf, r.at, r.len), pos);
+      pos += (r.len + 3) & ~3;
+    });
+    out.push(dst.buffer);
+  }
+  return out;
+}
+
+/** The TrueType data inside an .eot file; 'compressed' for MicroType Express; null when it is not an .eot. */
+export function unwrapEot(buf: ArrayBuffer): ArrayBuffer | 'compressed' | null {
+  if (buf.byteLength < 82) return null;
+  const v = new DataView(buf);
+  const eotSize = v.getUint32(0, true), dataSize = v.getUint32(4, true), version = v.getUint32(8, true), flags = v.getUint32(12, true);
+  // MagicNumber 0x504C at offset 34; versions 0x00010000, 0x00020001, 0x00020002
+  if (v.getUint16(34, true) !== 0x504c || eotSize !== buf.byteLength || ![0x10000, 0x20001, 0x20002].includes(version) || dataSize > eotSize) return null;
+  if (flags & 0x4) return 'compressed';
+  const data = new Uint8Array(buf.slice(eotSize - dataSize));
+  if (flags & 0x10000000) for (let i = 0; i < data.length; i++) data[i] ^= 0x50;
+  return fontKind(data.buffer) === 'ttf' || fontKind(data.buffer) === 'otf' ? data.buffer : null;
 }

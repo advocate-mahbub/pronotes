@@ -41,7 +41,7 @@ export function fontMatches(name: string, query: string): boolean {
   return Object.entries(FONT_ALIASES).some(([bn, en]) => bn.startsWith(query.trim()) || query.trim().startsWith(bn) ? n.includes(en) : false);
 }
 /** Loaded by the app itself, always available. */
-export const WEB_FONTS = ['Noto Serif Bengali', 'Noto Sans Bengali', 'Hind Siliguri'];
+export const WEB_FONTS = ['Kalpurush', 'Noto Serif Bengali', 'Noto Sans Bengali', 'Hind Siliguri'];
 /** English fonts offered for the English parts of Bijoy text pasted into Word. */
 export const ENGLISH_FONTS = ['Times New Roman', 'Arial', 'Calibri', 'Cambria', 'Georgia'];
 
@@ -63,6 +63,9 @@ export function isFontAvailable(name: string, ansi = false): boolean {
 }
 
 const registered = new Map<string, FontFace>();
+/** family → a blob: URL of its upright, normal-weight file (for the app's own font, app-font.ts). */
+const familyFiles = new Map<string, { id: string; url: string; score: number }>();
+export const fontFileUrl = (family: string): string | undefined => familyFiles.get(family)?.url;
 
 /** Make an uploaded font usable under its family name. Throws when the file is not a font. */
 export async function registerFont(f: Pick<StoredFont, 'id' | 'family' | 'data'> & { fileName?: string }): Promise<void> {
@@ -74,15 +77,25 @@ export async function registerFont(f: Pick<StoredFont, 'id' | 'family' | 'data'>
   if (old) document.fonts.delete(old);
   document.fonts.add(face);
   registered.set(f.id, face);
+  // the plainest file of a family stands for it as the app font: upright before italic, 400 nearest
+  const score = (st.style === 'italic' ? 1000 : 0) + Math.abs(st.weight - 400);
+  const have = familyFiles.get(f.family);
+  if (!have || score < have.score || have.id === f.id) {
+    if (have) URL.revokeObjectURL(have.url);
+    familyFiles.set(f.family, { id: f.id, url: URL.createObjectURL(new Blob([f.data])), score });
+  }
 }
 
 export function unregisterFont(id: string): void {
   const face = registered.get(id);
   if (face) document.fonts.delete(face);
   registered.delete(id);
+  for (const [fam, v] of familyFiles) if (v.id === id) { URL.revokeObjectURL(v.url); familyFiles.delete(fam); }
 }
 
 export const MAX_FONT_BYTES = 15 * 1024 * 1024;
 
 /** CSS font-family value for a name. */
 export const cssFamily = (name: string) => '"' + name.replace(/"/g, '') + '"';
+
+export * from './app-font';

@@ -55,8 +55,11 @@ export interface Version {
   title: string;
   content: JSONContent;
   text: string;
-  /** 'auto' = timed snapshot, 'restore' = taken just before an older version was brought back, 'manual' */
-  reason: 'auto' | 'restore' | 'manual';
+  /**
+   * 'auto' = timed snapshot, 'restore' = taken just before an older version was brought back, 'manual',
+   * 'backup' = the side that lost when a backup was restored over this draft (decisions.md 78)
+   */
+  reason: 'auto' | 'restore' | 'manual' | 'backup';
 }
 
 /** A font file the user added (kept only in this browser; never put in backups). */
@@ -67,7 +70,8 @@ export interface StoredFont {
   /** File name the user picked. */
   fileName: string;
   /** 'uni' = Unicode Bangla font, 'ansi' = Bijoy/ANSI font (SutonnyMJ etc.). */
-  role: 'uni' | 'ansi';
+  /** uni = Bangla Unicode, ansi = Bijoy, en = English (decisions.md 79) */
+  role: 'uni' | 'ansi' | 'en';
   data: ArrayBuffer;
   addedAt: number;
 }
@@ -312,6 +316,11 @@ export async function listVersions(docId: string): Promise<Version[]> {
 async function deleteVersions(docId: string): Promise<void> {
   const d = await db();
   for (const v of await d.getAllFromIndex('versions', 'docId', docId)) await d.delete('versions', v.id);
+}
+
+/** Keep a state of a draft in its version history (used by restore: nothing is thrown away). */
+export async function keepVersion(doc: Doc, reason: Version['reason'], now = Date.now()): Promise<Version> {
+  return addVersion(doc, reason, now);
 }
 
 async function addVersion(doc: Doc, reason: Version['reason'], now: number): Promise<Version> {

@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { toBijoy } from '../bijoy';
-import { DEFAULT_FORMAT, type DocFormat } from '../docx-export/format';
-import { ENGLISH_FONTS, LOCAL_ANSI, LOCAL_UNI, WEB_FONTS, isFontAvailable } from '../fonts';
+import type { DocFormat } from '../docx-export/format';
+import { ENGLISH_FONTS, LOCAL_ANSI, LOCAL_UNI, WEB_FONTS, isFontAvailable, DEFAULT_APP_BN, type AppFonts } from '../fonts';
 import { TOGGLE_KEYS, ANSI_KEYS, type Layout, type ToggleKey, type AnsiKey } from '../bornona-engine';
 import type { VoicePrefs } from './prefs-types';
 import { layoutAccept } from './layout-files';
@@ -12,13 +12,14 @@ import { LIVE_MODEL as LIVE_DEFAULT } from '../ai/live';
 import { KEEP_CHOICES, type DriveBackup } from '../storage/gdrive';
 import type { BackupLast } from './backup-status';
 import type { VoiceModes } from './voice-modes';
+import { NumberField } from './NumberField';
 import { WORD_SHORTCUTS, showKeys } from '../editor/word-shortcuts';
 
 export interface FontInfo {
   id: string;
   family: string;
   fileName: string;
-  role: 'uni' | 'ansi';
+  role: 'uni' | 'ansi' | 'en';
   /** Read from the file: italic, and weight (400 regular, 700 bold). */
   italic?: boolean;
   weight?: number;
@@ -48,7 +49,7 @@ interface Props {
   format: DocFormat;
   setFormat: (f: DocFormat) => void;
   fonts: FontInfo[];
-  onAddFont: (f: File, role: 'uni' | 'ansi') => void;
+  onAddFont: (f: File, role: 'uni' | 'ansi' | 'en') => void | Promise<void>;
   onDeleteFont: (id: string) => void;
   ansiFont: string;
   setAnsiFont: (s: string) => void;
@@ -66,6 +67,8 @@ interface Props {
   app: AppInfo;
   uiLang: UiLang;
   setUiLang: (l: UiLang) => void;
+  appFonts: AppFonts;
+  setAppFonts: (f: AppFonts) => void;
   fixChandra: boolean;
   setFixChandra: (v: boolean) => void;
   toggleKey: ToggleKey;
@@ -373,13 +376,13 @@ export interface AppInfo {
 const FORMAT_NAME = { avro: 'Avro', openbangla: 'OpenBangla', kmx: 'Keyman' } as const;
 
 /** Hidden file input + button. */
-function FileButton(p: { label: string; accept?: string; testid: string; onFile: (f: File) => void; primary?: boolean }) {
+function FileButton(p: { label: string; accept?: string; testid: string; onFile: (f: File) => void | Promise<void>; primary?: boolean; multiple?: boolean }) {
   const ref = useRef<HTMLInputElement>(null);
   return (
     <>
       <button type="button" className={'btn' + (p.primary ? ' primary' : '')} data-testid={p.testid + '-btn'} onClick={() => ref.current?.click()}>{p.label}</button>
-      <input ref={ref} type="file" accept={p.accept} hidden data-testid={p.testid + '-file'}
-        onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ''; if (f) p.onFile(f); }} />
+      <input ref={ref} type="file" accept={p.accept} hidden data-testid={p.testid + '-file'} multiple={p.multiple}
+        onChange={async (e) => { const fs = [...(e.target.files ?? [])]; e.target.value = ''; for (const f of fs) await p.onFile(f); }} />
     </>
   );
 }
@@ -405,7 +408,8 @@ function ArmedButton(p: { label: string; armedLabel: string; testid: string; onC
   );
 }
 
-const FONT_ACCEPT = '.ttf,.otf,.woff,.woff2,font/ttf,font/otf,font/woff,font/woff2';
+// every font kind a browser can show; the MIME types help iPad's Files picker, which greys out what it does not know
+const FONT_ACCEPT = '.ttf,.otf,.woff,.woff2,.ttc,.otc,.eot,.fon,.pfb,.pfa,font/*,application/font-sfnt,application/x-font-ttf,application/x-font-otf,application/x-font-truetype,application/vnd.ms-fontobject,application/font-woff,application/octet-stream';
 
 export function Settings(p: Props) {
   const [loupe, setLoupe] = useState<boolean>(() => load('kb.loupe', true));
@@ -420,6 +424,9 @@ export function Settings(p: Props) {
   const sv = (patch: Partial<VoicePrefs>) => p.setVoice({ ...p.voice, ...patch });
   const [withKey, setWithKey] = useState(false);
   // families that have only italic or bold files: normal text would be drawn slanted or heavy
+  // the app's own font: Unicode Bangla fonts here (own files first), English ones; never ANSI
+  const appBn = [...new Set([p.appFonts.bn, DEFAULT_APP_BN, ...uniFonts.map((f) => f.family), ...WEB_FONTS, ...LOCAL_UNI.filter((n) => isFontAvailable(n))])].filter(Boolean);
+  const appEn = [...new Set([p.appFonts.en, ...p.fonts.filter((f) => f.role === 'en').map((f) => f.family), ...ENGLISH_FONTS])].filter(Boolean);
   const noRegular = [...new Set(p.fonts.map((f) => f.family))].filter((fam) => !p.fonts.some((f) => f.family === fam && !f.italic && (f.weight ?? 400) < 600));
   const hiddenOf = (platform: 'desktop' | 'mobile') => (platform === 'desktop' ? p.hiddenDesktop : p.hiddenMobile);
   const setLayoutShown = (platform: 'desktop' | 'mobile', id: string, shown: boolean) => {
@@ -579,14 +586,14 @@ export function Settings(p: Props) {
             </label>
             <label className="srow"><span>{t('English ড্রাফট')}</span>
               <select data-testid="fmt-font-en" value={p.format.fontEn} onChange={(e) => p.setFormat({ ...p.format, fontEn: e.target.value })}>
-                {[...new Set([p.format.fontEn, ...ENGLISH_FONTS])].map((f) => <option key={f} value={f}>{f}</option>)}
+                {[...new Set([p.format.fontEn, ...ENGLISH_FONTS, ...p.fonts.filter((f) => f.role === 'en').map((f) => f.family)])].map((f) => <option key={f} value={f}>{f}</option>)}
               </select>
             </label>
             <label className="srow"><span>{t('মূল লেখা (pt)')}</span>
-              <input type="number" min={8} max={40} step={0.5} data-testid="fmt-size" value={p.format.size} onChange={(e) => p.setFormat({ ...p.format, size: Number(e.target.value) || DEFAULT_FORMAT.size })} />
+              <NumberField min={8} max={40} step={0.5} steppers testid="fmt-size" value={p.format.size} onChange={(n) => p.setFormat({ ...p.format, size: n })} />
             </label>
             <label className="srow"><span>{t('বড় শিরোনাম (pt)')}</span>
-              <input type="number" min={8} max={60} step={0.5} data-testid="fmt-title" value={p.format.titleSize} onChange={(e) => p.setFormat({ ...p.format, titleSize: Number(e.target.value) || DEFAULT_FORMAT.titleSize })} />
+              <NumberField min={8} max={60} step={0.5} steppers testid="fmt-title" value={p.format.titleSize} onChange={(n) => p.setFormat({ ...p.format, titleSize: n })} />
             </label>
             <label className="srow"><span>{t('লাইন স্পেসিং')}</span>
               <select data-testid="fmt-line" value={p.format.lineSpacing} onChange={(e) => p.setFormat({ ...p.format, lineSpacing: Number(e.target.value) })}>
@@ -608,11 +615,13 @@ export function Settings(p: Props) {
             </label>
             <Check testid="auto-bijoy" checked={p.autoBijoy} onChange={p.setAutoBijoy} label={t('পেস্ট করা বিজয় লেখা ইউনিকোডে')} info="বিজয় লেখা পেস্ট করলে নিজে থেকে ইউনিকোডে বদলাও" />
           </Group>
-          <Group title={t('নিজের ফন্ট ফাইল')} info="যে ফন্ট এই ডিভাইসে নেই (যেমন iPad-এ SutonnyOMJ), তার ফাইল (.ttf, .otf, .woff) যোগ করুন, তাহলে পর্দায় সেই ফন্টেই দেখাবে। ফাইলটা শুধু এই ডিভাইসে থাকে, ব্যাকআপে যায় না।">
+          <Group title={t('নিজের ফন্ট ফাইল')} info="যে ফন্ট এই ডিভাইসে নেই (যেমন iPad-এ SutonnyOMJ), তার ফাইল (.ttf, .otf, .woff, .woff2, .ttc, .eot; একসাথে কয়েকটা) যোগ করুন, তাহলে পর্দায় সেই ফন্টেই দেখাবে। Google Drive চালু থাকলে ফাইলটা আপনার Drive-এর “ProNotes Fonts” ফোল্ডারেও রাখা হয়, অন্য ডিভাইসে Drive চালু করলে নিজে থেকে নেমে আসে। GitHub বা অন্য কোথাও যায় না।">
             <div className="row">
-              <FileButton label={t('ইউনিকোড ফন্ট যোগ করুন')} accept={FONT_ACCEPT} testid="font-add-uni" onFile={(f) => p.onAddFont(f, 'uni')} />
-              <FileButton label={t('বিজয় (ANSI) ফন্ট যোগ করুন')} accept={FONT_ACCEPT} testid="font-add-ansi" onFile={(f) => p.onAddFont(f, 'ansi')} />
+              <FileButton label={t('ইউনিকোড ফন্ট যোগ করুন')} accept={FONT_ACCEPT} testid="font-add-uni" multiple onFile={(f) => p.onAddFont(f, 'uni')} />
+              <FileButton label={t('বিজয় (ANSI) ফন্ট যোগ করুন')} accept={FONT_ACCEPT} testid="font-add-ansi" multiple onFile={(f) => p.onAddFont(f, 'ansi')} />
+              <FileButton label={t('English ফন্ট যোগ করুন')} accept={FONT_ACCEPT} testid="font-add-en" multiple onFile={(f) => p.onAddFont(f, 'en')} />
             </div>
+            <p className="note">{t('মেনু আর কিবোর্ডের কী কোন ফন্টে দেখাবে')} — <button type="button" className="linkbtn" data-testid="font-to-app" onClick={() => setTab('app')}>{t('অ্যাপ')} → {t('অ্যাপের ফন্ট')}</button></p>
             {noRegular.length > 0 && (
               <p className="note warn" data-testid="font-no-regular">{t('{f}: শুধু Italic/Bold ফাইল আছে, সাধারণ (Regular) ফাইল নেই — তাই সাধারণ লেখাও বাঁকা বা মোটা দেখাবে। Regular ফাইলটা যোগ করুন।', { f: noRegular.join(', ') })}</p>
             )}
@@ -622,8 +631,8 @@ export function Settings(p: Props) {
                   <li key={f.id}>
                     {/* the name in the app's font; the sample in the font itself (Bijoy-encoded for ANSI, so it reads as Bangla); in an English menu the sample is the name */}
                     <span className="fl-name">{f.family} <small>{styleName(f)}</small></span>
-                    <span className="fl-sample" style={{ fontFamily: `"${f.family}", var(--f-sans)`, fontStyle: f.italic ? 'italic' : 'normal', fontWeight: f.weight ?? 400 }}>{en ? 'Aa Bb 123' : f.role === 'ansi' ? SAMPLE_BIJOY : 'আমার সোনার বাংলা'}</span>
-                    <small>{f.role === 'ansi' ? 'ANSI' : t('ইউনিকোড')}</small>
+                    <span className="fl-sample" style={{ fontFamily: `"${f.family}", var(--f-sans)`, fontStyle: f.italic ? 'italic' : 'normal', fontWeight: f.weight ?? 400 }}>{en || f.role === 'en' ? 'Aa Bb 123' : f.role === 'ansi' ? SAMPLE_BIJOY : 'আমার সোনার বাংলা'}</span>
+                    <small>{f.role === 'ansi' ? 'ANSI' : f.role === 'en' ? 'English' : t('ইউনিকোড')}</small>
                     <ArmedButton label={t('মুছুন')} armedLabel={t('নিশ্চিত?')} testid={'font-del-' + f.id} onConfirm={() => p.onDeleteFont(f.id)} />
                   </li>
                 ))}
@@ -661,7 +670,23 @@ export function Settings(p: Props) {
               <button type="button" aria-pressed={p.uiLang === 'en'} data-testid="ui-en" onClick={() => p.setUiLang('en')}>English</button>
             </div>
           </Group>
-          <Group title={t('ব্যাকআপ')} info="সব ড্রাফট (ট্র্যাশসহ), শেখা শব্দ, নিজের লেআউট, ভয়েসের সংশোধন আর সেটিংস একটা ফাইলে (ফন্ট ফাইল বাদে)। দুই জায়গায় রাখা যায়: এই ডিভাইসে (iPad-এ Files বা iCloud Drive) আর আপনার নিজের Google Drive-এর “ProNotes Backups” ফোল্ডারে। Drive-এ Gemini key কখনো যায় না। ফেরত আনলে আগের কিছু মুছবে না; বদলে যাওয়া ড্রাফট আলাদা কপি হয়ে আসবে।">
+          <Group title={t('অ্যাপের ফন্ট')} info="মেনু, বাটন আর কিবোর্ডের কী-এর লেখার ফন্ট — বাংলা আর English আলাদা। ডকুমেন্টের লেখার ফন্ট আলাদা (হোম → ফন্টের ঘর)। বিজয় (ANSI) ফন্ট এখানে আসে না: মেনুর লেখা ইউনিকোডে, বিজয় ফন্টে ভেঙে যেত। Kalpurush অ্যাপের সাথেই আসে (খোলা লাইসেন্স, SIL OFL)।">
+            <label className="srow"><span>{t('বাংলা')}</span>
+              <select data-testid="app-font-bn" value={p.appFonts.bn} onChange={(e) => p.setAppFonts({ ...p.appFonts, bn: e.target.value })}>
+                {appBn.map((n) => <option key={n} value={n}>{n === DEFAULT_APP_BN ? n + ' (' + t('ডিফল্ট') + ')' : n}</option>)}
+              </select>
+            </label>
+            <label className="srow"><span>English</span>
+              <select data-testid="app-font-en" value={p.appFonts.en} onChange={(e) => p.setAppFonts({ ...p.appFonts, en: e.target.value })}>
+                <option value="">{t('ডিভাইসের নিজের')}</option>
+                {appEn.map((n) => <option key={n} value={n}>{n}</option>)}
+              </select>
+            </label>
+            <p className="app-font-sample" data-testid="app-font-sample">{en ? 'Aa Bb 123' : 'আমার সোনার বাংলা · ক্ষ ক্ত ন্ত্র · Aa Bb 123'}</p>
+            <p className="note">{t('তালিকায় নেই? ফন্ট ফাইল যোগ করুন')} — <button type="button" className="linkbtn" data-testid="app-font-add" onClick={() => setTab('font')}>{t('ফন্ট ও বিজয়')}</button></p>
+          </Group>
+          <Group title={t('ব্যাকআপ')} info="সব ড্রাফট (ট্র্যাশসহ), শেখা শব্দ, নিজের লেআউট, ভয়েসের সংশোধন আর সেটিংস একটা ফাইলে (ফন্ট ফাইল বাদে)। দুই জায়গায় রাখা যায়: এই ডিভাইসে (iPad-এ Files বা iCloud Drive) আর আপনার নিজের Google Drive-এর “ProNotes Backups” ফোল্ডারে। Drive-এ Gemini key কখনো যায় না। ফেরত আনলে একই ড্রাফট আলাদা কপি হয় না: যেটা পরে বদলানো হয়েছে সেটা থাকে, অন্যটা ড্রাফটের ভার্সন-ইতিহাসে রাখা হয়, তাই কিছু হারায় না।" fold={{ id: 'backup', summary: !p.backupInfo.last.drive && !p.backupInfo.last.device ? t('এখনো কোনো ব্যাকআপ নেওয়া হয়নি')
+            : t('শেষ ব্যাকআপ') + ': ' + formatDateTime(Math.max(p.backupInfo.last.drive ?? 0, p.backupInfo.last.device ?? 0), p.uiLang) }}>
             <p className="backup-status muted" data-testid="backup-status">
               {!p.backupInfo.last.drive && !p.backupInfo.last.device ? t('এখনো কোনো ব্যাকআপ নেওয়া হয়নি') : (
                 <>
@@ -802,13 +827,29 @@ function InfoText({ text, vars }: { text: string; vars?: Record<string, string |
 }
 
 /** A titled block of settings, with its ⓘ next to the title. */
-function Group({ title, info, children }: { title: string; info?: string; children: ReactNode }) {
+/**
+ * A Settings group. With `fold` it can be closed to one line (decisions.md 78): the title, a short
+ * status (e.g. when the last backup was made) and ▸/▾; whether it is open is kept on this device only.
+ */
+function Group({ title, info, children, fold }: { title: string; info?: string; children: ReactNode; fold?: { id: string; summary?: ReactNode } }) {
   const [open, setOpen] = useState(false);
+  const foldKey = fold ? 'device.fold.' + fold.id : '';
+  const [unfolded, setUnfolded0] = useState<boolean>(() => (fold ? load(foldKey, false) : true));
+  const setUnfolded = (v: boolean) => { setUnfolded0(v); if (fold) save(foldKey, v); };
   return (
-    <section className="sgroup">
-      <div className="sgroup-head"><h3>{title}</h3>{info && <InfoButton open={open} onClick={() => setOpen(!open)} />}</div>
-      {open && info && <InfoText text={info} />}
-      {children}
+    <section className={'sgroup' + (fold ? ' foldable' + (unfolded ? ' open' : '') : '')}>
+      <div className="sgroup-head">
+        {fold ? (
+          <button type="button" className="sgroup-fold" data-testid={fold.id + '-fold'} aria-expanded={unfolded} onClick={() => setUnfolded(!unfolded)}>
+            <span className="fold-arrow" aria-hidden="true">{unfolded ? '▾' : '▸'}</span>
+            <h3>{title}</h3>
+            {!unfolded && fold.summary && <small className="fold-summary">{fold.summary}</small>}
+          </button>
+        ) : <h3>{title}</h3>}
+        {info && (!fold || unfolded) && <InfoButton open={open} onClick={() => setOpen(!open)} />}
+      </div>
+      {open && info && (!fold || unfolded) && <InfoText text={info} />}
+      {unfolded && children}
     </section>
   );
 }

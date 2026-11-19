@@ -14,25 +14,24 @@ test('phone keyboard: laid out like the iPhone (decisions.md 76) — two ⌫, tw
   await expect(osk).toBeVisible();
 
   // the letters' rows no longer carry the punctuation keys, nor ZWNJ (্্ and ্ + kar do its work) or a দাঁড়ি key
-  for (const c of ['Minus', 'Equal', 'BracketLeft', 'BracketRight', 'Semicolon', 'Quote', 'Comma', 'Period', 'Slash', 'Backslash', '#Dari', '#Sym', '#Mode'])
+  for (const c of ['Minus', 'Equal', 'BracketLeft', 'BracketRight', 'Semicolon', 'Quote', 'Comma', 'Period', 'Slash', 'Backslash', '#Dari', '#Mode', '#BackL', '#EnterL', '#Shift2'])
     await expect(key(page, c)).toHaveCount(0);
   const codes = async (i: number) => osk.locator('.kb-row').nth(i).locator('[data-code]').evaluateAll((els) => els.map((e) => e.getAttribute('data-code')));
   expect(await codes(0)).toEqual(['Digit1', 'Digit2', 'Digit3', 'Digit4', 'Digit5', 'Digit6', 'Digit7', 'Digit8', 'Digit9', 'Digit0']);
   expect((await codes(1)).length).toBe(10);
-  expect((await codes(2))[0]).toBe('#BackL'); // ⌫ before া for the left thumb
+  expect(await codes(2)).toEqual(['KeyA', 'KeyS', 'KeyD', 'KeyF', 'KeyG', 'KeyH', 'KeyJ', 'KeyK', 'KeyL']); // nine, as on iPhone
   expect((await codes(3))).toEqual(['#Shift', 'KeyZ', 'KeyX', 'KeyC', 'KeyV', 'KeyB', 'KeyN', 'KeyM', '#Back']); // ⌫ where iOS has it
-  expect(await codes(4)).toEqual(['#EnterL', '#Space', '#Shift2', '#Enter']);
+  expect(await codes(4)).toEqual(['#Sym', '#Space', '#Enter']); // ১২৩ · space · ↵, exactly iPhone
   // 🌐 in the strip under the keys; ⌄ in its middle
   await expect(page.getByTestId('kb-strip').locator('[data-code="#Globe"]')).toHaveCount(1);
   await expect(page.getByTestId('kb-strip').getByTestId('kb-hide')).toHaveCount(1);
   // one character per key: no Shift character in the corner
   await expect(key(page, 'KeyK').locator('.s')).toHaveCount(0);
-  // the left ↵ flicked up: the marks
-  const c = (await key(page, '#EnterL').boundingBox())!;
-  await page.mouse.move(c.x + c.width / 2, c.y + c.height / 2); await page.mouse.down();
-  await page.mouse.move(c.x + c.width / 2, c.y - 30, { steps: 4 }); await page.mouse.up();
+  // ১২৩: the marks
+  await expect(key(page, '#Sym')).toHaveText('১২৩');
+  await press(page, '#Sym');
   for (const k of ['Minus', 'Equal', 'BracketLeft', 'BracketRight', 'Semicolon', 'Quote', 'Comma', 'Period', 'Slash', 'Txt:~']) await expect(key(page, k)).toHaveCount(1);
-  await expect(key(page, '#EnterL').locator('.c')).toHaveText('অআ');
+  await expect(key(page, '#Sym')).toHaveText('অআ');
   // several marks in a row, then space brings the letters back (as on iOS)
   await press(page, 'Slash');
   await press(page, 'Minus');

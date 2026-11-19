@@ -10,6 +10,7 @@ import { DEFAULT_FORMAT, NOTE_FONT, NOTE_SIZE, type DocFormat } from '../docx-ex
 import { DEFAULT_PAGE, FOOTER_DIST, HEADER_DIST, NOTE_PAGE, normalizePage, pageNumberParts, pageSize, paraNumber, physicalPage, type PageSetup } from '../docx-export/page';
 import { STYLE_TWIPS } from '../editor/legal-format';
 import { tableModel, boldContent, type Side } from './table-model';
+import { listLabel } from '../editor/list-styles';
 
 export interface RtfOptions {
   kind?: 'note' | 'legal' | 'chart';
@@ -241,7 +242,7 @@ function blocks(nodes: JSONContent[], c: Ctx, depth = 0): string {
       case 'orderedList':
       case 'taskList':
         (n.content || []).forEach((li, i) => {
-          const mark = n.type === 'bulletList' ? '•' : n.type === 'taskList' ? (li.attrs?.checked ? '☑' : '☐') : Number(n.attrs?.start ?? 1) + i + '.';
+          const mark = n.type === 'bulletList' ? '•' : n.type === 'taskList' ? (li.attrs?.checked ? '☑' : '☐') : listLabel(n.attrs?.listStyle, Number(n.attrs?.start ?? 1) + i);
           const [first, ...rest] = li.content || [];
           out += pPr({ indL: 720 * (depth + 1), first: -360, spAfter: 0, textAlign: 'left' }, { ...c, legal: false }) + plainRun(mark, c) + '\\tab ' + runs(first?.content, c) + '\\par\n';
           out += blocks(rest, c, depth + 1);

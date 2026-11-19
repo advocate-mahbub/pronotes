@@ -11,3 +11,4 @@ export * from './rules-typing';
 export * from './word-shortcuts';
 export * from './fraction';
 export * from './interim';
+export * from './list-styles';

@@ -25,10 +25,13 @@ export interface FontItem {
 export interface FontLists {
   uni: FontItem[];
   ansi: FontItem[];
+  /** English fonts (decisions.md 79). */
+  en: FontItem[];
 }
 
 const SAMPLE = 'আমার সোনার বাংলা';
 const SAMPLE_BIJOY = toBijoy(SAMPLE);
+const SAMPLE_EN = 'The quick brown fox';
 const clean = (f: unknown) => String(f ?? '').replace(/["']/g, '').split(',')[0].trim();
 
 interface Props {
@@ -48,11 +51,12 @@ export function FontPicker({ ed, lists, defaultFont, ansiTyping, ansiFont, enFon
   const cur = clean(ed.getAttributes('textStyle').fontFamily);
   const inBijoy = isBijoyFont(cur, ansiFont);
   const ansiContext = ansiTyping || inBijoy;
-  const [tab, setTab] = useState<'uni' | 'ansi' | null>(null);
+  const [tab, setTab] = useState<'uni' | 'ansi' | 'en' | null>(null);
   const [q, setQ] = useState('');
-  const kind = tab ?? (ansiContext ? 'ansi' : 'uni');
+  const curEn = !ansiContext && lists.en.some((f) => f.name === cur);
+  const kind = tab ?? (ansiContext ? 'ansi' : curEn ? 'en' : 'uni');
   const shown = useMemo(() => {
-    const list = (kind === 'ansi' ? lists.ansi : lists.uni).filter((f) => fontMatches(f.name, q));
+    const list = (kind === 'ansi' ? lists.ansi : kind === 'en' ? lists.en : lists.uni).filter((f) => fontMatches(f.name, q));
     // usable fonts first, the rest after (still listed, so the owner knows the name to install)
     return [...list.filter((f) => f.available), ...list.filter((f) => !f.available)];
   }, [kind, lists, q]);
@@ -127,9 +131,11 @@ export function FontPicker({ ed, lists, defaultFont, ansiTyping, ansiFont, enFon
     <Popover label={<span className="fp-label" title={label}>{label}</span>} title={t('ফন্ট')} testid="font" className="fp-btn">
       {(close) => (
         <div className="menu font-picker" data-testid="font-picker">
-          <div className="seg small" role="tablist">
-            <button type="button" role="tab" aria-pressed={kind === 'uni'} data-testid="fp-tab-uni" onClick={() => setTab('uni')}>{t('ইউনিকোড')}</button>
-            <button type="button" role="tab" aria-pressed={kind === 'ansi'} data-testid="fp-tab-ansi" onClick={() => setTab('ansi')}>{t('বিজয় (ANSI)')}</button>
+          {/* Unicode | ANSI | English: one small switch, so the list keeps the room (decisions.md 79) */}
+          <div className="seg small fp-kinds" role="tablist">
+            <button type="button" role="tab" aria-pressed={kind === 'uni'} data-testid="fp-tab-uni" onClick={() => setTab('uni')}>Unicode</button>
+            <button type="button" role="tab" aria-pressed={kind === 'ansi'} data-testid="fp-tab-ansi" onClick={() => setTab('ansi')}>ANSI</button>
+            <button type="button" role="tab" aria-pressed={kind === 'en'} data-testid="fp-tab-en" onClick={() => setTab('en')}>English</button>
           </div>
           <input className="fp-search" type="search" data-testid="font-search" value={q} onChange={(e) => setQ(e.target.value)}
             placeholder={t('ফন্ট খুঁজুন: নাম বা বাংলায় (সুতন্নী, নিকোশ…)')} aria-label={t('ফন্ট খুঁজুন')}
@@ -145,7 +151,7 @@ export function FontPicker({ ed, lists, defaultFont, ansiTyping, ansiFont, enFon
               <button key={f.name} type="button" role="option" aria-selected={f.name === cur} aria-disabled={!f.available}
                 className={'fp-row' + (f.available ? '' : ' off')} data-testid={'fp-' + f.name} onClick={() => choose(f, close)}>
                 <span className="fp-name">{f.name}{f.own && <small> · {t('আপনার যোগ করা')}</small>}{!f.available && <small> · {t('এই ডিভাইসে নেই')}</small>}</span>
-                {f.available && <span className="fp-sample" style={{ fontFamily: cssFamily(f.name) + ', serif' }}>{f.ansi ? SAMPLE_BIJOY : SAMPLE}</span>}
+                {f.available && <span className="fp-sample" style={{ fontFamily: cssFamily(f.name) + ', serif' }}>{f.ansi ? SAMPLE_BIJOY : kind === 'en' ? SAMPLE_EN : SAMPLE}</span>}
               </button>
             ))}
             {!shown.length && <p className="note">{t('এই নামে কোনো ফন্ট পাওয়া গেল না')}</p>}

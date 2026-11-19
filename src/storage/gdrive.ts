@@ -79,7 +79,7 @@ export class DriveError extends Error {
 }
 
 type Fetch = typeof fetch;
-async function call<T>(url: string, init: RequestInit, token: string, f: Fetch = fetch, raw = false): Promise<T> {
+async function call<T>(url: string, init: RequestInit, token: string, f: Fetch = fetch, raw: boolean | 'buffer' = false): Promise<T> {
   let r: Response;
   try {
     r = await f(url, { ...init, headers: { ...(init.headers ?? {}), Authorization: `Bearer ${token}` } });
@@ -92,6 +92,7 @@ async function call<T>(url: string, init: RequestInit, token: string, f: Fetch =
   }
   if (r.status === 403 || r.status === 429) throw new DriveError('quota', String(r.status));
   if (!r.ok) throw new DriveError('other', `${r.status} ${(await r.text()).slice(0, 120)}`);
+  if (raw === 'buffer') return r.arrayBuffer() as Promise<T>;
   if (raw) return r.text() as Promise<T>;
   const type = r.headers.get('content-type') ?? '';
   return (type.includes('json') ? r.json() : r.text()) as Promise<T>;
@@ -101,12 +102,17 @@ const q = (s: string) => s.replace(/\\/g, '\\\\').replace(/'/g, "\\'");
 
 /** The "ProNotes Backups" folder (made the first time). */
 export async function backupFolder(token: string, f: Fetch = fetch): Promise<string> {
-  const query = `name='${q(DRIVE_FOLDER)}' and mimeType='application/vnd.google-apps.folder' and trashed=false`;
+  return folderNamed(DRIVE_FOLDER, token, f);
+}
+
+/** A folder of ProNotes' own in Drive by name (made the first time). drive.file: only folders ProNotes made. */
+async function folderNamed(name: string, token: string, f: Fetch = fetch): Promise<string> {
+  const query = `name='${q(name)}' and mimeType='application/vnd.google-apps.folder' and trashed=false`;
   const found = await call<{ files: { id: string }[] }>(`${API}/files?${new URLSearchParams({ q: query, fields: 'files(id)', spaces: 'drive' })}`, { method: 'GET' }, token, f);
   if (found.files?.[0]) return found.files[0].id;
   const made = await call<{ id: string }>(`${API}/files?fields=id`, {
     method: 'POST', headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ name: DRIVE_FOLDER, mimeType: 'application/vnd.google-apps.folder' }),
+    body: JSON.stringify({ name, mimeType: 'application/vnd.google-apps.folder' }),
   }, token, f);
   return made.id;
 }
@@ -188,4 +194,47 @@ export async function signOut(f: Fetch = fetch): Promise<void> {
   const t = currentToken();
   ss()?.removeItem(KEY_TOKEN);
   if (t) await f(`${REVOKE}?token=${encodeURIComponent(t)}`, { method: 'POST' }).catch(() => undefined);
+}
+
+/**
+ * The user's own font files in their own Drive (decisions.md 80): added once, on every device where Drive is on.
+ * Each file carries the font's ProNotes id and kind (Unicode/ANSI/English) as app properties. Nothing goes
+ * anywhere but the user's Drive; with drive.file ProNotes sees only the files it put there.
+ */
+export const FONTS_FOLDER = 'ProNotes Fonts';
+export interface DriveFont { id: string; name: string; size?: string; appProperties?: { pnFont?: string; role?: string } }
+
+export async function listDriveFonts(token: string, f: Fetch = fetch): Promise<DriveFont[]> {
+  const folder = await folderNamed(FONTS_FOLDER, token, f);
+  const r = await call<{ files: DriveFont[] }>(`${API}/files?${new URLSearchParams({
+    q: `'${q(folder)}' in parents and trashed=false`, pageSize: '200', fields: 'files(id,name,size,appProperties)',
+  })}`, { method: 'GET' }, token, f);
+  return r.files ?? [];
+}
+
+export async function uploadDriveFont(token: string, font: { id: string; role: string; fileName: string; data: ArrayBuffer }, f: Fetch = fetch): Promise<{ id: string }> {
+  const folder = await folderNamed(FONTS_FOLDER, token, f);
+  const boundary = 'pronotes' + Math.random().toString(36).slice(2);
+  const meta = { name: font.fileName, parents: [folder], mimeType: 'application/octet-stream', appProperties: { pnFont: font.id, role: font.role } };
+  const body = new Blob([
+    `--${boundary}\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n${JSON.stringify(meta)}\r\n--${boundary}\r\nContent-Type: application/octet-stream\r\n\r\n`,
+    font.data, `\r\n--${boundary}--\r\n`,
+  ]);
+  return call(`${UPLOAD}?uploadType=multipart&fields=id`, { method: 'POST', headers: { 'Content-Type': `multipart/related; boundary=${boundary}` }, body }, token, f);
+}
+
+export async function downloadDriveFont(token: string, id: string, f: Fetch = fetch): Promise<ArrayBuffer> {
+  return call<ArrayBuffer>(`${API}/files/${encodeURIComponent(id)}?alt=media`, { method: 'GET' }, token, f, 'buffer');
+}
+
+/** What to do so this device and Drive hold the same fonts. `gone`: fonts deleted here (not to come back). */
+export function planFontSync(local: { id: string }[], remote: DriveFont[], gone: string[]): { down: DriveFont[]; up: string[]; trash: DriveFont[] } {
+  const here = new Set(local.map((l) => l.id));
+  const there = new Set(remote.map((r) => r.appProperties?.pnFont).filter(Boolean) as string[]);
+  const dead = new Set(gone);
+  return {
+    down: remote.filter((r) => r.appProperties?.pnFont && !here.has(r.appProperties.pnFont) && !dead.has(r.appProperties.pnFont)),
+    up: local.map((l) => l.id).filter((id) => !there.has(id) && !dead.has(id)),
+    trash: remote.filter((r) => r.appProperties?.pnFont && dead.has(r.appProperties.pnFont)),
+  };
 }

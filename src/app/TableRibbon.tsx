@@ -4,6 +4,7 @@
  * alignment, header repeat, sort, sum). Large touch targets and sheets instead of hover menus (iPad).
  */
 import { useState, type ReactNode } from 'react';
+import { NumberField } from './NumberField';
 import type { Editor } from '@tiptap/react';
 import { TABLE_STYLES, QUICK_TABLES, LINE_WIDTHS, type Delimiter, type CellSide, type TableBorders } from '../editor';
 import { useT } from '../i18n';
@@ -64,8 +65,8 @@ export function TableInsertMenu({ ed, say }: { ed: Editor; say: (m: string) => v
         <Sheet title={t('টেবিল ঢোকান')} onClose={() => setSheet(null)} testid="table-insert-sheet"
           footer={<button type="button" className="btn primary" data-testid="ti-ok" onClick={() => { insert(rows, cols, header); setSheet(null); }}>{t('ঢোকান')}</button>}>
           <div className="form">
-            <label>{t('সারি')}<input type="number" inputMode="numeric" min={1} max={200} data-testid="ti-rows" value={rows} onChange={(e) => setRows(Math.max(1, Math.min(200, Number(e.target.value) || 1)))} /></label>
-            <label>{t('কলাম')}<input type="number" inputMode="numeric" min={1} max={20} data-testid="ti-cols" value={cols} onChange={(e) => setCols(Math.max(1, Math.min(20, Number(e.target.value) || 1)))} /></label>
+            <label>{t('সারি')}<NumberField min={1} max={200} testid="ti-rows" value={rows} onChange={setRows} /></label>
+            <label>{t('কলাম')}<NumberField min={1} max={20} testid="ti-cols" value={cols} onChange={setCols} /></label>
             <label className="chk"><input type="checkbox" data-testid="ti-header" checked={header} onChange={(e) => setHeader(e.target.checked)} /> {t('প্রথম সারি হেডার (প্রতি পাতায় আবার আসবে)')}</label>
           </div>
         </Sheet>

@@ -37,6 +37,7 @@ import type { VoiceModes } from './voice-modes';
 import type { FontLists } from './FontPicker';
 import { SuggestionBar } from './SuggestionBar';
 import { CaretOverlay } from './CaretOverlay';
+import { ZoomBar } from './ZoomBar';
 
 export type SaveState = 'saved' | 'saving' | 'error';
 
@@ -259,6 +260,7 @@ export function Workspace(p: Props) {
 
   // Pinch (two fingers, or a trackpad pinch) zooms only the page; the rest of the app stays as it is.
   // While the fingers move only a CSS variable changes; the zoom is kept when they lift.
+  const [pinchPct, setPinchPct] = useState<number | null>(null);
   const pinchRef = useRef({ zoom, textZoom, paper, view: p.view, setView: p.setView });
   pinchRef.current = { zoom, textZoom, paper, view: p.view, setView: p.setView };
   useEffect(() => {
@@ -271,6 +273,8 @@ export function Workspace(p: Props) {
     const live = (f: number) => {
       factor = f;
       const c = pinchRef.current;
+      // the zoom bar shows the number as the fingers move
+      setPinchPct(Math.round(c.paper ? clampZoom(c.zoom * f * 100) : clampText(c.textZoom * f * 100)));
       // a factor on top of the set zoom, kept inside the same limits
       if (c.paper) el.style.setProperty('--pz', String(clampZoom(c.zoom * f * 100) / 100 / c.zoom));
       else el.style.setProperty('--ptz', String(clampText(c.textZoom * f * 100) / 100 / c.textZoom));
@@ -279,6 +283,7 @@ export function Workspace(p: Props) {
     const end = () => {
       if (!base) return;
       base = 0;
+      setPinchPct(null);
       const c = pinchRef.current;
       if (Math.abs(factor - 1) < 0.02) { el.style.removeProperty('--pz'); el.style.removeProperty('--ptz'); return; }
       if (c.paper) c.setView({ ...c.view, zoom: Math.round(clampZoom(c.zoom * factor * 100)) });
@@ -706,6 +711,12 @@ export function Workspace(p: Props) {
           {legal && !reflow && p.view.grid.on && <GridOverlay g={p.view.grid} geo={geo} lineH={(p.format.size * 4) / 3 * p.format.lineSpacing * 1.3} />}
           <EditorContent editor={editor} />
         </div>
+        <ZoomBar pct={paper ? Math.round(zoom * 100) : Math.round(textZoom * 100)} live={pinchPct} paper={paper} min={paper ? 25 : 60} max={paper ? 300 : 250}
+          setPct={(z) => {
+            setPinchPct(null);
+            if (paper) p.setView({ ...p.view, zoom: z });
+            else if (typeof z === 'number') p.setView({ ...p.view, textZoom: Math.round(clampText(z)) });
+          }} />
       </main>
         {p.ansiTyping && (
           <button type="button" className="ansi-badge typing" data-testid="ansi-typing-badge" title={t('বাংলা বিজয়-এ (SutonnyMJ) লেখা হচ্ছে। চাপলে ইউনিকোডে ফিরবে।')}
