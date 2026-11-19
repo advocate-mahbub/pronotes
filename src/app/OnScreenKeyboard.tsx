@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import type { Editor } from '@tiptap/react';
 import { TextSelection } from '@tiptap/pm/state';
 import { ANNA_ALT, ANNA_PAD_ROWS, ANNA_SIGNS, NUMPAD_ROWS, PADS, PHONE_ROWS, PHONE_SYMBOL_ROWS, ROWS, US, charFor, hasAltBeyondAnna, hasAltLayer, splitRow, type LayoutMap, type Pad } from '../bornona-engine';
@@ -33,6 +33,10 @@ interface Props {
   menuItems?: KbMenuItem[];
   /** The live-voice mic key at the end of the bottom row: shown when given. */
   live?: { on: boolean; toggle: () => void };
+  /** The strip's 🎙 (a tap = Live, held = record) or, while voice is on, its ● ⏸ ■ — drawn by the workspace. */
+  mic?: ReactNode;
+  /** Voice is on: 🌐 rests so the language is not changed by mistake. */
+  voicing?: boolean;
 }
 
 /** Fired on window with detail true/false while the space bar moves the caret. */
@@ -88,7 +92,7 @@ interface Touch {
  * left = the word; two spaces = "। "; slide from #+= to a mark and lift = that mark, back to letters;
  * ⇧ twice = Shift lock; long-press the language key = one-handed (phones) or floating (iPad).
  */
-export function OnScreenKeyboard({ editor, map, bangla, getConfig, onToggleLanguage, onWordDone, flash, onHide, compact, hand, setHand, split, menuItems, live }: Props) {
+export function OnScreenKeyboard({ editor, map, bangla, getConfig, onToggleLanguage, onWordDone, flash, onHide, compact, hand, setHand, split, menuItems, live, mic, voicing }: Props) {
   const { t } = useT();
   const [shift, setShift] = useState(0); // 0 off, 1 next key, 2 locked
   const [alt, setAlt] = useState(false);
@@ -582,10 +586,10 @@ export function OnScreenKeyboard({ editor, map, bangla, getConfig, onToggleLangu
         {rowsEl}
         {compact && (
           // the strip under the keys, where iOS keeps 🌐 and 🎙 (and the space the home bar leaves)
-          <div className="kb-strip" data-testid="kb-strip">
+          <div className={'kb-strip' + (voicing ? ' voicing' : '')} data-testid="kb-strip">
             <span className="strip-side">{keyEl('#Globe')}{altKey && keyEl('#Alt')}</span>
             {hideEl}
-            <span className="strip-side">{live && keyEl('#Live')}</span>
+            <span className="strip-side">{mic !== undefined ? mic : live && keyEl('#Live')}</span>
           </div>
         )}
       </div>

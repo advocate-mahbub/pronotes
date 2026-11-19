@@ -88,11 +88,11 @@ test.describe('phone', () => {
     await page.getByTestId('kb-toggle').tap();
     const last = page.getByTestId('kb-strip'); // 🎙 lives in the strip under the keys, where iOS has it
     // an iPhone without a key: Safari's own recognition has no Bangla, so no Live key
-    await expect(last.locator('[data-code="#Live"]')).toHaveCount(0);
+    await expect(last.getByTestId('strip-mic')).toHaveCount(0);
     await section(page, 'voice');
     await page.getByTestId('ai-key-in').fill('AIzaTEST1234');
     await page.getByTestId('ai-key-save').click();
     await page.getByTestId('settings').click();
-    await expect(last.locator('[data-code="#Live"]')).toHaveCount(1);
+    await expect(last.getByTestId('strip-mic')).toHaveCount(1);
   });
 });

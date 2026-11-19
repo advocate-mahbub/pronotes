@@ -1,12 +1,12 @@
 /**
- * Live voice typing on screen: a strip shows the words as they are heard (grey), and each phrase goes
- * into the document when the speaker pauses. ⏸ / ▶ pause and go on, ■ ends it. Started from the 🎙 key
- * on the on-screen keyboard, or the small round button by the page when no keyboard is shown.
+ * Live voice typing: the words appear in the document at the caret as they are heard (grey, soft) and
+ * become real text when the speaker pauses (decisions.md 77). The controls (● time, ⏸ / ▶, ■) are drawn
+ * by VoiceControls, in the keyboard's strip or beside the page's mic.
  */
 import { useEffect, useRef, useState } from 'react';
 import type { Editor } from '@tiptap/react';
 import { BrowserLive, GeminiLive, liveEngineKind, polishTranscript, type LiveEngine, type LiveState } from '../ai';
-import { insertPlainText, textBeforeCaret } from '../editor';
+import { insertPlainText, setInterim, textBeforeCaret } from '../editor';
 import { parseCorrections } from '../voice';
 import { useT } from '../i18n';
 import { load, save } from './prefs';
@@ -18,22 +18,40 @@ interface Opts {
   say: (m: string) => void;
   voice: { corrections: string; banglaDigits: boolean };
   disabled?: boolean;
+  /** The Live model (Settings → voice); empty = the default. */
+  model?: string;
 }
 
 export function useLiveVoice(o: Opts) {
   const kind = liveEngineKind(Boolean(o.geminiKey));
   const [state, setState] = useState<LiveState>('stopped');
-  const [interim, setInterim] = useState('');
   const [consent, setConsent] = useState(false);
+  const [secs, setSecs] = useState(0);
+  const clock = useRef<number | undefined>(undefined);
   const eng = useRef<LiveEngine | null>(null);
   const opts = useRef(o);
   opts.current = o;
 
-  useEffect(() => () => { void eng.current?.stop(); }, []);
+  useEffect(() => () => { void eng.current?.stop(); clearInterval(clock.current); }, []);
+  // the time shown beside ●: runs only while it is listening
+  useEffect(() => {
+    clearInterval(clock.current);
+    if (state === 'live') clock.current = window.setInterval(() => setSecs((n) => n + 1), 1000);
+    if (state === 'stopped') setSecs(0);
+  }, [state]);
+
+  /** The words being heard, grey at the caret (with a space before them when needed). */
+  const showInterim = (raw: string) => {
+    const view = opts.current.editor.view;
+    if (!raw.trim()) return setInterim(view, '');
+    const before = textBeforeCaret(view);
+    setInterim(view, (before && !/\s$/.test(before) ? ' ' : '') + raw.trim());
+  };
 
   const put = (raw: string) => {
     const { editor, voice } = opts.current;
     const text = polishTranscript(raw, voice, parseCorrections);
+    setInterim(editor.view, '');
     if (!text) return;
     const before = textBeforeCaret(editor.view);
     const lead = before && !/\s$/.test(before) && !/^[\s।,;:?!]/.test(text) ? ' ' : '';
@@ -44,14 +62,14 @@ export function useLiveVoice(o: Opts) {
     const { geminiKey, bangla, say } = opts.current;
     const lang = bangla ? 'bn-BD' : 'en-US';
     const ev = {
-      onInterim: setInterim,
+      onInterim: showInterim,
       onFinal: put,
       onState: (s: LiveState, why?: string) => {
         setState(s);
         if (s === 'cut') say(why === 'mic' ? 'কল বা অন্য অ্যাপ মাইক নিয়েছে: Live থেমেছে, ▶ চাপলে আবার চলবে' : 'সংযোগ কেটে গেছে: Live থেমেছে, ▶ চাপলে আবার চলবে');
       },
     };
-    const e: LiveEngine = kind === 'gemini' ? new GeminiLive(geminiKey, lang, ev) : new BrowserLive(lang, ev);
+    const e: LiveEngine = kind === 'gemini' ? new GeminiLive(geminiKey, lang, ev, opts.current.model || undefined) : new BrowserLive(lang, ev);
     eng.current = e;
     try {
       await e.start();
@@ -70,35 +88,19 @@ export function useLiveVoice(o: Opts) {
     if (!load('liveConsent', false)) return setConsent(true);
     void begin();
   };
-  const stop = async () => { const e = eng.current; eng.current = null; await e?.stop(); setInterim(''); setState('stopped'); };
+  const stop = async () => { const e = eng.current; eng.current = null; await e?.stop(); setInterim(opts.current.editor.view, ''); setState('stopped'); };
+  const pause = () => { setInterim(opts.current.editor.view, ''); void eng.current?.pause(); };
+  const resume = () => void eng.current?.resume();
 
-  const ui = (
-    <LiveStrip state={state} interim={interim} kind={kind} consent={consent}
-      onPause={() => void eng.current?.pause()} onResume={() => void eng.current?.resume()} onStop={() => void stop()}
-      onConsent={(ok) => { setConsent(false); if (ok) { save('liveConsent', true); void begin(); } }} />
-  );
-  return { available: Boolean(kind), on: state !== 'stopped', state, toggle, ui };
+  const ui = <LiveConsent kind={kind} consent={consent} onConsent={(ok) => { setConsent(false); if (ok) { save('liveConsent', true); void begin(); } }} />;
+  return { available: Boolean(kind), on: state !== 'stopped', state, secs, toggle, pause, resume, stop: () => void stop(), ui };
 }
+export type LiveVoice = ReturnType<typeof useLiveVoice>;
 
-function LiveStrip(p: { state: LiveState; interim: string; kind: 'gemini' | 'browser' | null; consent: boolean;
-  onPause: () => void; onResume: () => void; onStop: () => void; onConsent: (ok: boolean) => void }) {
+function LiveConsent(p: { kind: 'gemini' | 'browser' | null; consent: boolean; onConsent: (ok: boolean) => void }) {
   const { t } = useT();
-  const b = (id: string, text: string, on: () => void, cls = '') => (
-    <button type="button" className={'btn ' + cls} data-testid={'live-' + id} onPointerDown={(e) => e.preventDefault()} onClick={on}>{text}</button>
-  );
   return (
     <>
-      {p.state !== 'stopped' && (
-        <div className={'live-strip ' + p.state} role="status" aria-live="polite" data-testid="live-strip">
-          <span className={'live-dot ' + p.state} aria-hidden="true" />
-          <span className="live-text" data-testid="live-interim">
-            {p.interim || (p.state === 'starting' ? t('চালু হচ্ছে…') : p.state === 'live' ? t('বলুন, লেখা এখানেই ভেসে উঠবে…') : p.state === 'paused' ? t('বিরতি') : t('থেমে আছে: ▶ চাপলে আবার চলবে'))}
-          </span>
-          {p.state === 'live' && b('pause', '⏸', p.onPause)}
-          {(p.state === 'paused' || p.state === 'cut') && b('resume', '▶', p.onResume, 'primary')}
-          {b('stop', '■', p.onStop)}
-        </div>
-      )}
       {p.consent && (
         <div className="modal" role="dialog" aria-modal="true" aria-labelledby="live-title" data-testid="live-consent">
           <div className="box">

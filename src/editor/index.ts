@@ -10,3 +10,4 @@ export * from './table-tools';
 export * from './rules-typing';
 export * from './word-shortcuts';
 export * from './fraction';
+export * from './interim';

@@ -28,9 +28,12 @@ import { attachBornona } from './bornona-input';
 import { OnScreenKeyboard } from './OnScreenKeyboard';
 import { useLiveVoice } from './LiveVoice';
 import { FloatingKeyboard, LiftableKeyboard, useLandscape, useShortTouch, type KbMode } from './FloatingKeyboard';
-import { GLOBE_ICON, LINE_MIC, type KbMenuItem } from './OnScreenKeyboard';
+import { GLOBE_ICON, type KbMenuItem } from './OnScreenKeyboard';
 import type { Hand } from './kb-gestures';
-import { AiVoiceKey } from './AiVoiceKey';
+import { AiVoiceKey, useAiVoice } from './AiVoiceKey';
+import { VoiceControls } from './VoiceControls';
+import { MicKey } from './MicKey';
+import type { VoiceModes } from './voice-modes';
 import type { FontLists } from './FontPicker';
 import { SuggestionBar } from './SuggestionBar';
 import { CaretOverlay } from './CaretOverlay';
@@ -83,6 +86,8 @@ interface Props {
   toggleKey: import('../bornona-engine').ToggleKey;
   /** AI assistant */
   gemini: { key: string; model: string; setModel?: (m: string) => void };
+  /** Which voice modes are on and their models (Settings → voice, decisions.md 77). */
+  voiceModes: VoiceModes;
   privateWords: string[];
   setPrivateWords: (w: string[]) => void;
   onOpenSettings: () => void;
@@ -159,6 +164,9 @@ export function Workspace(p: Props) {
   const landscape = useLandscape();
   // the phone keyboard also for a phone turned sideways (wide, but short)
   const shortTouch = useShortTouch();
+  // the phone-style keyboards (phone, floating, split) have the strip with 🌐 and 🎙 under their keys
+  const kbCompact = p.phone || shortTouch || kbMode === 'float' || kbMode === 'splitPhone';
+  const stripShown = p.kbVisible && !deviceKb && (kbDown || kbCompact);
   const [desk, setDesk] = useState({ w: 900, h: 700 });
   useEffect(() => {
     const el = deskRef.current;
@@ -238,7 +246,16 @@ export function Workspace(p: Props) {
 
   // live voice typing: words appear as they are spoken (🎙 on the keyboard, or the round button by the page)
   const live = useLiveVoice({ editor: editor as Editor, geminiKey: p.gemini.key, bangla: p.bangla, say: p.say,
-    voice: { corrections: p.corrections, banglaDigits: p.voice.banglaDigits }, disabled: p.ansiTyping });
+    voice: { corrections: p.corrections, banglaDigits: p.voice.banglaDigits }, disabled: p.ansiTyping, model: p.voiceModes.liveModel });
+  // record-to-text (Gemini): one recording, shared by the page's ✦ key and the keyboard strip's 🎙
+  const aiv = useAiVoice({ editor: editor as Editor, gemini: { ...p.gemini, model: p.voiceModes.recModel || p.gemini.model }, say: p.say,
+    onOpenSettings: p.onOpenSettings, disabled: p.ansiTyping, voice: { corrections: p.corrections, banglaDigits: p.voice.banglaDigits } });
+  // one 🎙: a tap = Live, held = record-to-text (decisions.md 77); each can be turned off in Settings
+  const liveOk = p.voiceModes.live && live.available;
+  const recOk = p.voiceModes.rec && p.voiceEngine === 'ai';
+  const voicing = live.on || aiv.state !== 'idle';
+  const micSlot = voicing ? <VoiceControls live={live} ai={aiv} />
+    : liveOk || recOk ? <MicKey onTap={liveOk ? live.toggle : aiv.press} onHold={liveOk && recOk ? aiv.press : undefined} /> : null;
 
   // Pinch (two fingers, or a trackpad pinch) zooms only the page; the rest of the app stays as it is.
   // While the fingers move only a CSS variable changes; the zoom is kept when they lift.
@@ -702,21 +719,21 @@ export function Workspace(p: Props) {
           aria-pressed={listening || deviceKb} aria-label={listening ? t('ভয়েস থামান') : t('ভয়েস টাইপিং')} title={listening ? t('ভয়েস থামান') : t('ভয়েস টাইপিং')}
           disabled={p.ansiTyping}
           onPointerDown={(e) => e.preventDefault()} onClick={toggleVoice}>{MIC}</button>}
-        {p.voiceEngine === 'ai' && <AiVoiceKey editor={editor} gemini={p.gemini} say={p.say} onOpenSettings={p.onOpenSettings} disabled={p.ansiTyping} voice={{ corrections: p.corrections, banglaDigits: p.voice.banglaDigits }} icon={MIC} />}
+        {recOk && !stripShown && <AiVoiceKey v={aiv} disabled={p.ansiTyping} icon={MIC} />}
+        {stripShown && aiv.consentUi}
         {live.ui}
-        {live.available && !(p.kbVisible && !deviceKb) && (
+        {live.on && !stripShown && <div className="voice-pill-wrap"><VoiceControls live={live} /></div>}
+        {liveOk && !stripShown && !(p.kbVisible && !deviceKb) && (
           <button type="button" className={'live-mic' + (live.on ? ' on' : '')} data-testid="live-mic" aria-pressed={live.on}
             aria-label={t('Live ভয়েস: বলার সাথে সাথে লেখা')} title={t('Live ভয়েস: বলার সাথে সাথে লেখা')}
             onPointerDown={(e) => e.preventDefault()} onClick={live.toggle}>{live.on ? '●' : '🎙'}<span className="live-badge" aria-hidden="true">LIVE</span></button>
         )}
         {kbDown && p.kbVisible && !deviceKb && (
           // the keyboard put down: its bottom strip stays (🌐 · ⌨ · 🎙), so voice and the language are a tap away
-          <div className="kb-strip down" data-testid="kb-strip-down" onPointerDown={(e) => e.preventDefault()}>
+          <div className={'kb-strip down' + (voicing ? ' voicing' : '')} data-testid="kb-strip-down" onPointerDown={(e) => e.preventDefault()}>
             <button type="button" className="k" data-testid="strip-globe" aria-label={t('লেখার ভাষা বদলান')} title={t('লেখার ভাষা বদলান')} onClick={p.onToggleLanguage}>{GLOBE_ICON}</button>
             <button type="button" className="k" data-testid="kb-show" aria-label={t('কিবোর্ড দেখান')} title={t('কিবোর্ড দেখান')} onClick={() => setKbDown(false)}>⌨</button>
-            {live.available ? (
-              <button type="button" className={'k' + (live.on ? ' on live' : '')} data-testid="strip-mic" aria-pressed={live.on} aria-label={t('Live ভয়েস: বলার সাথে সাথে লেখা')} onClick={live.toggle}>{live.on ? '●' : LINE_MIC}</button>
-            ) : <span className="k" aria-hidden="true" />}
+            {micSlot ?? <span className="k" aria-hidden="true" />}
           </div>
         )}
       </div>
@@ -771,7 +788,7 @@ export function Workspace(p: Props) {
           const kb = (
             <OnScreenKeyboard compact={compact} onHide={() => setKbDown(true)} editor={editor} map={p.map} bangla={p.bangla} getConfig={getConfig} onToggleLanguage={p.onToggleLanguage}
               onWordDone={(before) => { if (learnTail(p.bank, before)) p.onBankChanged(); }} flash={flash}
-              hand={phoneKb && !landscape ? hand : null} setHand={phoneKb ? setHand : undefined} split={split} menuItems={items} live={live.available ? { on: live.on, toggle: live.toggle } : undefined} />
+              hand={phoneKb && !landscape ? hand : null} setHand={phoneKb ? setHand : undefined} split={split} menuItems={items} live={live.available ? { on: live.on, toggle: live.toggle } : undefined} mic={micSlot} voicing={voicing} />
           );
           if (float) return <FloatingKeyboard onDock={() => setKbMode('dock')}>{kb}</FloatingKeyboard>;
           return <LiftableKeyboard landscape={landscape} phone={phoneKb} edgeToEdge={split && !phoneKb}>{kb}</LiftableKeyboard>;

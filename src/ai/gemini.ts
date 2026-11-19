@@ -217,6 +217,19 @@ export async function geminiModels(key: string, fetchImpl: typeof fetch = fetch)
     .map((m) => m.name.replace(/^models\//, ''));
 }
 
+/** The models this key can use for Live (they offer bidiGenerateContent), for the Live model choice. */
+export async function geminiLiveModels(key: string, fetchImpl: typeof fetch = fetch): Promise<string[]> {
+  let r: Response;
+  try {
+    r = await fetchImpl(`${BASE}/models?pageSize=200`, { headers: { 'x-goog-api-key': key } });
+  } catch (e) {
+    throw new AiError('network', String(e));
+  }
+  if (!r.ok) await fail(r);
+  const j = (await r.json()) as { models?: { name: string; supportedGenerationMethods?: string[] }[] };
+  return (j.models ?? []).filter((m) => m.supportedGenerationMethods?.includes('bidiGenerateContent')).map((m) => m.name.replace(/^models\//, ''));
+}
+
 /** What the user is told for each error (Bangla source text; translated by the app). */
 export const AI_ERROR_TEXT: Record<AiError['code'], string> = {
   key: 'Gemini key ঠিক নেই। Settings → AI সহকারী-তে key দেখুন।',

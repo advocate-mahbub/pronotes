@@ -13,6 +13,7 @@ import { setAnsiFamilies } from '../bijoy';
 import { MAX_FONT_BYTES, familyFor, registerFont, unregisterFont, LOCAL_ANSI, readFontStyle } from '../fonts';
 import { decideVoice, detectVoiceEnv } from '../voice';
 import { AUTO_MODEL } from '../ai/gemini';
+import { DEFAULT_VOICE_MODES, type VoiceModes } from './voice-modes';
 import { agoKey, agoN, type BackupLast, type ToastAction } from './backup-status';
 import { Settings, type FontInfo } from './Settings';
 import { InfoSheet, VersionsSheet } from './DocSheets';
@@ -173,6 +174,9 @@ export function App() {
     return () => clearTimeout(id);
   }, [dictOn]);
   const [voiceEngine, setVoiceEngine] = useState<'auto' | 'ai' | 'device'>(() => load('voiceEngine', 'auto'));
+  // Live and record-to-text: each on or off, each with its own model (decisions.md 77)
+  const [voiceModes, setVoiceModes] = useState<VoiceModes>(() => ({ ...DEFAULT_VOICE_MODES, ...load<Partial<VoiceModes>>('voice.modes', {}) }));
+  useEffect(() => save('voice.modes', voiceModes), [voiceModes]);
   useEffect(() => save('voiceEngine', voiceEngine), [voiceEngine]);
   const askPersist = async () => {
     try {
@@ -935,7 +939,7 @@ export function App() {
                 data-testid="side-toggle" onPointerDown={(e) => e.preventDefault()} onClick={() => setSideOpen((v) => !v)}>☰</button>} />
           ) : current && (
             <Workspace key={current.id + ':' + reloadKey} doc={current} map={map} phonetic={layoutId === 'pronotes-phonetic'} hasantaRules={layoutId === PRONOTES_LAYOUT_ID} rules={layout.kmx} bangla={bangla} vowelForming={vf} oldReph={oldReph}
-              kbVisible={kbVisible} coarse={coarse} phone={phone} voiceEngine={voiceEngine === 'auto' ? (geminiKey ? 'ai' : 'device') : voiceEngine} bank={bank.current} bankVersion={bankVersion} onBankChanged={onBankChanged}
+              kbVisible={kbVisible} coarse={coarse} phone={phone} voiceEngine={voiceEngine === 'auto' ? (geminiKey ? 'ai' : 'device') : voiceEngine} voiceModes={voiceModes} bank={bank.current} bankVersion={bankVersion} onBankChanged={onBankChanged}
               onToggleLanguage={() => setBangla((b) => !b)} onSave={onSave}
               onRename={renameAny}
               onSaveState={setSaveState} format={format} say={say} fonts={fontChoices} fontLists={fontLists}
@@ -972,7 +976,7 @@ export function App() {
           keyboardLayouts={allKeyboardLayouts} hiddenDesktop={hiddenDesktop} setHiddenDesktop={setHiddenDesktop}
           hiddenMobile={hiddenMobile} setHiddenMobile={setHiddenMobile}
           customLayouts={customLayouts} onAddLayout={addLayout} onDeleteLayout={deleteLayout}
-          voice={voice} setVoice={setVoice} voiceEngine={voiceEngine} setVoiceEngine={setVoiceEngine} voiceNote={voiceNote} corrections={corrections} setCorrections={setCorrections}
+          voice={voice} setVoice={setVoice} voiceEngine={voiceEngine} setVoiceEngine={setVoiceEngine} voiceModes={voiceModes} setVoiceModes={setVoiceModes} voiceNote={voiceNote} corrections={corrections} setCorrections={setCorrections}
           format={format} setFormat={setFormat} fonts={fonts} onAddFont={addFont} onDeleteFont={deleteFont}
           ansiFont={ansiFont} setAnsiFont={setAnsiFont} enFont={enFont} setEnFont={setEnFont}
           autoBijoy={autoBijoy} setAutoBijoy={setAutoBijoy}

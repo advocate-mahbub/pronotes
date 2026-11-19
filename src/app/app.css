@@ -1117,3 +1117,31 @@ body:has([data-testid="osk"]) .sug.empty { display: flex; min-height: 46px; }
 @media print { .caret-overlay { display: none !important; } }
 /* the page's own mic buttons stay above the strip when the keyboard is put down */
 body:has(.kb-strip.down) .mic, body:has(.kb-strip.down) .live-mic { bottom: calc(56px + env(safe-area-inset-bottom, 0px)); }
+/* words still being heard: grey and soft until they are final (decisions.md 77) */
+.pn-interim { color: var(--muted); filter: blur(.35px); opacity: .85; }
+.pn-interim.busy { font-style: italic; filter: none; animation: pn-busy 1.2s ease-in-out infinite; }
+@keyframes pn-busy { 50% { opacity: .35; } }
+@media print { .pn-interim { display: none !important; } }
+/* ● time · ⏸ · ■ (decisions.md 77) */
+.voice-ctl { display: inline-flex; align-items: center; gap: 8px; }
+.voice-ctl .vc-rec { display: inline-flex; align-items: center; gap: 6px; height: 40px; padding: 0 12px; border-radius: 20px; font: 500 14px var(--f-sans);
+  color: #c62828; background: rgba(198, 40, 40, .12); border: 1px solid rgba(198, 40, 40, .35); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.voice-ctl .vc-dot { width: 11px; height: 11px; border-radius: 50%; background: #d32f2f; opacity: .45; }
+.voice-ctl .vc-rec.on .vc-dot { opacity: 1; animation: pn-rec 1s steps(1) infinite; box-shadow: 0 0 6px #e53935; }
+@keyframes pn-rec { 50% { opacity: .2; } }
+.voice-ctl .vc-rec.busy { color: var(--fg); background: var(--key-2); border-color: var(--line); cursor: pointer; }
+.voice-ctl .vc-b { width: 40px; height: 40px; border-radius: 50%; border: 1px solid var(--line); background: var(--key-2); color: var(--fg); font-size: 16px; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; }
+.voice-ctl .vc-b.wide { width: auto; padding: 0 12px; border-radius: 20px; font-size: 13px; }
+.voice-ctl .vc-b.warn { background: #c62828; color: #fff; }
+.voice-ctl .vc-b:active { background: var(--accent-soft); }
+.kb-strip .strip-side:last-child .voice-ctl { margin-right: 2px; }
+.kb-strip.voicing .k[data-code="#Globe"], .kb-strip.voicing [data-testid="strip-globe"] { opacity: .3; pointer-events: none; }
+/* beside the page's mic when there is no strip */
+.voice-pill-wrap { position: fixed; right: 84px; bottom: calc(22px + env(safe-area-inset-bottom, 0px)); z-index: 6; background: var(--bg); border: 1px solid var(--line); border-radius: 26px; padding: 6px; box-shadow: 0 4px 14px rgba(0, 0, 0, .18); }
+@media print { .voice-ctl, .voice-pill-wrap { display: none !important; } }
+/* Settings → voice: the two modes as cards */
+.vcard { border: 1px solid var(--line); border-radius: 12px; padding: 8px 10px; margin: 0 0 10px; }
+.vcard > .srow:first-child, .vcard > label:first-child { margin-top: 0; }
+/* the old bars' styles no longer apply to the three buttons (decisions.md 77) */
+.voice-ctl.ai-voice-bar, .voice-ctl.live-strip { position: static; inset: auto; right: auto; bottom: auto; left: auto; top: auto; max-width: none; width: auto;
+  background: transparent; color: inherit; padding: 0; border: 0; box-shadow: none; flex-wrap: nowrap; transform: none; animation: none; margin: 0; }
