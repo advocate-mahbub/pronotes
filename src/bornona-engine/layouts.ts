@@ -36,14 +36,21 @@ export const BUILTIN_LAYOUTS: Layout[] = [
   approvedUniBijoy as Layout,
 ];
 /**
- * Anna-ganda signs on the AltGr layer of the number row (the owner's choice, decisions.md 72): the key's
- * digit gives that value — 1–4 are Unicode's own signs (৴ ৵ ৶ ৷), 5–9 are written by adding (৷৴ = 4+1),
- * 0 = ৹, - = ৸, = = ১৲ (16 annas, the whole), ` = ৻ (ganda).
+ * The owner's way of writing 1–16 annas (decisions.md 72, 74): ৴ ৵ ৶ for 1–3, ৷ = 4 and fours are added
+ * (৷৴ = 5 … ৷৷৶ = 11), ৸ stands for 12 (৸৴ = 13 … ৸৶ = 15), ১৲ = 16 (the whole). ৹ is written only after
+ * 4 and 8 annas (৷৹, ৷৷৹), where ৷ alone would read as a দাঁড়ি.
+ */
+export const ANNA_SIGNS: string[] = ['',
+  '\u09F4', '\u09F5', '\u09F6', '\u09F7\u09F9', '\u09F7\u09F4', '\u09F7\u09F5', '\u09F7\u09F6', '\u09F7\u09F7\u09F9',
+  '\u09F7\u09F7\u09F4', '\u09F7\u09F7\u09F5', '\u09F7\u09F7\u09F6', '\u09F8', '\u09F8\u09F4', '\u09F8\u09F5', '\u09F8\u09F6', '\u09E7\u09F2'];
+/**
+ * The anna signs on the AltGr layer of the number row: the key's digit gives that many annas; 0 = ৹,
+ * - = ৸ (12 annas), = = ১৲ (16 annas, the whole), ` = ৻ (ganda).
  */
 export const ANNA_ALT: Record<string, string> = {
-  Backquote: '\u09FB', Digit1: '\u09F4', Digit2: '\u09F5', Digit3: '\u09F6', Digit4: '\u09F7',
-  Digit5: '\u09F7\u09F4', Digit6: '\u09F7\u09F5', Digit7: '\u09F7\u09F6', Digit8: '\u09F7\u09F7', Digit9: '\u09F7\u09F7\u09F4',
-  Digit0: '\u09F9', Minus: '\u09F8', Equal: '\u09E7\u09F2',
+  Backquote: '\u09FB', Digit1: ANNA_SIGNS[1], Digit2: ANNA_SIGNS[2], Digit3: ANNA_SIGNS[3], Digit4: ANNA_SIGNS[4],
+  Digit5: ANNA_SIGNS[5], Digit6: ANNA_SIGNS[6], Digit7: ANNA_SIGNS[7], Digit8: ANNA_SIGNS[8], Digit9: ANNA_SIGNS[9],
+  Digit0: '\u09F9', Minus: '\u09F8', Equal: ANNA_SIGNS[16],
 };
 export const PRONOTES_LAYOUT_ID = 'pronotes';
 export const PRO_NOTES_LAYOUT: Layout = (() => {

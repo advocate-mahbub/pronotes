@@ -25,7 +25,7 @@ export const ROWS: string[][] = [
   ['KeyQ', 'KeyW', 'KeyE', 'KeyR', 'KeyT', 'KeyY', 'KeyU', 'KeyI', 'KeyO', 'KeyP', 'BracketLeft', 'BracketRight', 'Backslash'],
   ['KeyA', 'KeyS', 'KeyD', 'KeyF', 'KeyG', 'KeyH', 'KeyJ', 'KeyK', 'KeyL', 'Semicolon', 'Quote', '#Enter'],
   ['#Shift', 'KeyZ', 'KeyX', 'KeyC', 'KeyV', 'KeyB', 'KeyN', 'KeyM', 'Comma', 'Period', 'Slash', '#Back'],
-  ['#Mode', '#Alt', '#Space', '#Dari'],
+  ['#Mode', '#Alt', '#Pad', '#Space', '#Dari', '#Live'],
 ];
 
 /**
@@ -37,13 +37,14 @@ const NUMBERS = ['Backquote', 'Digit1', 'Digit2', 'Digit3', 'Digit4', 'Digit5', 
 // #Live: the live-voice mic (shown only when it can work); #BackL: a second ⌫ for the left thumb
 const BOTTOM = ['#Mode', '#Sym', '#Alt', '#Space', '#Dari', '#Live'];
 /**
- * Phone letters (the owner's arrangement, decisions.md 73): ⌫ in the top-left corner for the left thumb
- * (where ৱ was), ⌫ at the end of the A row with the numpad key (#Num) before it, ↵ at the end of the Z row.
+ * Phone letters (the owner's arrangement, decisions.md 73–74): ⌫ in the top-left corner for the left
+ * thumb (where ৱ was), ⌫ at the end of the A row, ↵ at the end of the Z row. The keypads (123, ১২৩,
+ * ৴৵৶) open from a long-press of #+=.
  */
 export const PHONE_ROWS: string[][] = [
   ['#BackL', 'Digit1', 'Digit2', 'Digit3', 'Digit4', 'Digit5', 'Digit6', 'Digit7', 'Digit8', 'Digit9', 'Digit0'],
   ['KeyQ', 'KeyW', 'KeyE', 'KeyR', 'KeyT', 'KeyY', 'KeyU', 'KeyI', 'KeyO', 'KeyP', 'Backslash'],
-  ['KeyA', 'KeyS', 'KeyD', 'KeyF', 'KeyG', 'KeyH', 'KeyJ', 'KeyK', 'KeyL', '#Num', '#Back'],
+  ['KeyA', 'KeyS', 'KeyD', 'KeyF', 'KeyG', 'KeyH', 'KeyJ', 'KeyK', 'KeyL', '#Back'],
   ['#Shift', 'KeyZ', 'KeyX', 'KeyC', 'KeyV', 'KeyB', 'KeyN', 'KeyM', '#Enter'],
   BOTTOM,
 ];
@@ -55,20 +56,33 @@ export const PHONE_ROWS: string[][] = [
 export const PHONE_SYMBOL_ROWS: string[][] = [
   NUMBERS.map((c) => 'Alt+' + c),
   ['Minus', 'Equal', 'BracketLeft', 'BracketRight', 'Alt+Minus', 'Alt+Equal'],
-  ['Semicolon', 'Quote', '#Num', '#Back'],
+  ['Semicolon', 'Quote', '#Back'],
   ['#Shift', 'Comma', 'Period', 'Slash', '#Enter'],
   BOTTOM,
 ];
+/** The keypads, chosen from a long-press of #+= (or the iPad's #Pad key). */
+export type Pad = 'numEn' | 'num' | 'anna';
+export const PADS: Pad[] = ['numEn', 'num', 'anna'];
 /**
- * The numpad (#Num), laid out like a phone's keypad with the arithmetic signs beside it. "Np" keys type
- * the digit of the language being typed (১ or 1); "Txt:" keys type the text after the colon.
+ * The numpad (123 and ১২৩: the same keys, English or Bangla digits), laid out like a phone's keypad with
+ * one kind of sign per column: arithmetic, comparison, writing marks; ½ (makes the fraction typed just
+ * before), ± and ৳ under the digits. "Np" keys type a digit; "Txt:" keys type the text after the colon.
  */
 export const NUMPAD_ROWS: string[][] = [
-  ['Np1', 'Np2', 'Np3', 'Txt:÷'],
-  ['Np4', 'Np5', 'Np6', 'Txt:×'],
-  ['Np7', 'Np8', 'Np9', 'Txt:-'],
-  ['Txt:,', 'Np0', 'Txt:.', 'Txt:+'],
-  ['#Num', 'Txt:%', '#Space', '#Back', '#Enter'],
+  ['Np1', 'Np2', 'Np3', 'Txt:÷', 'Txt:<', 'Txt:('],
+  ['Np4', 'Np5', 'Np6', 'Txt:×', 'Txt:>', 'Txt:)'],
+  ['Np7', 'Np8', 'Np9', 'Txt:-', 'Txt:≤', 'Txt:/'],
+  ['Txt:,', 'Np0', 'Txt:.', 'Txt:+', 'Txt:≥', 'Txt:%'],
+  ['#Frac', 'Txt:±', 'Txt:৳', 'Txt:=', 'Txt:≠', 'Txt::'],
+  ['#Pad', '#Space', '#Back', '#Enter'],
+];
+/** ৴৵৶: 1–16 annas in a 4×4 grid ("Anna:n"), then the ganda mark, ৹ and the controls. */
+export const ANNA_PAD_ROWS: string[][] = [
+  ['Anna:1', 'Anna:2', 'Anna:3', 'Anna:4'],
+  ['Anna:5', 'Anna:6', 'Anna:7', 'Anna:8'],
+  ['Anna:9', 'Anna:10', 'Anna:11', 'Anna:12'],
+  ['Anna:13', 'Anna:14', 'Anna:15', 'Anna:16'],
+  ['#Pad', 'Txt:\u09FB', 'Txt:\u09F9', '#Space', '#Back', '#Enter'],
 ];
 /** Where the right hand's half starts in a split keyboard (iOS splits after T, G and V). */
 const RIGHT_HALF = new Set(['Digit7', 'KeyY', 'KeyH', 'KeyB', 'Alt+Digit6']);

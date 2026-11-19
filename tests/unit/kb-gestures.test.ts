@@ -28,7 +28,7 @@ describe('anna-ganda signs on the ProNotes layout', () => {
   const m = PRO_NOTES_LAYOUT.map;
   it('Alt + number row = the owner’s table', () => {
     const got = Object.fromEntries(Object.keys(ANNA_ALT).map((c) => [c, charFor(m, c, false, true)]));
-    expect(got).toEqual({ Backquote: '৻', Digit1: '৴', Digit2: '৵', Digit3: '৶', Digit4: '৷', Digit5: '৷৴', Digit6: '৷৵', Digit7: '৷৶', Digit8: '৷৷', Digit9: '৷৷৴', Digit0: '৹', Minus: '৸', Equal: '১৲' });
+    expect(got).toEqual({ Backquote: '৻', Digit1: '৴', Digit2: '৵', Digit3: '৶', Digit4: '৷৹', Digit5: '৷৴', Digit6: '৷৵', Digit7: '৷৶', Digit8: '৷৷৹', Digit9: '৷৷৴', Digit0: '৹', Minus: '৸', Equal: '১৲' });
     // the plain and Shift characters did not move
     expect(charFor(m, 'Digit1', false)).toBe('১');
     expect(charFor(m, 'Backquote', false)).toBe('ৱ');
