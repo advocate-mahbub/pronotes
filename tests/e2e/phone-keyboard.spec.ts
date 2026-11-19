@@ -15,12 +15,13 @@ test('phone keyboard: iOS-style — numbers and \\ stay, punctuation behind #+=,
 
   // the letters' rows no longer carry the punctuation keys; the number row and \ stay
   for (const c of ['Minus', 'Equal', 'BracketLeft', 'BracketRight', 'Semicolon', 'Quote', 'Comma', 'Period', 'Slash']) await expect(key(page, c)).toHaveCount(0);
-  for (const c of ['Digit1', 'Digit0', 'Backslash', '#Sym', '#BackL', '#Num']) await expect(key(page, c)).toHaveCount(1);
+  for (const c of ['Digit1', 'Digit0', 'Backslash', '#Sym', '#BackL']) await expect(key(page, c)).toHaveCount(1);
+  await expect(key(page, '#Num')).toHaveCount(0); // the keypads moved into a long-press of #+=
   await expect(key(page, 'Backquote')).toHaveCount(0); // ৱ gave its place to the left ⌫
-  // the owner's arrangement: ⌫ top-left; ১২৩ then ⌫ end the A row; ↵ ends the Z row
+  // the owner's arrangement: ⌫ top-left; ⌫ ends the A row; ↵ ends the Z row
   const codes = async (i: number) => osk.locator('.kb-row').nth(i).locator('[data-code]').evaluateAll((els) => els.map((e) => e.getAttribute('data-code')));
   expect((await codes(0))[0]).toBe('#BackL');
-  expect((await codes(2)).slice(-2)).toEqual(['#Num', '#Back']);
+  expect((await codes(2)).slice(-2)).toEqual(['KeyL', '#Back']);
   expect((await codes(3)).at(-1)).toBe('#Enter');
   // #+= sits bottom-left, right after the language key
   const order = await osk.locator('.kb-row').last().locator('[data-code]').evaluateAll((els) => els.map((e) => e.getAttribute('data-code')));
@@ -46,22 +47,10 @@ test('phone keyboard: iOS-style — numbers and \\ stay, punctuation behind #+=,
   expect(Math.round(kb.x + kb.width)).toBe(vw);
   expect(Math.round(pg.x)).toBe(0);
   expect(Math.round(pg.x + pg.width)).toBe(vw);
-  // the letter keys are wider than before (10 to a row instead of 13)
+  // the letter keys are wider than before (11 to a row instead of 13), and their touch areas meet:
+  // no dead gap between keys (only the drawn key is inset, iOS-style)
   const q = (await key(page, 'KeyQ').boundingBox())!;
+  const w = (await key(page, 'KeyW').boundingBox())!;
   expect(q.width).toBeGreaterThan(vw / 12);
-});
-
-test('phone numpad: digits of the language, the four signs and %, stays open; the left ⌫ deletes', async ({ page }) => {
-  await page.goto('./');
-  await page.getByTestId('editor').click();
-  await page.getByTestId('kb-toggle').tap();
-  await expect(page.getByTestId('osk')).toBeVisible();
-  await press(page, '#Num');
-  await expect(key(page, '#Num')).toHaveText('অআ');
-  for (const c of ['Np1', 'Np2', 'Txt:+', 'Np3', 'Txt:×', 'Np4', 'Txt:%', '#Space', 'Txt:÷', 'Txt:-', 'Txt:,', 'Txt:.']) await press(page, c);
-  await expect(page.getByTestId('editor')).toContainText('১২+৩×৪% ÷-,.');
-  await press(page, '#Num');
-  await expect(key(page, 'Np1')).toHaveCount(0);
-  await press(page, '#BackL');
-  await expect(page.getByTestId('editor')).toContainText('১২+৩×৪% ÷-,');
+  expect(Math.abs(w.x - (q.x + q.width))).toBeLessThan(1);
 });

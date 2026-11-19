@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react';
 import { load, save } from './prefs';
 import { useT } from '../i18n';
 
@@ -63,15 +63,33 @@ export function useLandscape(): boolean {
  * while the hands hold the iPad. Drag the bar above it; the height is remembered for upright and
  * sideways separately.
  */
-export function LiftableKeyboard({ children, landscape }: { children: ReactNode; landscape: boolean }) {
+export function LiftableKeyboard({ children, landscape, phone = false, edgeToEdge = false }: { children: ReactNode; landscape: boolean; phone?: boolean; edgeToEdge?: boolean }) {
   const { t } = useT();
-  const key = landscape ? 'kb.lift.land' : 'kb.lift.port';
+  const key = (phone ? 'kb.liftPhone.' : 'kb.lift.') + (landscape ? 'land' : 'port');
   const [lift, setLift] = useState<number>(() => load(key, 0));
   useEffect(() => setLift(load(key, 0)), [key]);
   const drag = useRef<{ y: number; l: number } | null>(null);
-  const max = () => Math.round(window.innerHeight * 0.4);
+  // split on the iPad: the halves belong at the screen's edges, where the thumbs are, even with the
+  // drafts list open beside the page — the keyboard reaches out over it, edge to edge
+  const wrap = useRef<HTMLDivElement>(null);
+  const [reach, setReach] = useState<{ l: number; w: number } | null>(null);
+  useLayoutEffect(() => {
+    if (!edgeToEdge) return setReach(null);
+    const place = () => {
+      const p = wrap.current?.parentElement?.getBoundingClientRect();
+      if (p) setReach({ l: p.left, w: window.innerWidth });
+    };
+    place();
+    window.addEventListener('resize', place);
+    const ro = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(place) : null;
+    if (wrap.current?.parentElement) ro?.observe(wrap.current.parentElement);
+    return () => { window.removeEventListener('resize', place); ro?.disconnect(); };
+  }, [edgeToEdge]);
+  // a phone's screen is small: up to a third of it
+  const max = () => Math.round(window.innerHeight * (phone ? 0.33 : 0.4));
   return (
-    <div className="kb-liftwrap" style={{ paddingBottom: Math.min(lift, max()) }} data-testid="kb-liftwrap">
+    <div ref={wrap} className={'kb-liftwrap' + (phone ? ' phone' : '') + (reach ? ' reach' : '')} data-testid="kb-liftwrap"
+      style={{ paddingBottom: Math.min(lift, max()), ...(reach ? { marginLeft: -reach.l, width: reach.w } : {}) }}>
       <div className="kb-grip" data-testid="kb-grip" role="separator" aria-label={t('কিবোর্ড ওপরে-নিচে সরান')} title={t('কিবোর্ড ওপরে-নিচে সরান')}
         onPointerDown={(e) => { e.preventDefault(); e.currentTarget.setPointerCapture(e.pointerId); drag.current = { y: e.clientY, l: lift }; }}
         onPointerMove={(e) => { if (drag.current) setLift(Math.max(0, Math.min(max(), drag.current.l + drag.current.y - e.clientY))); }}

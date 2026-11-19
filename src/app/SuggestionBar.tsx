@@ -26,9 +26,9 @@ export function SuggestionBar({ editor, bank, version }: { editor: Editor; bank:
     view.dispatch(view.state.tr.insertText(w + ' ', from - prefix.length, from).scrollIntoView());
   };
 
-  // Do not reserve a dock row while there is nothing actionable to suggest.
-  // The previous hint made the mobile editor lose a permanent strip of space.
-  if (words.length === 0) return null;
+  // Empty: no strip of space is kept for nothing (CSS hides it), except while the on-screen keyboard is
+  // up — there a row that came and went made the whole keyboard jump while typing.
+  if (words.length === 0) return <div className="sug empty" data-testid="sug-empty" aria-hidden="true" />;
 
   return (
     <div className="sug" aria-label={t('শব্দের পরামর্শ')} data-testid="suggestions">

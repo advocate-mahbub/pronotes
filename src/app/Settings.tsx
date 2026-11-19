@@ -9,6 +9,7 @@ import { load, save } from './prefs';
 import { formatDateTime, num, useT, type UiLang } from '../i18n';
 import { AUTO_MODEL, FREE_MODELS, readAuto, type AutoOrder } from '../ai/gemini';
 import { KEEP_CHOICES, type DriveBackup } from '../storage/gdrive';
+import type { BackupLast } from './backup-status';
 import { WORD_SHORTCUTS, showKeys } from '../editor/word-shortcuts';
 
 export interface FontInfo {
@@ -78,6 +79,8 @@ interface Props {
   onClose: () => void;
   /** Google Drive backups (off when the build has no Google Client ID). */
   drive: DriveProps;
+  /** When the last backups were made and how soon to remind (device-only). */
+  backupInfo: { last: BackupLast; remind: number; setRemind: (h: number) => void };
 }
 
 export interface DriveProps {
@@ -87,6 +90,8 @@ export interface DriveProps {
   list: DriveBackup[] | null;
   onConnect: () => void;
   onBackup: () => void;
+  /** Save one Drive backup as a file on this device. */
+  onDownload: (b: DriveBackup) => void;
   onRefresh: () => void;
   onRestore: (b: DriveBackup) => void;
   onDelete: (b: DriveBackup) => void;
@@ -99,6 +104,9 @@ export interface DriveProps {
   autoDevice: string;
   thisDevice: string;
   onDisconnect: () => void;
+  /** Back up to Drive by itself while connected (device-only setting). */
+  auto: boolean;
+  setAuto: (v: boolean) => void;
 }
 
 export interface AiSettings {
@@ -542,27 +550,45 @@ export function Settings(p: Props) {
               <button type="button" aria-pressed={p.uiLang === 'en'} data-testid="ui-en" onClick={() => p.setUiLang('en')}>English</button>
             </div>
           </Group>
-          <Group title={t('ব্যাকআপ')} info="সব ড্রাফট (ট্র্যাশসহ), শেখা শব্দ, নিজের লেআউট, ভয়েসের সংশোধন আর সেটিংস একটা ফাইলে (ফন্ট ফাইল বাদে)। iPad-এ ফাইলটা Files বা iCloud Drive-এ রাখুন। ফেরত আনলে আগের কিছু মুছবে না; বদলে যাওয়া ড্রাফট আলাদা কপি হয়ে আসবে।">
+          <Group title={t('ব্যাকআপ')} info="সব ড্রাফট (ট্র্যাশসহ), শেখা শব্দ, নিজের লেআউট, ভয়েসের সংশোধন আর সেটিংস একটা ফাইলে (ফন্ট ফাইল বাদে)। দুই জায়গায় রাখা যায়: এই ডিভাইসে (iPad-এ Files বা iCloud Drive) আর আপনার নিজের Google Drive-এর “ProNotes Backups” ফোল্ডারে। Drive-এ Gemini key কখনো যায় না। ফেরত আনলে আগের কিছু মুছবে না; বদলে যাওয়া ড্রাফট আলাদা কপি হয়ে আসবে।">
+            <p className="backup-status muted" data-testid="backup-status">
+              {!p.backupInfo.last.drive && !p.backupInfo.last.device ? t('এখনো কোনো ব্যাকআপ নেওয়া হয়নি') : (
+                <>
+                  {t('শেষ ব্যাকআপ')}:{' '}
+                  {p.backupInfo.last.drive ? <span>Drive {formatDateTime(p.backupInfo.last.drive, p.uiLang)}</span> : null}
+                  {p.backupInfo.last.drive && p.backupInfo.last.device ? ' · ' : null}
+                  {p.backupInfo.last.device ? <span>{t('এই ডিভাইস')} {formatDateTime(p.backupInfo.last.device, p.uiLang)}</span> : null}
+                </>
+              )}
+            </p>
+            <div className="row backup-two">
+              <button type="button" className="btn primary" data-testid="backup" onClick={() => p.onBackup(withKey)}>⤓ {t('এই ডিভাইসে')}</button>
+              {p.drive.enabled && (p.drive.connected
+                ? <button type="button" className="btn primary" data-testid="drive-backup" disabled={p.drive.busy} onClick={p.drive.onBackup}>{p.drive.busy ? t('কাজ চলছে…') : '☁ ' + t('Google Drive-এ')}</button>
+                : <button type="button" className="btn" data-testid="drive-connect" onClick={p.drive.onConnect}>☁ {t('Google দিয়ে যুক্ত করুন')}</button>)}
+            </div>
             {p.ai.key && (
-              <Check testid="backup-key" checked={withKey} onChange={setWithKey} label={t('Gemini key-ও ব্যাকআপে')} info="Gemini key-ও ব্যাকআপে রাখুন (ফাইলটা তখন পাসওয়ার্ডের মতো গোপনে রাখবেন)" />
+              <Check testid="backup-key" checked={withKey} onChange={setWithKey} label={t('Gemini key-ও ব্যাকআপে')} info="শুধু এই ডিভাইসের ফাইলে Gemini key-ও রাখুন (ফাইলটা তখন পাসওয়ার্ডের মতো গোপনে রাখবেন)। Drive-এ key যায় না।" />
             )}
             <div className="row">
-              <button type="button" className="btn primary" data-testid="backup" onClick={() => p.onBackup(withKey)}>{t('সব কিছুর ব্যাকআপ নিন')}</button>
               <FileButton label={t('ব্যাকআপ থেকে ফেরত আনুন')} accept=".json,application/json" testid="restore" onFile={p.onRestore} />
             </div>
-          </Group>
-          <Group title="Google Drive" info="সব ড্রাফট, শেখা শব্দ আর সেটিংসের ব্যাকআপ আপনার নিজের Google Drive-এ, “ProNotes Backups” ফোল্ডারে (Gemini key যায় না)। ProNotes শুধু নিজের বানানো ফাইল দেখতে পায়, Drive-এর আর কিছু নয়। Google-এ ঢোকার অনুমতি শুধু এই ডিভাইসের এই সেশনে থাকে, প্রায় এক ঘণ্টা; পরে আবার যুক্ত করতে হয়।">
+            <Line info="এতক্ষণ কোনো ব্যাকআপ (Drive বা ডিভাইস) না হলে ProNotes খুললে মনে করিয়ে দেবে; সেখান থেকেই ব্যাকআপ নেওয়া যায়। “পরে” চাপলে ১২ ঘণ্টা পর আবার।">
+              <label className="srow"><span>{t('মনে করিয়ে দিন')}</span>
+                <select data-testid="backup-remind" value={p.backupInfo.remind} onChange={(e) => p.backupInfo.setRemind(Number(e.target.value))}>
+                  <option value={0}>{t('বন্ধ')}</option>
+                  <option value={12}>{t('১২ ঘণ্টা পর')}</option>
+                  <option value={24}>{t('১ দিন পর')}</option>
+                  <option value={72}>{t('৩ দিন পর')}</option>
+                </select>
+              </label>
+            </Line>
             {!p.drive.enabled ? (
               <Line info="সাইটের মালিক Google Cloud-এ OAuth Client ID বানিয়ে GitHub-এর Secrets-এ GOOGLE_CLIENT_ID নামে রাখলে পরের deploy থেকে চালু হবে।"><span className="muted" data-testid="drive-off">{t('এই সাইটে Google Drive চালু করা হয়নি')}</span></Line>
-            ) : !p.drive.connected ? (
-              <div className="row">
-                <button type="button" className="btn primary" data-testid="drive-connect" onClick={p.drive.onConnect}>{t('Google দিয়ে যুক্ত করুন')}</button>
-              </div>
-            ) : (
+            ) : p.drive.connected && (
               <>
-                <div className="row">
-                  <button type="button" className="btn primary" data-testid="drive-backup" disabled={p.drive.busy} onClick={p.drive.onBackup}>{p.drive.busy ? t('কাজ চলছে…') : t('Drive-এ ব্যাকআপ নিন')}</button>
-                </div>
+                <Check testid="drive-auto" checked={p.drive.auto} onChange={p.drive.setAuto} label={t('Drive-এ নিজে থেকে ব্যাকআপ')}
+                  info="Google Drive যুক্ত থাকা অবস্থায় ড্রাফট বদলালে ProNotes পেছনে গেলে আর প্রতি ১৫ মিনিটে নীরবে Drive-এ ব্যাকআপ নেয়। Google-এর অনুমতি প্রায় এক ঘণ্টা থাকে; মেয়াদ গেলে আবার যুক্ত করতে হয়।" />
                 <Line info="নতুন ব্যাকআপ Drive-এ ঠিকমতো রাখা হলে তবেই সবচেয়ে পুরোনোগুলো Drive-এর Trash-এ যায়; ৩০ দিন পর্যন্ত drive.google.com-এর Trash থেকে ফেরত আনা যায়। সংখ্যা কমালে পরের ব্যাকআপের সময় বাড়তিগুলো সরে।">
                   <label className="srow"><span>{t('Drive-এ রাখুন')}</span>
                     <select data-testid="drive-keep" value={p.drive.keep} onChange={(e) => p.drive.setKeep(Number(e.target.value))}>
@@ -592,6 +618,7 @@ export function Settings(p: Props) {
                               {b.appProperties?.device && b.size ? ' · ' : ''}
                               {b.size && <>{num(Math.max(1, Math.round(Number(b.size) / 1024)), p.uiLang)} KB</>}
                             </small></span>
+                          <button type="button" className="btn small" title={t('ডিভাইসে নামান')} aria-label={t('ডিভাইসে নামান')} data-testid={'drive-download-' + b.id} onClick={() => p.drive.onDownload(b)}>⤓</button>
                           <ArmedButton label={t('ফেরত আনুন')} armedLabel={t('নিশ্চিত?')} testid={'drive-restore-' + b.id} onConfirm={() => p.drive.onRestore(b)} />
                           <ArmedButton label="🗑" armedLabel={t('মুছবেন?')} testid={'drive-delete-' + b.id} onConfirm={() => p.drive.onDelete(b)} />
                         </li>

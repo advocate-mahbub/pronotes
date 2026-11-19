@@ -5,6 +5,7 @@
  * The drawing (layout.ts, svg.ts) is made from this data. Areas and shares are checked where they are given:
  * heirs' shares adding to 1, nobody giving more land than they got.
  */
+import { unFraction } from '../editor/fraction';
 
 /* ---------- exact fractions (hissa: 1/3, 2/7 … must not drift like decimals) ---------- */
 
@@ -74,9 +75,10 @@ export function annaText(f: Frac): string {
 export function readFrac(s: string | undefined): Frac | null {
   if (!s) return null;
   if (/আনা|গণ্ডা|গন্ডা|কড়া|কড়া|ক্রান্তি|তিল/.test(s)) return readAnna(s);
-  const t = ascii(s).trim().replace(/\s*(শতক|শতাংশ|শ\.?)$/, '');
-  const m = t.match(/^(\d+)\s*\/\s*(\d+)$/);
-  if (m) return frac(BigInt(m[1]), BigInt(m[2]));
+  // ½ ¾ ⁵⁄₁₆ (the ½ key's forms) read as a/b; "২ ১/২" is a whole number and a fraction
+  const t = ascii(unFraction(s)).trim().replace(/\s*(শতক|শতাংশ|শ\.?)$/, '');
+  const m = t.match(/^(?:(\d+)\s+)?(\d+)\s*\/\s*(\d+)$/);
+  if (m && BigInt(m[3]) !== 0n) return frac(BigInt(m[1] ?? '0') * BigInt(m[3]) + BigInt(m[2]), BigInt(m[3]));
   const d = t.match(/^(\d*)(?:\.(\d+))?$/);
   if (!d || (!d[1] && !d[2])) return null;
   const decs = d[2] ?? '';

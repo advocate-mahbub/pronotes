@@ -764,7 +764,7 @@ export function Workspace(p: Props) {
               hand={phoneKb && !landscape ? hand : null} setHand={phoneKb ? setHand : undefined} split={split} menuItems={items} live={live.available ? { on: live.on, toggle: live.toggle } : undefined} />
           );
           if (float) return <FloatingKeyboard onDock={() => setKbMode('dock')}>{kb}</FloatingKeyboard>;
-          return phoneKb ? kb : <LiftableKeyboard landscape={landscape}>{kb}</LiftableKeyboard>;
+          return <LiftableKeyboard landscape={landscape} phone={phoneKb} edgeToEdge={split && !phoneKb}>{kb}</LiftableKeyboard>;
         })()}
       </footer>
     </>

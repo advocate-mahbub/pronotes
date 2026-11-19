@@ -998,3 +998,69 @@ input.cf[data-testid$="-type"] { flex: 0 1 112px; width: 112px; }
 @media (max-width: 640px) { .live-mic { right: 12px; bottom: 120px; width: 42px; height: 42px; } .live-strip { left: 6px; right: 6px; bottom: 8px; } }
 .dock .live-strip { bottom: calc(100% + 6px); }
 @media (max-width: 640px) { .ai-voice-bar .aiv-text { flex-basis: 100%; } .ai-voice-bar .btn { flex: 1 1 0; } }
+/* the empty suggestion row: hidden, but kept (same height) while the on-screen keyboard is up */
+.sug.empty { display: none; }
+body:has([data-testid="osk"]) .sug.empty { display: flex; min-height: 46px; }
+/* iPad split (not on phones): each half half as wide, pushed to the edges */
+.kb-liftwrap:not(.phone) .kb-row.split .gap { flex-basis: 62%; }
+.kb-liftwrap:not(.phone) .kb.compact .kb-row.split .gap { flex-basis: 58%; }
+/* keypads: big keys; the anna keys show their value under the sign; not stretched on a wide iPad */
+.kb.num .kb-main { max-width: 560px; width: 100%; margin: 0 auto; }
+.kb .k.pad .v { font-size: 10px; color: var(--muted); line-height: 1; margin-top: 2px; }
+.kb.pad-anna .k.pad .m { font-family: "Noto Sans Bengali", var(--f-display); letter-spacing: -1px; }
+.kb-pop.pad-menu span { font: 600 18px "Noto Sans Bengali", var(--f-sans); }
+/* iPhone: room between the keys like iOS's own keyboard */
+@media (max-width: 640px) {
+  body:has([data-testid="osk"]) .sug { min-height: 40px; height: 40px; }
+  .kb { padding: 6px 3px calc(4px + env(safe-area-inset-bottom, 0px)); gap: 10px; }
+  .kb .kb-main { gap: 10px; }
+  .kb .kb-row { gap: 6px; }
+  .kb .k { height: 42px; border-radius: 6px; }
+  .kb-liftwrap.phone .kb-grip { height: 12px; }
+}
+/* phone keypads: the same total height as the letters (5 rows of 42 + 4 gaps of 10 = 250px), so
+   nothing jumps or slides off the screen when a keypad opens */
+@media (max-width: 640px) {
+  .kb.num .kb-main, .kb.num { gap: 6px; }
+  .kb.num .kb-row { gap: 6px; }
+  .kb.num .k { height: 37px; }
+  .kb.pad-anna .k { height: 44px; }
+  .kb.num .k.pad .m { font-size: 21px; }
+}
+/* a phone held sideways: the same rule at the lower key height */
+@media (max-height: 500px) and (orientation: landscape) and (pointer: coarse) {
+  .kb.num .k { height: 22px; } .kb.pad-anna .k { height: 26px; }
+  .kb.num .k.pad .m { font-size: 15px; } .kb .k.pad .v { display: none; }
+}
+.kb-liftwrap.reach { position: relative; z-index: 6; }
+/* iPhone: iOS-like gaps that are not dead space. The touch area of each key fills the row (no gap
+   between buttons); only the drawn key inside it is smaller (6px apart sideways, 10px between rows), so
+   a finger that lands in a gap still types the nearest key, as on iOS. */
+@media (max-width: 640px) {
+  .kb, .kb .kb-main { gap: 0; }
+  .kb .kb-row { gap: 0; }
+  .kb .k { height: 52px; background: transparent; box-shadow: none; border-radius: 0; }
+  .kb .k::before { content: ''; position: absolute; inset: 5px 3px; border-radius: 6px; background: var(--key); box-shadow: 0 1.5px 0 var(--key-shadow); }
+  .kb .k > span { position: relative; z-index: 1; }
+  .kb .k > .s, .kb .k > .a, .kb .k > .l { position: absolute; }
+  .kb .k .s { top: 9px; right: 8px; }
+  .kb .k.fn::before { background: var(--key-2); box-shadow: 0 1.5px 0 var(--key-shadow), inset 0 0 0 1px var(--line); }
+  .kb .k.on::before { background: var(--accent); }
+  .kb .k.live.on::before { background: #c62828; }
+  .kb .k.hit, .kb .k:active { background: transparent; box-shadow: none; }
+  .kb .k.hit::before, .kb .k:active::before { background: var(--accent-soft); }
+  .kb .k.sign::before { box-shadow: 0 1.5px 0 var(--key-shadow); }
+  .kb.num .k { height: 43px; } .kb.num .k::before { inset: 3px; }
+  .kb.pad-anna .k { height: 52px; } .kb.pad-anna .k::before { inset: 4px 3px; }
+}
+/* keypad keys: the value under the sign; the anna pad's ৻ and ৹ as wide as a digit key */
+.kb .k.pad { display: flex; flex-direction: column; align-items: center; justify-content: center; }
+.kb.pad-anna .kb-row:last-child .k.pad { flex: 1.2 1 0; }
+.kb.pad-anna .kb-row:last-child .k.w6 { flex: 3 1 0; }
+/* a message with buttons (backup fallbacks): stays until a button or ✕ */
+.toast.acts { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; pointer-events: auto; width: min(92vw, 520px); max-width: none; border-radius: 16px; padding: 12px 40px 12px 14px; text-align: left; }
+.toast.acts > span { flex: 1 1 100%; }
+.toast.acts .btn.small { flex: 1 1 auto; background: var(--bg); color: var(--fg); border-color: transparent; }
+.toast .toast-x { position: absolute; top: 6px; right: 6px; background: none; border: 0; color: inherit; font-size: 16px; width: 32px; height: 32px; cursor: pointer; }
+.backup-status { margin: 0 0 8px; }
+.backup-two > .btn { flex: 1 1 0; }
