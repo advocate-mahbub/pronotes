@@ -1145,3 +1145,14 @@ body:has(.kb-strip.down) .mic, body:has(.kb-strip.down) .live-mic { bottom: calc
 /* the old bars' styles no longer apply to the three buttons (decisions.md 77) */
 .voice-ctl.ai-voice-bar, .voice-ctl.live-strip { position: static; inset: auto; right: auto; bottom: auto; left: auto; top: auto; max-width: none; width: auto;
   background: transparent; color: inherit; padding: 0; border: 0; box-shadow: none; flex-wrap: nowrap; transform: none; animation: none; margin: 0; }
+/* number boxes that can be written freely (decisions.md 78) */
+.numfield { display: inline-flex; align-items: center; gap: 4px; }
+.numfield input.num { width: 4.2em; text-align: center; }
+.numfield .btn.small { min-width: 34px; }
+/* a Settings group that folds to one line (backup) */
+.sgroup-fold { display: flex; align-items: baseline; gap: 8px; flex: 1; min-width: 0; background: none; border: 0; padding: 0; color: inherit; cursor: pointer; text-align: left; }
+.sgroup-fold h3 { margin: 0; }
+.sgroup-fold .fold-summary { color: var(--muted); font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+.sgroup.foldable:not(.open) { padding-bottom: 6px; }
+.srow .numfield { flex: 0 0 auto; margin-left: auto; }
+.srow .numfield input.num, .form .numfield input.num { width: 4.5em; min-width: 0; flex: 0 0 auto; }

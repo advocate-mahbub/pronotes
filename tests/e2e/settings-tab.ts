@@ -17,4 +17,9 @@ export async function section(page: Page, name: string): Promise<void> {
   if (!tab) throw new Error('no Settings tab for ' + name);
   if (!(await page.getByTestId('settings-panel').isVisible())) await page.getByTestId('settings').click();
   await page.getByTestId('stab-' + tab).click();
+  // the backup group can be folded (decisions.md 78): open it for the tests that use it
+  if (tab === 'app') {
+    const f = page.getByTestId('backup-fold');
+    if ((await f.count()) && (await f.getAttribute('aria-expanded')) === 'false') await f.click();
+  }
 }

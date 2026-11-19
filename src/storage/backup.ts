@@ -4,7 +4,7 @@
  * comes back as a separate copy.
  * Font files are never included (size, and font licences such as SutonnyMJ's).
  */
-import { db, getMeta, setMeta, type Doc, type Folder, type DictionarySource, type DictionaryEntry, type DictionarySense, type DictionaryEquivalent, type DictionaryRelation } from './db';
+import { db, getMeta, keepVersion, setMeta, type Doc, type Folder, type DictionarySource, type DictionaryEntry, type DictionarySense, type DictionaryEquivalent, type DictionaryRelation } from './db';
 import { emptyBank, type WordBank } from '../suggest';
 import { fixNukta, type Layout } from '../bornona-engine';
 
@@ -49,7 +49,14 @@ export function backupFileName(now = new Date()): string {
 
 export interface RestoreResult {
   added: number;
+  /** Drafts that came back as separate copies (no longer happens: kept for older callers). */
   copies: number;
+  /** The same draft, newer in the backup: updated here; this device's state kept in its history. */
+  updated: number;
+  /** The same draft, newer here: left as it is; the backup's state kept in its history. */
+  kept: number;
+  /** Ids of the drafts updated (an open one must be loaded again). */
+  updatedIds: string[];
   unchanged: number;
   words: number;
   dictionaryAdded: number;
@@ -57,7 +64,6 @@ export interface RestoreResult {
   prefs: Record<string, unknown>;
 }
 
-const newId = () => (crypto.randomUUID ? crypto.randomUUID() : Date.now().toString(36) + Math.random().toString(36).slice(2));
 const same = (a: Doc, b: Doc) => a.updatedAt === b.updatedAt && JSON.stringify(a.content) === JSON.stringify(b.content) && a.title === b.title;
 
 /** Word counts: keep the larger count, so restoring the same backup twice does not inflate them. */
@@ -118,7 +124,7 @@ export function parseBackup(json: string): BackupFile {
 
 export async function restoreAll(f: BackupFile): Promise<RestoreResult> {
   const d = await db();
-  const r: RestoreResult = { added: 0, copies: 0, unchanged: 0, words: 0, dictionaryAdded: 0, dictionaryUnchanged: 0, prefs: f.prefs || {} };
+  const r: RestoreResult = { added: 0, copies: 0, updated: 0, kept: 0, updatedIds: [], unchanged: 0, words: 0, dictionaryAdded: 0, dictionaryUnchanged: 0, prefs: f.prefs || {} };
   for (const raw of f.docs) {
     const doc: Doc = { ...raw, title: fixNukta(raw.title), text: fixNukta(raw.text || ''), content: JSON.parse(fixNukta(JSON.stringify(raw.content))) };
     const existing = await d.get('docs', doc.id);
@@ -127,9 +133,17 @@ export async function restoreAll(f: BackupFile): Promise<RestoreResult> {
       r.added++;
     } else if (same(existing, doc)) {
       r.unchanged++;
+    } else if ((doc.updatedAt ?? 0) > (existing.updatedAt ?? 0)) {
+      // the same draft, changed later elsewhere: it is updated here — no second copy (decisions.md 78);
+      // what this device had is kept in the draft's version history
+      await keepVersion(existing, 'backup');
+      await d.put('docs', doc);
+      r.updated++;
+      r.updatedIds.push(doc.id);
     } else {
-      await d.put('docs', { ...doc, id: newId(), title: doc.title + ' (ব্যাকআপ থেকে)' });
-      r.copies++;
+      // this device has the later state: it stays; the backup's state goes into the version history
+      await keepVersion({ ...doc, id: existing.id }, 'backup');
+      r.kept++;
     }
   }
   // Dictionary restore is additive and ID-based: never overwrite local records silently.

@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { toBijoy } from '../bijoy';
-import { DEFAULT_FORMAT, type DocFormat } from '../docx-export/format';
+import type { DocFormat } from '../docx-export/format';
 import { ENGLISH_FONTS, LOCAL_ANSI, LOCAL_UNI, WEB_FONTS, isFontAvailable } from '../fonts';
 import { TOGGLE_KEYS, ANSI_KEYS, type Layout, type ToggleKey, type AnsiKey } from '../bornona-engine';
 import type { VoicePrefs } from './prefs-types';
@@ -12,6 +12,7 @@ import { LIVE_MODEL as LIVE_DEFAULT } from '../ai/live';
 import { KEEP_CHOICES, type DriveBackup } from '../storage/gdrive';
 import type { BackupLast } from './backup-status';
 import type { VoiceModes } from './voice-modes';
+import { NumberField } from './NumberField';
 import { WORD_SHORTCUTS, showKeys } from '../editor/word-shortcuts';
 
 export interface FontInfo {
@@ -583,10 +584,10 @@ export function Settings(p: Props) {
               </select>
             </label>
             <label className="srow"><span>{t('মূল লেখা (pt)')}</span>
-              <input type="number" min={8} max={40} step={0.5} data-testid="fmt-size" value={p.format.size} onChange={(e) => p.setFormat({ ...p.format, size: Number(e.target.value) || DEFAULT_FORMAT.size })} />
+              <NumberField min={8} max={40} step={0.5} steppers testid="fmt-size" value={p.format.size} onChange={(n) => p.setFormat({ ...p.format, size: n })} />
             </label>
             <label className="srow"><span>{t('বড় শিরোনাম (pt)')}</span>
-              <input type="number" min={8} max={60} step={0.5} data-testid="fmt-title" value={p.format.titleSize} onChange={(e) => p.setFormat({ ...p.format, titleSize: Number(e.target.value) || DEFAULT_FORMAT.titleSize })} />
+              <NumberField min={8} max={60} step={0.5} steppers testid="fmt-title" value={p.format.titleSize} onChange={(n) => p.setFormat({ ...p.format, titleSize: n })} />
             </label>
             <label className="srow"><span>{t('লাইন স্পেসিং')}</span>
               <select data-testid="fmt-line" value={p.format.lineSpacing} onChange={(e) => p.setFormat({ ...p.format, lineSpacing: Number(e.target.value) })}>
@@ -661,7 +662,8 @@ export function Settings(p: Props) {
               <button type="button" aria-pressed={p.uiLang === 'en'} data-testid="ui-en" onClick={() => p.setUiLang('en')}>English</button>
             </div>
           </Group>
-          <Group title={t('ব্যাকআপ')} info="সব ড্রাফট (ট্র্যাশসহ), শেখা শব্দ, নিজের লেআউট, ভয়েসের সংশোধন আর সেটিংস একটা ফাইলে (ফন্ট ফাইল বাদে)। দুই জায়গায় রাখা যায়: এই ডিভাইসে (iPad-এ Files বা iCloud Drive) আর আপনার নিজের Google Drive-এর “ProNotes Backups” ফোল্ডারে। Drive-এ Gemini key কখনো যায় না। ফেরত আনলে আগের কিছু মুছবে না; বদলে যাওয়া ড্রাফট আলাদা কপি হয়ে আসবে।">
+          <Group title={t('ব্যাকআপ')} info="সব ড্রাফট (ট্র্যাশসহ), শেখা শব্দ, নিজের লেআউট, ভয়েসের সংশোধন আর সেটিংস একটা ফাইলে (ফন্ট ফাইল বাদে)। দুই জায়গায় রাখা যায়: এই ডিভাইসে (iPad-এ Files বা iCloud Drive) আর আপনার নিজের Google Drive-এর “ProNotes Backups” ফোল্ডারে। Drive-এ Gemini key কখনো যায় না। ফেরত আনলে একই ড্রাফট আলাদা কপি হয় না: যেটা পরে বদলানো হয়েছে সেটা থাকে, অন্যটা ড্রাফটের ভার্সন-ইতিহাসে রাখা হয়, তাই কিছু হারায় না।" fold={{ id: 'backup', summary: !p.backupInfo.last.drive && !p.backupInfo.last.device ? t('এখনো কোনো ব্যাকআপ নেওয়া হয়নি')
+            : t('শেষ ব্যাকআপ') + ': ' + formatDateTime(Math.max(p.backupInfo.last.drive ?? 0, p.backupInfo.last.device ?? 0), p.uiLang) }}>
             <p className="backup-status muted" data-testid="backup-status">
               {!p.backupInfo.last.drive && !p.backupInfo.last.device ? t('এখনো কোনো ব্যাকআপ নেওয়া হয়নি') : (
                 <>
@@ -802,13 +804,29 @@ function InfoText({ text, vars }: { text: string; vars?: Record<string, string |
 }
 
 /** A titled block of settings, with its ⓘ next to the title. */
-function Group({ title, info, children }: { title: string; info?: string; children: ReactNode }) {
+/**
+ * A Settings group. With `fold` it can be closed to one line (decisions.md 78): the title, a short
+ * status (e.g. when the last backup was made) and ▸/▾; whether it is open is kept on this device only.
+ */
+function Group({ title, info, children, fold }: { title: string; info?: string; children: ReactNode; fold?: { id: string; summary?: ReactNode } }) {
   const [open, setOpen] = useState(false);
+  const foldKey = fold ? 'device.fold.' + fold.id : '';
+  const [unfolded, setUnfolded0] = useState<boolean>(() => (fold ? load(foldKey, false) : true));
+  const setUnfolded = (v: boolean) => { setUnfolded0(v); if (fold) save(foldKey, v); };
   return (
-    <section className="sgroup">
-      <div className="sgroup-head"><h3>{title}</h3>{info && <InfoButton open={open} onClick={() => setOpen(!open)} />}</div>
-      {open && info && <InfoText text={info} />}
-      {children}
+    <section className={'sgroup' + (fold ? ' foldable' + (unfolded ? ' open' : '') : '')}>
+      <div className="sgroup-head">
+        {fold ? (
+          <button type="button" className="sgroup-fold" data-testid={fold.id + '-fold'} aria-expanded={unfolded} onClick={() => setUnfolded(!unfolded)}>
+            <span className="fold-arrow" aria-hidden="true">{unfolded ? '▾' : '▸'}</span>
+            <h3>{title}</h3>
+            {!unfolded && fold.summary && <small className="fold-summary">{fold.summary}</small>}
+          </button>
+        ) : <h3>{title}</h3>}
+        {info && (!fold || unfolded) && <InfoButton open={open} onClick={() => setOpen(!open)} />}
+      </div>
+      {open && info && (!fold || unfolded) && <InfoText text={info} />}
+      {unfolded && children}
     </section>
   );
 }

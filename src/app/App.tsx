@@ -669,6 +669,7 @@ export function App() {
     const back = takeRedirect();
     if (!back) return;
     save('settings.tab', 'app');
+    save('device.fold.backup', true); // back from Google: show the Drive part
     setSettingsOpen(true);
     if (!back.ok) { setTimeout(() => say(back.error === 'access_denied' ? 'Google-এ অনুমতি দেওয়া হয়নি' : 'Google-এ যুক্ত হওয়া গেল না'), 300); return; }
     setDriveTick((n) => n + 1);
@@ -678,6 +679,7 @@ export function App() {
   const restore = async (file: File) => {
     try {
       const f = parseBackup(await file.text());
+      await flushAll(); // the open draft is saved first, so "which is newer" is decided on what is really there
       const r = await restoreAll(f);
       if (f.aiKey && !geminiKey) setGeminiKey(f.aiKey);
       bank.current = (await loadBank()) ?? bank.current;
@@ -685,7 +687,12 @@ export function App() {
       setCustomLayouts(await loadLayouts());
       setCorrectionsState(await loadCorrections());
       await refresh();
-      const msg = tr('ফেরত এসেছে: নতুন {a}টা, আলাদা কপি {c}টা, আগে থেকেই ছিল {u}টা', { a: r.added, c: r.copies, u: r.unchanged });
+      // the open draft was updated from the backup: show the updated text
+      if (current && r.updatedIds.includes(current.id)) await open(current.id);
+      // the same draft is updated, never copied (decisions.md 78); the other state is in its history
+      const msg = tr('ফেরত এসেছে: নতুন {a}টা, হালনাগাদ {up}টা, আগে থেকেই ছিল {u}টা', { a: r.added, up: r.updated, u: r.unchanged })
+        + (r.kept ? ' · ' + tr('এখানে নতুনতর {k}টা যেমন ছিল রইল', { k: r.kept }) : '')
+        + (r.updated + r.kept ? ' · ' + tr('অন্যটা ড্রাফটের ভার্সন-ইতিহাসে আছে') : '');
       say(msg);
       const store = (r.prefs as { store?: Record<string, unknown> }).store;
       if (store && restorePrefs(store)) {
