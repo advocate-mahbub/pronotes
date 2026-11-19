@@ -34,7 +34,7 @@ test.describe('phone', () => {
 
   test('hold the left ↵: ১২৩ numpad with all signs; ½ makes a Bangla fraction; অআ back', async ({ page }) => {
     await open(page);
-    await choosePad(page, '#EnterL', '১২৩');
+    await choosePad(page, '#Sym', '১২৩');
     for (const c of ['Np2', '#Space', 'Np1', 'Txt:/', 'Np2', '#Frac']) await tap(page, c);
     // ২ ½ with Bangla digits: numerator raised, denominator lowered around ⁄
     const h = await html(page);
@@ -44,20 +44,18 @@ test.describe('phone', () => {
     expect(await text(page)).toBe('২১⁄২ ≤≥≠±৳৫');
     await tap(page, '#Pad'); // অআ
     await expect(key(page, 'KeyK')).toBeVisible();
-    // flicking the left ↵ up still opens the marks
-    const c = (await key(page, '#EnterL').boundingBox())!;
-    await page.mouse.move(c.x + c.width / 2, c.y + c.height / 2); await page.mouse.down();
-    await page.mouse.move(c.x + c.width / 2, c.y - 30, { steps: 4 }); await page.mouse.up();
+    // a tap on ১২৩ still opens the marks
+    await tap(page, '#Sym');
     await expect(key(page, 'Alt+Digit5')).toBeVisible();
   });
 
   test('123 types English digits and ready-made fractions; ৴৵৶ types 1–16 annas', async ({ page }) => {
     await open(page);
-    await choosePad(page, '#EnterL', '123');
+    await choosePad(page, '#Sym', '123');
     for (const c of ['Np3', 'Txt:/', 'Np4', '#Frac', '#Space']) await tap(page, c);
     expect(await text(page)).toBe('¾ ');
     await tap(page, '#Pad');
-    await choosePad(page, '#EnterL', '৴৵৶');
+    await choosePad(page, '#Sym', '৴৵৶');
     await expect(key(page, 'Anna:16')).toBeVisible();
     for (const c of ['Anna:4', 'Anna:8', 'Anna:12', 'Anna:15', 'Txt:৻', 'Anna:16']) await tap(page, c);
     expect(await text(page)).toBe('¾ ৷৹৷৷৹৸৸৶৻১৲');

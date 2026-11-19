@@ -14,6 +14,7 @@ import { bijoyRuns, toBijoy, isBijoyFont, nodeFont } from '../bijoy';
 import { STYLE_TWIPS, type ParagraphStyle } from '../editor/legal-format';
 import { DEFAULT_FORMAT, NOTE_FONT, NOTE_SIZE, type DocFormat } from './format';
 import { DEFAULT_PAGE, FOOTER_DIST, HEADER_DIST, NOTE_PAGE, normalizePage, pageNumberParts, pageSize, paraNumber, physicalPage, type PageSetup } from './page';
+import { listLabel } from '../editor/list-styles';
 
 export { DEFAULT_FORMAT, type DocFormat };
 export * from './page';
@@ -148,6 +149,15 @@ function paragraphOptions(a: Record<string, unknown> = {}): Partial<IParagraphOp
   return o as Partial<IParagraphOptions>;
 }
 
+/** A Word-numbered list: each item's first paragraph carries the numbering, the rest follow indented. */
+function listItems(n: JSONContent, reference: string, instance: number, ctx: Ctx, body: (Paragraph | Table)[], depth: number) {
+  for (const li of n.content || []) {
+    const [first, ...rest] = li.content || [];
+    if (first?.type === 'paragraph') body.push(paragraph(first, ctx, { numbering: { reference, level: Math.min(depth, 2), instance } }));
+    blocks(rest, ctx, body, depth + 1);
+  }
+}
+
 function paragraph(n: JSONContent, ctx: Ctx, extra: Partial<IParagraphOptions> = {}): Paragraph {
   const a = (n.attrs || {}) as Record<string, unknown>;
   const children = runs(n.content);
@@ -229,17 +239,26 @@ function blocks(nodes: JSONContent[], ctx: Ctx, body: (Paragraph | Table)[], dep
       case 'pageBreak':
         body.push(new Paragraph({ children: [new PageBreak()] }));
         break;
-      case 'bulletList':
-      case 'orderedList': {
-        const reference = n.type === 'bulletList' ? 'pn-bullet' : 'pn-decimal';
-        const instance = n.type === 'orderedList' ? ++ctx.listInstance.n : 0;
-        for (const li of n.content || []) {
-          const [first, ...rest] = li.content || [];
-          if (first?.type === 'paragraph') body.push(paragraph(first, ctx, { numbering: { reference, level: Math.min(depth, 2), instance } }));
-          blocks(rest, ctx, body, depth + 1);
+      case 'orderedList':
+        // a styled list (১. ক. (ক) i. …) or one not starting at 1: the labels are written in, Word has no
+        // Bangla numbering; plain 1. 2. stays Word's own numbering below (decisions.md 79)
+        if ((n.attrs?.listStyle && n.attrs.listStyle !== 'decimal') || Number(n.attrs?.start ?? 1) !== 1) {
+          const start = Number(n.attrs?.start ?? 1);
+          (n.content || []).forEach((li, i) => {
+            const [first, ...rest] = li.content || [];
+            if (first?.type === 'paragraph') {
+              const labelled = { ...first, content: [{ type: 'text', text: listLabel(n.attrs?.listStyle, start + i) + '\t' }, ...(first.content || [])] };
+              body.push(paragraph(labelled, ctx, { indent: { left: 720 * (Math.min(depth, 2) + 1), hanging: 360 } }));
+            }
+            blocks(rest, ctx, body, depth + 1);
+          });
+          break;
         }
+        listItems(n, 'pn-decimal', ++ctx.listInstance.n, ctx, body, depth);
         break;
-      }
+      case 'bulletList':
+        listItems(n, 'pn-bullet', 0, ctx, body, depth);
+        break;
       case 'taskList':
         for (const li of n.content || []) {
           const [first, ...rest] = li.content || [];

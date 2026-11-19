@@ -1156,3 +1156,73 @@ body:has(.kb-strip.down) .mic, body:has(.kb-strip.down) .live-mic { bottom: calc
 .sgroup.foldable:not(.open) { padding-bottom: 6px; }
 .srow .numfield { flex: 0 0 auto; margin-left: auto; }
 .srow .numfield input.num, .form .numfield input.num { width: 4.5em; min-width: 0; flex: 0 0 auto; }
+/* ---- decisions.md 79: the phone keyboard measured from the iPhone's own (iOS 26) ----
+   letter key 32×42.7pt, 6pt between keys, 11.3pt between rows; ⇧ ⌫ 44pt with 14pt to the letters;
+   the A row set in by half a key; 123 · space · return = 90 · 185 · 90pt; flat keys, 8.5pt corners. */
+:root { --ios-kb: #d1d4d9; --ios-key: #ffffff; --ios-fn: #abb1bb; --ios-fg: #000000; --ios-hit: #e9eaee; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --ios-kb: #202124; --ios-key: #464749; --ios-fn: #464749; --ios-fg: #ffffff; --ios-hit: #6b6c70; } }
+:root[data-theme="dark"] { --ios-kb: #202124; --ios-key: #464749; --ios-fn: #464749; --ios-fg: #ffffff; --ios-hit: #6b6c70; }
+@media (max-width: 640px) {
+  .kb-liftwrap.phone .kb.compact { background: var(--ios-kb); border: 0; border-radius: 26px 26px 0 0; padding-top: 4px; padding-left: 3px; padding-right: 3px; }
+  .kb.compact:not(.num):not(.pad-anna) .k { height: 54px; }
+  .kb.compact:not(.num):not(.pad-anna) .k::before { inset: 5.65px 3px; border-radius: 8.5px; background: var(--ios-key); box-shadow: none; }
+  .kb.compact:not(.num):not(.pad-anna) .k.fn::before { background: var(--ios-fn); box-shadow: none; }
+  .kb.compact .k .m { color: var(--ios-fg); font-weight: 400; font-size: 24px; }
+  .kb.compact .k.fn .m { font: 400 18px -apple-system, "SF Pro Text", var(--f-sans); }
+  .kb.compact .k[data-code="#Sym"] .m { font-size: 17px; }
+  .kb.compact .k.hit::before, .kb.compact .k:active::before { background: var(--ios-hit); }
+  .kb.compact .k.on::before { background: var(--ios-fg); }
+  .kb.compact .k.on .m { color: var(--ios-key); }
+  /* the A row (nine keys) set in by half a key on each side, like iOS */
+  .kb.compact:not(.num):not(.pad-anna):not(.split) .kb-row:nth-child(3):not(:last-child) { padding-inline: 5%; }
+  /* ⇧ and ⌫: 44pt drawn, 14pt from the letters */
+  .kb.compact .kb-row .k[data-code="#Shift"], .kb.compact .kb-row .k[data-code="#Back"] { flex: 1.526 1 0; }
+  .kb.compact .k[data-code="#Shift"]::before { inset: 5.65px 11px 5.65px 3px; }
+  .kb.compact .k[data-code="#Back"]::before { inset: 5.65px 3px 5.65px 11px; }
+  /* 123 · space · return */
+  .kb.compact .kb-row .k[data-code="#Sym"], .kb.compact .kb-row .k[data-code="#Enter"] { flex: 2.52 1 0; }
+  .kb.compact .kb-row .k[data-code="#Space"], .kb.compact .kb-row .k[data-code="#Space2"] { flex: 5.02 1 0; }
+  /* the language mark in the space bar's corner (ক / a) */
+  .kb.compact .k .lang { position: absolute; right: 14px; bottom: 11px; font: 400 12px var(--f-sans); color: var(--ios-fg); opacity: .45; z-index: 1; }
+  .kb.compact ~ .kb-strip, .kb.compact .kb-strip { color: var(--ios-fg); }
+  .kb.compact .kb-strip .k { color: var(--ios-fg); opacity: .95; }
+  .kb.compact .kb-strip { height: 46px; }
+}
+@media (max-width: 640px) {
+  .kb.compact .k[data-code="#Shift"] .m, .kb.compact .k[data-code="#Back"] .m, .kb.compact .k[data-code="#Enter"] .m { font-size: 27px; }
+  .kb.compact .kb-strip svg, .kb-strip.down svg { width: 28px; height: 28px; }
+}
+/* Unicode | ANSI | English in the font box: one low switch */
+.font-picker .fp-kinds { display: flex; gap: 2px; padding: 2px; margin-bottom: 6px; }
+.font-picker .fp-kinds button { flex: 1; min-height: 28px; padding: 2px 6px; font: 600 12px var(--f-sans); }
+/* Unicode | ANSI | English in the font box: one low switch */
+.font-picker .fp-kinds { display: flex; gap: 2px; padding: 2px; margin-bottom: 6px; }
+.font-picker .fp-kinds button { flex: 1; min-height: 28px; padding: 2px 6px; font: 600 12px var(--f-sans); }
+/* numbered-list styles (decisions.md 79) */
+@counter-style pn-bn { system: extends bengali; suffix: ". "; }
+@counter-style pn-bn-paren { system: extends bengali; prefix: "("; suffix: ") "; }
+@counter-style pn-bn-alpha { system: alphabetic; symbols: "ক" "খ" "গ" "ঘ" "ঙ" "চ" "ছ" "জ" "ঝ" "ঞ" "ট" "ঠ" "ড" "ঢ" "ণ" "ত" "থ" "দ" "ধ" "ন" "প" "ফ" "ব" "ভ" "ম" "য" "র" "ল" "শ" "ষ" "স" "হ"; suffix: ". "; }
+@counter-style pn-bn-alpha-paren { system: extends pn-bn-alpha; prefix: "("; suffix: ") "; }
+.page-body ol[data-list-style="bn"] { list-style-type: pn-bn; }
+.page-body ol[data-list-style="bn-paren"] { list-style-type: pn-bn-paren; padding-left: 36px; }
+.page-body ol[data-list-style="bn-alpha"] { list-style-type: pn-bn-alpha; }
+.page-body ol[data-list-style="bn-alpha-paren"] { list-style-type: pn-bn-alpha-paren; padding-left: 36px; }
+.page-body ol[data-list-style="lower-roman"] { list-style-type: lower-roman; }
+.page-body ol[data-list-style="lower-alpha"] { list-style-type: lower-alpha; }
+.page-body ol[data-list-style="upper-alpha"] { list-style-type: upper-alpha; }
+.pop .menu.ol-menu { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; padding: 8px; min-width: 240px; }
+.pop .menu.ol-menu button { min-height: 40px; font: 600 16px var(--f-sans); }
+.pop .menu.ol-menu .ol-start { grid-column: 1 / -1; display: flex; align-items: center; justify-content: space-between; gap: 8px; font-size: 13px; color: var(--muted); }
+/* the zoom bar: stays at the bottom-left of the page area while it scrolls (decisions.md 79) */
+.zoom-bar-wrap { position: sticky; bottom: 0; height: 0; z-index: 4; pointer-events: none; }
+.zoom-bar { position: absolute; left: 12px; bottom: 12px; display: inline-flex; align-items: center; gap: 2px; padding: 3px; pointer-events: auto;
+  background: var(--sheet); border: 1px solid var(--line); border-radius: 20px; box-shadow: 0 2px 10px rgba(0, 0, 0, .12); opacity: .8; transition: opacity .2s; }
+.zoom-bar:hover, .zoom-bar.live, .zoom-bar:focus-within { opacity: 1; }
+.zoom-bar.live { box-shadow: 0 0 0 2px var(--accent), 0 2px 10px rgba(0, 0, 0, .15); }
+.zoom-bar > button { min-width: 34px; height: 32px; border: 0; border-radius: 16px; background: transparent; color: var(--fg); font: 600 16px var(--f-sans); cursor: pointer; }
+.zoom-bar > button:active { background: var(--accent-soft); }
+.zoom-bar .zb-pct { min-width: 64px; font-size: 14px; font-variant-numeric: tabular-nums; }
+.zb-menu { position: absolute; bottom: calc(100% + 6px); left: 0; display: flex; flex-direction: column; min-width: 170px; padding: 4px; background: var(--sheet); border: 1px solid var(--line); border-radius: 12px; box-shadow: 0 6px 20px rgba(0, 0, 0, .18); }
+.zb-menu button { text-align: left; padding: 8px 10px; border: 0; border-radius: 8px; background: transparent; color: var(--fg); font: 500 14px var(--f-sans); cursor: pointer; }
+.zb-menu button.on { background: var(--accent-soft); }
+@media print { .zoom-bar-wrap { display: none !important; } }

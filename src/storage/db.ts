@@ -70,7 +70,8 @@ export interface StoredFont {
   /** File name the user picked. */
   fileName: string;
   /** 'uni' = Unicode Bangla font, 'ansi' = Bijoy/ANSI font (SutonnyMJ etc.). */
-  role: 'uni' | 'ansi';
+  /** uni = Bangla Unicode, ansi = Bijoy, en = English (decisions.md 79) */
+  role: 'uni' | 'ansi' | 'en';
   data: ArrayBuffer;
   addedAt: number;
 }

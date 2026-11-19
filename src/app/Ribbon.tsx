@@ -10,6 +10,8 @@ import { PARAGRAPH_STYLES, FONT_SIZES, stepFontSize, marksShown, type ParagraphS
 import type { DocKind } from '../storage';
 import { useT } from '../i18n';
 import { Popover } from './ui';
+import { NumberField } from './NumberField';
+import { LIST_STYLES } from '../editor/list-styles';
 import { TableInsertMenu, TableDesignTools, TableLayoutTools } from './TableRibbon';
 import { FontPicker, type FontLists } from './FontPicker';
 import { isBijoyFont } from '../bijoy';
@@ -365,6 +367,29 @@ export function Ribbon(p: Props) {
               {btn('☐', t('চেকলিস্ট'), ed.isActive('taskList'), () => chain().toggleTaskList().run(), 'tasks')}
             </>
           )}
+          {/* ▾: ১. (১) ক. (ক) 1. i. a. A. and the number it starts at (decisions.md 79) */}
+          <Popover label={<span aria-hidden="true">▾</span>} title={t('নম্বরের ধরন')} testid="ol-style" className="tb ol-more">
+            {(close) => (
+              <div className="menu ol-menu" data-testid="ol-menu">
+                {LIST_STYLES.map((s) => (
+                  <button key={s.id} type="button" className={'btn' + ((ed.getAttributes('orderedList').listStyle ?? 'decimal') === s.id && ed.isActive('orderedList') ? ' primary' : '')}
+                    data-testid={'ol-style-' + s.id} onPointerDown={(e) => e.preventDefault()}
+                    onClick={() => {
+                      const c = chain();
+                      // a numbered paragraph (১।) inside a (ক) list would carry two numbers
+                      if (legal && para.attrs.pstyle === 'numbered') c.setParagraphStyle('normal');
+                      if (!ed.isActive('orderedList')) c.toggleOrderedList();
+                      c.updateAttributes('orderedList', { listStyle: s.id === 'decimal' ? null : s.id }).run();
+                      close();
+                    }}>{s.sample}</button>
+                ))}
+                <label className="ol-start">{t('শুরু হবে')}
+                  <NumberField min={1} max={999} testid="ol-start" value={Number(ed.getAttributes('orderedList').start ?? 1)}
+                    onChange={(n) => { const c = ed.chain(); if (!ed.isActive('orderedList')) c.toggleOrderedList(); c.updateAttributes('orderedList', { start: n }).run(); }} />
+                </label>
+              </div>
+            )}
+          </Popover>
           <span className="wide-only">{morePara}</span>
         </>
       ))}

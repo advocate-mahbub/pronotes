@@ -35,34 +35,28 @@ export const ROWS: string[][] = [
  */
 const NUMBERS = ['Backquote', 'Digit1', 'Digit2', 'Digit3', 'Digit4', 'Digit5', 'Digit6', 'Digit7', 'Digit8', 'Digit9', 'Digit0'];
 /**
- * The phone's bottom row (decisions.md 76, iOS-like): ↵ on both sides of the space bar — the left one
- * opens #+= when flicked up and the keypad menu (123 | ১২৩ | ৴৵৶) when held; the right one offers line
- * break, Tab and page break when held — and a second ⇧ for the right thumb. 🌐 and 🎙 sit in the strip
- * under the keys, where iOS keeps them.
+ * The phone keyboard, exactly the iPhone's (decisions.md 79): the bottom row is ১২৩ · space · return
+ * (১২৩ opens the marks; held, it offers 123 | ১২৩ | ৴৵৶; return held offers line break · Tab · new
+ * page); 🌐 and 🎙 sit in the strip under the keys. Only the number row is extra: Bornona needs it.
  */
-const BOTTOM = ['#EnterL', '#Space', '#Shift2', '#Enter'];
-/**
- * Phone letters, laid out like the iPhone keyboard the owner's thumbs know (decisions.md 76): ten keys in
- * the number and Q rows (no ZWNJ key: ্্ makes the fixed hasanta, ্ + kar the vowel), ⌫ at the start
- * of the A row for the left thumb and at the end of the Z row where iOS has it.
- */
+const BOTTOM = ['#Sym', '#Space', '#Enter'];
+/** Phone letters: ten keys in the number and Q rows, nine in the A row (set in like iOS), ⇧ … ⌫ under them. */
 export const PHONE_ROWS: string[][] = [
   ['Digit1', 'Digit2', 'Digit3', 'Digit4', 'Digit5', 'Digit6', 'Digit7', 'Digit8', 'Digit9', 'Digit0'],
   ['KeyQ', 'KeyW', 'KeyE', 'KeyR', 'KeyT', 'KeyY', 'KeyU', 'KeyI', 'KeyO', 'KeyP'],
-  ['#BackL', 'KeyA', 'KeyS', 'KeyD', 'KeyF', 'KeyG', 'KeyH', 'KeyJ', 'KeyK', 'KeyL'],
+  ['KeyA', 'KeyS', 'KeyD', 'KeyF', 'KeyG', 'KeyH', 'KeyJ', 'KeyK', 'KeyL'],
   ['#Shift', 'KeyZ', 'KeyX', 'KeyC', 'KeyV', 'KeyB', 'KeyN', 'KeyM', '#Back'],
   BOTTOM,
 ];
 /**
- * The second layer (flick the left ↵ up): same height as the letters, so nothing jumps when it opens. Its
- * number row types the AltGr character of each key (the anna-ganda signs in the ProNotes layout), and ৸
- * and ১৲ (AltGr of - and =) sit next to - = [ ]. "Alt+" codes = that key's AltGr character; ~ and \ (the
- * old ZWNJ key's Shift and English characters) are here now.
+ * The marks (১২৩): same height as the letters, so nothing jumps when it opens. Its number row types the
+ * AltGr character of each key (the anna-ganda signs in the ProNotes layout), and ৸ and ১৲ (AltGr of - and =)
+ * sit next to - = [ ]. "Alt+" codes = that key's AltGr character; ~ \ | are here too.
  */
 export const PHONE_SYMBOL_ROWS: string[][] = [
   NUMBERS.map((c) => 'Alt+' + c),
   ['Minus', 'Equal', 'BracketLeft', 'BracketRight', 'Alt+Minus', 'Alt+Equal'],
-  ['#BackL', 'Semicolon', 'Quote', 'Txt:~', 'Txt:\\', 'Txt:|'],
+  ['Semicolon', 'Quote', 'Txt:~', 'Txt:\\', 'Txt:|'],
   ['#Shift', 'Comma', 'Period', 'Slash', '#Back'],
   BOTTOM,
 ];

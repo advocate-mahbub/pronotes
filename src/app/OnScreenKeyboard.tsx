@@ -517,8 +517,8 @@ export function OnScreenKeyboard({ editor, map, bangla, getConfig, onToggleLangu
   };
 
   const label = (code: string) =>
-    ({ '#Enter': '↵', '#EnterL': '↵', '#Shift': shift === 2 ? '⇪' : '⇧', '#Shift2': shift === 2 ? '⇪' : '⇧', '#Globe': t('লেখার ভাষা বদলান'), '#Back': '⌫', '#BackL': '⌫', '#Space': compact ? (bangla ? 'বাংলা' : 'English') : t('স্পেস'), '#Space2': compact ? (bangla ? 'বাংলা' : 'English') : t('স্পেস'),
-      '#Pad': pad ? LETTERS_KEY[bangla ? 'bn' : 'en'] : PAD_LABEL[lastPad], '#Frac': '½', '#Live': live?.on ? '●' : '🎙', '#Dari': bangla ? '।' : '.', '#Mode': bangla ? 'EN' : 'বাং', '#Alt': 'Alt', '#Sym': sym ? LETTERS_KEY[bangla ? 'bn' : 'en'] : '#+=' })[code];
+    ({ '#Enter': '↵', '#EnterL': '↵', '#Shift': shift === 2 ? '⇪' : '⇧', '#Shift2': shift === 2 ? '⇪' : '⇧', '#Globe': t('লেখার ভাষা বদলান'), '#Back': '⌫', '#BackL': '⌫', '#Space': compact ? '' : t('স্পেস'), '#Space2': compact ? '' : t('স্পেস'),
+      '#Pad': pad ? LETTERS_KEY[bangla ? 'bn' : 'en'] : PAD_LABEL[lastPad], '#Frac': '½', '#Live': live?.on ? '●' : '🎙', '#Dari': bangla ? '।' : '.', '#Mode': bangla ? 'EN' : 'বাং', '#Alt': 'Alt', '#Sym': sym ? LETTERS_KEY[bangla ? 'bn' : 'en'] : compact ? (bangla ? '১২৩' : '123') : '#+=' })[code];
 
   const keyEl = (code: string) => {
     const fn = code.startsWith('#');
@@ -533,12 +533,13 @@ export function OnScreenKeyboard({ editor, map, bangla, getConfig, onToggleLangu
       code.startsWith('Alt+') ? 'sign' : '', plain ? 'pad' : '', code === '#Live' ? 'live' : ''].filter(Boolean).join(' ');
     return (
       <button key={code} type="button" tabIndex={-1} className={cls} data-code={code}
-        aria-label={fn ? label(code) : main}
+        aria-label={fn ? (label(code) || t('স্পেস')) : main}
         onPointerDown={(e) => down(e, code)}>
         {code === '#Globe' ? GLOBE_ICON : code === '#Live' && compact && !live?.on ? LINE_MIC : fn ? (
           <>
             <span className="m">{label(code)}</span>
             {code === '#EnterL' && <span className="c">{sym ? LETTERS_KEY[bangla ? 'bn' : 'en'] : '#+='}</span>}
+            {(code === '#Space' || code === '#Space2') && compact && <span className="lang" aria-hidden="true">{bangla ? 'ক' : 'a'}</span>}
           </>
         ) : plain ? (
           <>

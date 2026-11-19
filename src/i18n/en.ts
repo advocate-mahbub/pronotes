@@ -1140,4 +1140,9 @@ export const EN: Record<string, string> = {
   "অন্যটা ড্রাফটের ভার্সন-ইতিহাসে আছে": "the other state is in the draft's version history",
   "সব ড্রাফট (ট্র্যাশসহ), শেখা শব্দ, নিজের লেআউট, ভয়েসের সংশোধন আর সেটিংস একটা ফাইলে (ফন্ট ফাইল বাদে)। দুই জায়গায় রাখা যায়: এই ডিভাইসে (iPad-এ Files বা iCloud Drive) আর আপনার নিজের Google Drive-এর “ProNotes Backups” ফোল্ডারে। Drive-এ Gemini key কখনো যায় না। ফেরত আনলে একই ড্রাফট আলাদা কপি হয় না: যেটা পরে বদলানো হয়েছে সেটা থাকে, অন্যটা ড্রাফটের ভার্সন-ইতিহাসে রাখা হয়, তাই কিছু হারায় না।": "All drafts (with the Trash), learned words, your layouts, voice corrections and settings in one file (not font files). Keep it in two places: on this device (on iPad, Files or iCloud Drive) and in the “ProNotes Backups” folder of your own Google Drive. The Gemini key never goes to Drive. Restoring never makes a second copy of the same draft: the one changed later stays and the other goes into the draft's version history, so nothing is lost.",
   "ব্যাকআপ মেলানোর সময়": "When a backup was merged",
+  "নম্বরের ধরন": "Numbering style",
+  "শুরু হবে": "Start at",
+  "English ফন্ট যোগ করুন": "Add English font",
+  "বড় করে দেখুন": "Zoom in",
+  "পাতার চওড়া": "Page width",
 };
