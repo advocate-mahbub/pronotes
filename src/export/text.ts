@@ -7,6 +7,7 @@ import type { JSONContent } from '@tiptap/core';
 import { paraNumber, type DocLang } from '../docx-export/page';
 import { isBijoyFont, nodeFont, toUnicode } from '../bijoy';
 import { fixNukta } from '../bornona-engine';
+import { listLabel } from '../editor/list-styles';
 
 export interface TextOptions {
   lang: DocLang;
@@ -61,7 +62,7 @@ function walk(nodes: JSONContent[], o: TextOptions, md: boolean, out: string[], 
         (n.content || []).forEach((li, i) => {
           const ind = '  '.repeat(depth);
           const mark =
-            n.type === 'bulletList' ? (md ? '-' : '•') : n.type === 'taskList' ? (md ? (li.attrs?.checked ? '- [x]' : '- [ ]') : li.attrs?.checked ? '☑' : '☐') : Number(n.attrs?.start ?? 1) + i + '.';
+            n.type === 'bulletList' ? (md ? '-' : '•') : n.type === 'taskList' ? (md ? (li.attrs?.checked ? '- [x]' : '- [ ]') : li.attrs?.checked ? '☑' : '☐') : listLabel(n.attrs?.listStyle, Number(n.attrs?.start ?? 1) + i);
           const [first, ...rest] = li.content || [];
           out.push(ind + mark + ' ' + (md ? inlineMd(first?.content) : inline(first?.content)));
           const sub: string[] = [];

@@ -79,7 +79,7 @@ test.describe('phone', () => {
     await expect(strip).toBeVisible();
     await strip.getByTestId('strip-globe').click();
     await strip.getByTestId('kb-show').click();
-    await expect(key(page, '#Space')).toHaveText('English');
+    await expect(key(page, '#Space').locator('.lang')).toHaveText('a'); // the space bar names the language, as on iOS
   });
 });
 
@@ -96,10 +96,12 @@ test.describe('iPad', () => {
     const osk = page.getByTestId('osk');
     await expect(osk).toHaveClass(/split/);
     await expect(osk).toHaveClass(/compact/);
-    // two ⌫, two ⇧ and two ↵ — one of each for each thumb
-    const left = osk.locator('.kb-row.split').nth(2).locator('.half').first();
-    await expect(left.locator('[data-code="#BackL"]')).toHaveCount(1);
-    await expect(osk.locator('.kb-row.split').last().locator('.half').first().locator('[data-code="#EnterL"]')).toHaveCount(1);
-    await expect(osk.locator('.kb-row.split').last().locator('.half').last().locator('[data-code="#Shift2"]')).toHaveCount(1);
+    // the iPhone keys, split: ⇧ left and ⌫ right on the Z row, ১২৩ left and ↵ right at the bottom
+    const z = osk.locator('.kb-row.split').nth(3);
+    await expect(z.locator('.half').first().locator('[data-code="#Shift"]')).toHaveCount(1);
+    await expect(z.locator('.half').last().locator('[data-code="#Back"]')).toHaveCount(1);
+    await expect(osk.locator('.kb-row.split').last().locator('.half').first().locator('[data-code="#Sym"]')).toHaveCount(1);
+    await expect(osk.locator('.kb-row.split').last().locator('.half').last().locator('[data-code="#Enter"]')).toHaveCount(1);
+    for (const c of ['#BackL', '#EnterL', '#Shift2']) await expect(osk.locator(`[data-code="${c}"]`)).toHaveCount(0);
   });
 });

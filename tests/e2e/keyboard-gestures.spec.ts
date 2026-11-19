@@ -83,26 +83,25 @@ test.describe('phone', () => {
     expect((await text(page)).length).toBe(3);
   });
 
-  test('flick the left ↵ up to #+=, slide to a sign and lift: the sign, then back to the letters', async ({ page }) => {
+  test('press ১২৩, slide to a sign and lift: the sign, then back to the letters', async ({ page }) => {
     await open(page);
-    const s = await center(page, '#EnterL');
+    const s = await center(page, '#Sym');
     await page.mouse.move(s.x, s.y);
     await page.mouse.down();
-    await page.mouse.move(s.x, s.y - 40, { steps: 4 });
     await expect(key(page, 'Alt+Digit5')).toBeVisible();
     const d = await center(page, 'Alt+Digit5');
     await page.mouse.move(d.x, d.y, { steps: 6 });
     await page.mouse.up();
     expect(await text(page)).toBe('৷৴');
     await expect(key(page, 'KeyK')).toBeVisible(); // letters again
-    // flicked up and lifted on ↵ itself: the layer stays open; 16 annas and ৸ beside - = [ ]
-    await drag(page, '#EnterL', 0, -40);
+    // a plain tap on ১২৩: the layer stays open; 16 annas and ৸ beside - = [ ]
+    await tap(page, '#Sym');
     await tap(page, 'Alt+Equal');
     await tap(page, 'Alt+Minus');
     expect(await text(page)).toBe('৷৴১৲৸');
-    // a plain tap on either ↵ is Enter
-    await drag(page, '#EnterL', 0, -40); // back to the letters
-    await tap(page, '#EnterL');
+    // অআ back to the letters; ↵ is Enter
+    await tap(page, '#Sym');
+    await tap(page, '#Enter');
     await tap(page, '#Enter');
     expect(await page.getByTestId('editor').locator('p').count()).toBe(3);
   });
@@ -133,9 +132,9 @@ test.describe('phone', () => {
     await page.getByTestId('kb-hand-strip').getByRole('button').first().click();
     await expect(osk).not.toHaveClass(/hand-/);
     // a short tap on 🌐 switches the language; the space bar names it, as on iOS
-    await expect(key(page, '#Space')).toHaveText('বাংলা');
+    await expect(key(page, '#Space').locator('.lang')).toHaveText('ক');
     await tap(page, '#Globe');
-    await expect(key(page, '#Space')).toHaveText('English');
+    await expect(key(page, '#Space').locator('.lang')).toHaveText('a');
   });
 });
 

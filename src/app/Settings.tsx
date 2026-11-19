@@ -19,7 +19,7 @@ export interface FontInfo {
   id: string;
   family: string;
   fileName: string;
-  role: 'uni' | 'ansi';
+  role: 'uni' | 'ansi' | 'en';
   /** Read from the file: italic, and weight (400 regular, 700 bold). */
   italic?: boolean;
   weight?: number;
@@ -49,7 +49,7 @@ interface Props {
   format: DocFormat;
   setFormat: (f: DocFormat) => void;
   fonts: FontInfo[];
-  onAddFont: (f: File, role: 'uni' | 'ansi') => void;
+  onAddFont: (f: File, role: 'uni' | 'ansi' | 'en') => void;
   onDeleteFont: (id: string) => void;
   ansiFont: string;
   setAnsiFont: (s: string) => void;
@@ -580,7 +580,7 @@ export function Settings(p: Props) {
             </label>
             <label className="srow"><span>{t('English ড্রাফট')}</span>
               <select data-testid="fmt-font-en" value={p.format.fontEn} onChange={(e) => p.setFormat({ ...p.format, fontEn: e.target.value })}>
-                {[...new Set([p.format.fontEn, ...ENGLISH_FONTS])].map((f) => <option key={f} value={f}>{f}</option>)}
+                {[...new Set([p.format.fontEn, ...ENGLISH_FONTS, ...p.fonts.filter((f) => f.role === 'en').map((f) => f.family)])].map((f) => <option key={f} value={f}>{f}</option>)}
               </select>
             </label>
             <label className="srow"><span>{t('মূল লেখা (pt)')}</span>
@@ -613,6 +613,7 @@ export function Settings(p: Props) {
             <div className="row">
               <FileButton label={t('ইউনিকোড ফন্ট যোগ করুন')} accept={FONT_ACCEPT} testid="font-add-uni" onFile={(f) => p.onAddFont(f, 'uni')} />
               <FileButton label={t('বিজয় (ANSI) ফন্ট যোগ করুন')} accept={FONT_ACCEPT} testid="font-add-ansi" onFile={(f) => p.onAddFont(f, 'ansi')} />
+              <FileButton label={t('English ফন্ট যোগ করুন')} accept={FONT_ACCEPT} testid="font-add-en" onFile={(f) => p.onAddFont(f, 'en')} />
             </div>
             {noRegular.length > 0 && (
               <p className="note warn" data-testid="font-no-regular">{t('{f}: শুধু Italic/Bold ফাইল আছে, সাধারণ (Regular) ফাইল নেই — তাই সাধারণ লেখাও বাঁকা বা মোটা দেখাবে। Regular ফাইলটা যোগ করুন।', { f: noRegular.join(', ') })}</p>
@@ -623,8 +624,8 @@ export function Settings(p: Props) {
                   <li key={f.id}>
                     {/* the name in the app's font; the sample in the font itself (Bijoy-encoded for ANSI, so it reads as Bangla); in an English menu the sample is the name */}
                     <span className="fl-name">{f.family} <small>{styleName(f)}</small></span>
-                    <span className="fl-sample" style={{ fontFamily: `"${f.family}", var(--f-sans)`, fontStyle: f.italic ? 'italic' : 'normal', fontWeight: f.weight ?? 400 }}>{en ? 'Aa Bb 123' : f.role === 'ansi' ? SAMPLE_BIJOY : 'আমার সোনার বাংলা'}</span>
-                    <small>{f.role === 'ansi' ? 'ANSI' : t('ইউনিকোড')}</small>
+                    <span className="fl-sample" style={{ fontFamily: `"${f.family}", var(--f-sans)`, fontStyle: f.italic ? 'italic' : 'normal', fontWeight: f.weight ?? 400 }}>{en || f.role === 'en' ? 'Aa Bb 123' : f.role === 'ansi' ? SAMPLE_BIJOY : 'আমার সোনার বাংলা'}</span>
+                    <small>{f.role === 'ansi' ? 'ANSI' : f.role === 'en' ? 'English' : t('ইউনিকোড')}</small>
                     <ArmedButton label={t('মুছুন')} armedLabel={t('নিশ্চিত?')} testid={'font-del-' + f.id} onConfirm={() => p.onDeleteFont(f.id)} />
                   </li>
                 ))}

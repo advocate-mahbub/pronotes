@@ -750,7 +750,7 @@ export function App() {
     }
     setFonts(list);
   };
-  const addFont = async (file: File, role: 'uni' | 'ansi') => {
+  const addFont = async (file: File, role: 'uni' | 'ansi' | 'en') => {
     if (file.size > MAX_FONT_BYTES) return say('ফন্ট ফাইলটা অনেক বড় (১৫ MB-এর বেশি)');
     const data = await file.arrayBuffer();
     const rec = { id: 'font-' + Date.now(), family: familyFor(data, file.name), fileName: file.name, role, data, addedAt: Date.now() };
@@ -767,6 +767,7 @@ export function App() {
     const st = readFontStyle(data, file.name);
     setFonts((l) => [...l, { id: rec.id, family: rec.family, fileName: rec.fileName, role, italic: st.style === 'italic', weight: st.weight }]);
     if (role === 'ansi') setAnsiFont(rec.family);
+    else if (role === 'en') setFormat((f) => ({ ...f, fontEn: rec.family }));
     else setFormat((f) => ({ ...f, font: rec.family }));
     say('{name} যোগ হয়েছে', { name: rec.family });
   };
@@ -844,7 +845,7 @@ export function App() {
     say('ধরন বদলে {kind} করা হলো', { kind: tr(KIND_LABEL[kind]) });
   };
   const fontChoices = useMemo(
-    () => [...new Set([format.font, ...LOCAL_UNI, ...WEB_FONTS, ...fonts.filter((f) => f.role === 'uni').map((f) => f.family), ...ENGLISH_FONTS])],
+    () => [...new Set([format.font, ...LOCAL_UNI, ...WEB_FONTS, ...fonts.filter((f) => f.role === 'uni').map((f) => f.family)])],
     [format.font, fonts],
   );
   // every Bijoy (ANSI) family the app should treat as Bijoy: the user's ANSI fonts and the chosen Bijoy font
@@ -857,8 +858,10 @@ export function App() {
       available: own.has(name) || WEB_FONTS.includes(name) || isFontAvailable(name, ansi),
     });
     const ansiNames = [...new Set([ansiFont, ...fonts.filter((f) => f.role === 'ansi').map((f) => f.family), ...LOCAL_ANSI])];
-    return { uni: fontChoices.map((n) => item(n, false)), ansi: ansiNames.map((n) => item(n, true)) };
-  }, [fontChoices, fonts, ansiFont]);
+    // English fonts in their own list (decisions.md 79): the built-in names, the English draft font, the ones added
+    const enNames = [...new Set([format.fontEn, ...ENGLISH_FONTS, ...fonts.filter((f) => f.role === 'en').map((f) => f.family)])];
+    return { uni: fontChoices.map((n) => item(n, false)), ansi: ansiNames.map((n) => item(n, true)), en: enNames.map((n) => item(n, false)) };
+  }, [fontChoices, fonts, ansiFont, format.fontEn]);
   const themeNext: Record<Theme, Theme> = { auto: 'light', light: 'dark', dark: 'auto' };
   const themeLabel: Record<Theme, string> = { auto: 'রং: ডিভাইস অনুযায়ী', light: 'রং: আলো', dark: 'রং: অন্ধকার' };
 

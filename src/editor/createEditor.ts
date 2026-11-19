@@ -35,7 +35,20 @@ export function editorExtensions(bornona: Partial<BornonaOptions> & Pick<Bornona
     }),
     Heading.extend(noInput).configure({ levels: [1, 2, 3] }),
     BulletList.extend({ ...noInput, ...noKeys }),
-    OrderedList.extend(noInput),
+    OrderedList.extend({
+      ...noInput,
+      // ১. (১) ক. (ক) 1. i. a. A. (decisions.md 79); start number is the list's own `start`
+      addAttributes() {
+        return {
+          ...this.parent?.(),
+          listStyle: {
+            default: null,
+            parseHTML: (el: HTMLElement) => el.getAttribute('data-list-style'),
+            renderHTML: (a: { listStyle?: string | null }) => (a.listStyle ? { 'data-list-style': a.listStyle } : {}),
+          },
+        };
+      },
+    }),
     ListItem,
     ListKeymap,
     TaskList,
