@@ -3,8 +3,10 @@
   --bg: #f5efe3; --sheet: #fffcf6; --fg: #0b1b33; --muted: #5f6878; --line: #e2d8c4;
   --key: #fffcf6; --key-2: #ece3d1; --key-shadow: #c9bb9f;
   --accent: #0f2a4f; --accent-fg: #ffffff; --accent-soft: #f3e6c4; --gold: #c8a45d; --gold-fg: #050a12;
-  --f-display: "Hind Siliguri", "Noto Sans Bengali", system-ui, sans-serif;
-  --f-sans: "Noto Sans Bengali", "Hind Siliguri", system-ui, sans-serif;
+  /* "PN UI" = the app's own Bangla + English fonts (Settings → অ্যাপ; decisions.md 80); the document has its own */
+  --f-doc-display: "Hind Siliguri", "Noto Sans Bengali", system-ui, sans-serif;
+  --f-display: "PN UI", "Hind Siliguri", "Noto Sans Bengali", system-ui, sans-serif;
+  --f-sans: "PN UI", "Noto Sans Bengali", "Hind Siliguri", system-ui, sans-serif;
   --f-mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
   color-scheme: light;
 }
@@ -111,7 +113,7 @@ button:focus-visible, select:focus-visible { outline: 2px solid var(--gold); out
 
 .kb { background: var(--key-2); border: 1px solid var(--line); border-radius: 12px; padding: 4px; display: flex; flex-direction: column; gap: 4px; user-select: none; -webkit-user-select: none; touch-action: manipulation; }
 .kb-row { display: flex; gap: 5px; }
-.k { flex: 1 1 0; min-width: 0; position: relative; height: 52px; border: 0; border-radius: 8px; background: var(--key); box-shadow: 0 1.5px 0 var(--key-shadow); cursor: pointer; padding: 0; font-family: "SutonnyOMJ", var(--f-display); -webkit-tap-highlight-color: transparent; }
+.k { flex: 1 1 0; min-width: 0; position: relative; height: 52px; border: 0; border-radius: 8px; background: var(--key); box-shadow: 0 1.5px 0 var(--key-shadow); cursor: pointer; padding: 0; font-family: "PN UI", var(--f-display); -webkit-tap-highlight-color: transparent; }
 .k .m { font-size: 22px; font-weight: 600; line-height: 1; }
 .k .m.tiny { font: 600 11px var(--f-mono); }
 .k .s { position: absolute; top: 4px; right: 6px; font-size: 12px; color: var(--muted); line-height: 1; }
@@ -332,7 +334,7 @@ button, select, .chip, .key, summary { touch-action: manipulation; }
 .page-body ul[data-type="taskList"] li > label { margin-top: .25em; }
 .page-body ul[data-type="taskList"] li > label input { width: 18px; height: 18px; }
 .page-body ul[data-type="taskList"] li[data-checked="true"] > div { text-decoration: line-through; color: var(--muted); }
-.page-body h1, .page-body h2, .page-body h3 { font-family: var(--f-display); margin: 12pt 0 6pt; line-height: 1.35; }
+.page-body h1, .page-body h2, .page-body h3 { font-family: var(--f-doc-display); margin: 12pt 0 6pt; line-height: 1.35; }
 .page-body h1 { font-size: 1.6em; } .page-body h2 { font-size: 1.3em; } .page-body h3 { font-size: 1.12em; }
 
 /* Note documents: no court page, just a comfortable writing sheet */
@@ -927,7 +929,7 @@ input.cf[data-testid$="-type"] { flex: 0 1 112px; width: 112px; }
 .kb.track .k[data-code="#Space"] { background: var(--accent-soft); }
 /* long-press choices */
 .kb-pop { position: absolute; z-index: 30; display: flex; background: var(--sheet); border: 1px solid var(--line); border-radius: 10px; box-shadow: 0 6px 20px rgba(0,0,0,.22); overflow: hidden; }
-.kb-pop span { height: 48px; display: flex; align-items: center; justify-content: center; font: 600 22px "SutonnyOMJ", "Noto Sans Bengali", var(--f-display); }
+.kb-pop span { height: 48px; display: flex; align-items: center; justify-content: center; font: 600 22px var(--f-display); }
 .kb-pop span.on { background: var(--accent); color: var(--accent-fg); }
 /* long-press the language key */
 .kb-menu { position: absolute; z-index: 30; left: 6px; bottom: 56px; display: flex; gap: 6px; padding: 6px; background: var(--sheet); border: 1px solid var(--line); border-radius: 12px; box-shadow: 0 6px 20px rgba(0,0,0,.22); }
@@ -1226,3 +1228,6 @@ body:has(.kb-strip.down) .mic, body:has(.kb-strip.down) .live-mic { bottom: calc
 .zb-menu button { text-align: left; padding: 8px 10px; border: 0; border-radius: 8px; background: transparent; color: var(--fg); font: 500 14px var(--f-sans); cursor: pointer; }
 .zb-menu button.on { background: var(--accent-soft); }
 @media print { .zoom-bar-wrap { display: none !important; } }
+/* Settings → অ্যাপ → অ্যাপের ফন্ট (decisions.md 80) */
+.app-font-sample { margin: 6px 0 2px; padding: 8px 10px; border: 1px dashed var(--line); border-radius: 8px; font: 20px var(--f-sans); }
+.linkbtn { border: 0; background: none; padding: 0; color: var(--accent); font: inherit; text-decoration: underline; cursor: pointer; }

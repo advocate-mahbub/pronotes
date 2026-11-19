@@ -10,7 +10,7 @@ import {
   setPinned, moveToFolder, loadFolders, createFolder, renameFolder, deleteFolder, snapshotNow, restoreVersion, type Folder, setDocPage, kindOf, type Doc, type DocKind,
 } from '../storage';
 import { setAnsiFamilies } from '../bijoy';
-import { MAX_FONT_BYTES, familyFor, registerFont, unregisterFont, LOCAL_ANSI, readFontStyle } from '../fonts';
+import { MAX_FONT_BYTES, familyFor, registerFont, unregisterFont, LOCAL_ANSI, readFontStyle, prepareFontFile } from '../fonts';
 import { decideVoice, detectVoiceEnv } from '../voice';
 import { AUTO_MODEL } from '../ai/gemini';
 import { DEFAULT_VOICE_MODES, type VoiceModes } from './voice-modes';
@@ -32,12 +32,12 @@ import { Sidebar } from './Sidebar';
 import { Workspace, type SaveState } from './Workspace';
 import { LawDictionary } from './LawDictionary';
 import { ChartWorkspace } from './ChartWorkspace';
-import { currentToken, downloadBackup, DriveError, autoDeviceName, fitDevice, driveBackupName, driveEnabled, KEEP_DEFAULT, listBackups, pruneBackups, signIn, signOut, takeRedirect, trashBackup, uploadBackup, type AfterSignIn, type DriveBackup } from '../storage/gdrive';
+import { listDriveFonts, uploadDriveFont, downloadDriveFont, planFontSync, currentToken, downloadBackup, DriveError, autoDeviceName, fitDevice, driveBackupName, driveEnabled, KEEP_DEFAULT, listBackups, pruneBackups, signIn, signOut, takeRedirect, trashBackup, uploadBackup, type AfterSignIn, type DriveBackup } from '../storage/gdrive';
 import { CraftWorkspace, type CraftHandoff, type CraftView } from '../craft/CraftWorkspace';
 import { craftApp } from '../craft/bridge';
 import { load, save, allPrefs, restorePrefs } from './prefs';
 import { I18nContext, setUiLangGlobal, translate, tr, type UiLang } from '../i18n';
-import { LOCAL_UNI, WEB_FONTS, ENGLISH_FONTS, isFontAvailable } from '../fonts';
+import { LOCAL_UNI, WEB_FONTS, ENGLISH_FONTS, isFontAvailable, applyAppFonts, fontFileUrl, DEFAULT_APP_BN, DEFAULT_APP_EN, type AppFonts } from '../fonts';
 import './fonts.css';
 import './app.css';
 import { flushAll } from './flush';
@@ -95,6 +95,8 @@ export function App() {
   const t = i18n.t;
   const [theme, setTheme] = useState<Theme>(() => load<Theme>('theme', 'auto'));
   useEffect(() => save('uiLang', uiLang), [uiLang]);
+  // the app's own Bangla and English fonts (menus, buttons, keyboard keys); decisions.md 80
+  const [appFonts, setAppFonts] = useState<AppFonts>(() => ({ bn: DEFAULT_APP_BN, en: DEFAULT_APP_EN, ...load<Partial<AppFonts>>('appFonts', {}) }));
   useEffect(() => {
     save('theme', theme);
     if (theme === 'auto') delete document.documentElement.dataset.theme;
@@ -155,6 +157,8 @@ export function App() {
   /** false until the saved custom layouts are read; until then a stored custom layout id is not "missing" */
   const [layoutsReady, setLayoutsReady] = useState(false);
   const [fonts, setFonts] = useState<FontInfo[]>([]);
+  // own font files register first; the rules are written again once they have, so their blob: URLs exist
+  useEffect(() => { save('appFonts', appFonts); applyAppFonts(appFonts, fontFileUrl); }, [appFonts, fonts]);
   const editorRef = useRef<Editor | null>(null);
   const [wide, setWide] = useState(() => wideQuery?.matches ?? true);
   const [phone, setPhone] = useState(() => phoneQuery?.matches ?? false);
@@ -751,20 +755,31 @@ export function App() {
     setFonts(list);
   };
   const addFont = async (file: File, role: 'uni' | 'ansi' | 'en') => {
-    if (file.size > MAX_FONT_BYTES) return say('ফন্ট ফাইলটা অনেক বড় (১৫ MB-এর বেশি)');
-    const data = await file.arrayBuffer();
-    const rec = { id: 'font-' + Date.now(), family: familyFor(data, file.name), fileName: file.name, role, data, addedAt: Date.now() };
+    if (file.size > MAX_FONT_BYTES * 4) return say('ফন্ট ফাইলটা অনেক বড় (১৫ MB-এর বেশি)');
+    // any font file: a collection (.ttc) is split, an .eot unwrapped; .fon/Type 1 get a clear no (decisions.md 80)
+    const prep = prepareFontFile(await file.arrayBuffer(), file.name);
+    if (!prep.ok) return say(prep.reason);
+    for (const part of prep.files) await addFontData(part.data, part.fileName, role);
+  };
+  const addFontData = async (data: ArrayBuffer, fileName: string, role: 'uni' | 'ansi' | 'en') => {
+    if (data.byteLength > MAX_FONT_BYTES) return say('ফন্ট ফাইলটা অনেক বড় (১৫ MB-এর বেশি)');
+    const rec = { id: 'font-' + Date.now() + '-' + Math.random().toString(36).slice(2, 6), family: familyFor(data, fileName), fileName, role, data, addedAt: Date.now() };
     try {
       await registerFont(rec);
     } catch {
       return say('এই ফাইলটা ফন্ট হিসেবে খোলা গেল না');
     }
+    let stored = true;
     try {
       await putFont(rec);
     } catch {
+      stored = false;
       say('ফন্ট এবার কাজ করবে, কিন্তু ডিভাইসে সেভ করা গেল না');
     }
-    const st = readFontStyle(data, file.name);
+    // into the user's Drive as well, so their other devices get it (only when Drive is on here)
+    const tk = currentToken();
+    if (stored && tk && driveEnabled()) void uploadDriveFont(tk, rec).catch(() => undefined);
+    const st = readFontStyle(data, fileName);
     setFonts((l) => [...l, { id: rec.id, family: rec.family, fileName: rec.fileName, role, italic: st.style === 'italic', weight: st.weight }]);
     if (role === 'ansi') setAnsiFont(rec.family);
     else if (role === 'en') setFormat((f) => ({ ...f, fontEn: rec.family }));
@@ -779,8 +794,47 @@ export function App() {
     }
     unregisterFont(id);
     setFonts((l) => l.filter((f) => f.id !== id));
-    say('ফন্ট মুছে ফেলা হয়েছে');
+    say('ফন্ট মুছে ফেলা হয়েছে');
+    // gone from Drive too, now or at the next sync (until then it is not brought back)
+    save('device.fontsGone', [...new Set([...load<string[]>('device.fontsGone', []), id])]);
+    void syncFonts();
   };
+
+  // ---------- own fonts in the user's Google Drive (decisions.md 80) ----------
+  const fontSyncBusy = useRef(false);
+  const syncFonts = async () => {
+    const tk = currentToken();
+    if (!tk || !driveEnabled() || fontSyncBusy.current || !navigator.onLine) return;
+    fontSyncBusy.current = true;
+    try {
+      const local = await listFonts();
+      const gone = load<string[]>('device.fontsGone', []);
+      const plan = planFontSync(local, await listDriveFonts(tk), gone);
+      for (const r of plan.trash) await trashBackup(tk, r.id);
+      if (plan.trash.length || gone.length) save('device.fontsGone', []);
+      for (const id of plan.up) {
+        const f = local.find((l) => l.id === id);
+        if (f) await uploadDriveFont(tk, { id: f.id, role: f.role, fileName: f.fileName, data: f.data });
+      }
+      let got = 0;
+      for (const r of plan.down) {
+        const data = await downloadDriveFont(tk, r.id);
+        const role = (['uni', 'ansi', 'en'].includes(r.appProperties?.role ?? '') ? r.appProperties!.role : 'uni') as 'uni' | 'ansi' | 'en';
+        const rec = { id: r.appProperties!.pnFont!, family: familyFor(data, r.name), fileName: r.name, role, data, addedAt: Date.now() };
+        try { await registerFont(rec); await putFont(rec); got++; } catch { /* not a usable font: leave it in Drive */ }
+      }
+      if (got) {
+        await loadStoredFonts();
+        say('Google Drive থেকে {n}টা ফন্ট এল', { n: got });
+      }
+    } catch {
+      /* Drive away or the sign-in ran out: tried again the next time Drive is on */
+    } finally {
+      fontSyncBusy.current = false;
+    }
+  };
+  // whenever Drive comes on (sign-in, a new session with a token) and once the fonts here are loaded
+  useEffect(() => { if (driveConnected) void syncFonts(); }, [driveConnected]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ---------- voice corrections (IndexedDB, debounced) ----------
   const corrTimer = useRef<number>(undefined);
@@ -993,7 +1047,7 @@ export function App() {
           dict={{ on: dictOn, setOn: setDictOn, count: dictCount }}
           wordCount={Object.keys(bank.current.w).length + 0 * bankVersion}
           onLearnDoc={learnDoc} onExportWords={exportWords} onImportWords={importWords} onResetWords={resetWords}
-          onBackup={backup} onRestore={restore} uiLang={uiLang} setUiLang={setUiLangState}
+          onBackup={backup} onRestore={restore} uiLang={uiLang} setUiLang={setUiLangState} appFonts={appFonts} setAppFonts={setAppFonts}
           fixChandra={fixChandra} setFixChandra={setFixChandra} toggleKey={toggleKey} setToggleKey={setToggleKey}
           ansiTyping={ansiTyping} setAnsiTyping={setAnsiTyping} ansiKey={ansiKey} setAnsiKey={setAnsiKey}
           ai={{ key: geminiKey, setKey: setGeminiKey, model: geminiModel, setModel: setGeminiModel, privateWords, setPrivateWords }}

@@ -22,6 +22,7 @@ users upload their own licensed copy in the app.
 | জিনিস | লাইসেন্স | কোথায় |
 |---|---|---|
 | Noto Sans Bengali, Noto Serif Bengali, Hind Siliguri (Fontsource npm প্যাকেজ) | SIL Open Font License 1.1 (ফন্ট), MIT (প্যাকেজ) | অ্যাপের সাথে বান্ডেল, অফলাইনে চলার জন্য |
+| Kalpurush 0.258 — Md. Tanbin Islam Siyam, OmicronLab (github.com/potasiyam/Kalpurush) | SIL Open Font License 1.1, Reserved Font Name "Kalpurush" (`src/assets/fonts/Kalpurush-OFL.txt`) | অ্যাপের মেনু ও কিবোর্ডের ডিফল্ট বাংলা ফন্ট; অপরিবর্তিত, শুধু woff2 মোড়কে (subset বা গ্লিফ বদল করা হয়নি) |
 | vite-plugin-pwa, Workbox | MIT | service worker তৈরি (build-time) ও workbox-window (runtime) |
 | html-to-image | MIT | পাতার ছবি (.png) |
 | JSZip | MIT (dual MIT/GPLv3, MIT বেছে নেওয়া) | একাধিক ছবির .zip, .docx পড়া/লেখা |
