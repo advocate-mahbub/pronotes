@@ -6,31 +6,33 @@ test.use({ viewport: iphone.viewport, userAgent: iphone.userAgent, deviceScaleFa
 const key = (p: Page, code: string) => p.locator(`[data-testid=osk] [data-code="${code}"]`);
 const press = async (p: Page, code: string) => { await key(p, code).dispatchEvent('pointerdown'); await p.locator('[data-testid=osk]').dispatchEvent('pointerup'); };
 
-test('phone keyboard: iOS-style — numbers and \\ stay, punctuation behind #+=, edge to edge', async ({ page }) => {
+test('phone keyboard: laid out like the iPhone (decisions.md 76) — two ⌫, two ⇧, two ↵, 🌐 under the keys', async ({ page }) => {
   await page.goto('./');
   await page.getByTestId('editor').click();
   await page.getByTestId('kb-toggle').tap();
   const osk = page.getByTestId('osk');
   await expect(osk).toBeVisible();
 
-  // the letters' rows no longer carry the punctuation keys; the number row and \ stay
-  for (const c of ['Minus', 'Equal', 'BracketLeft', 'BracketRight', 'Semicolon', 'Quote', 'Comma', 'Period', 'Slash']) await expect(key(page, c)).toHaveCount(0);
-  for (const c of ['Digit1', 'Digit0', 'Backslash', '#Sym', '#BackL']) await expect(key(page, c)).toHaveCount(1);
-  await expect(key(page, '#Num')).toHaveCount(0); // the keypads moved into a long-press of #+=
-  await expect(key(page, 'Backquote')).toHaveCount(0); // ৱ gave its place to the left ⌫
-  // the owner's arrangement: ⌫ top-left; ⌫ ends the A row; ↵ ends the Z row
+  // the letters' rows no longer carry the punctuation keys, nor ZWNJ (্্ and ্ + kar do its work) or a দাঁড়ি key
+  for (const c of ['Minus', 'Equal', 'BracketLeft', 'BracketRight', 'Semicolon', 'Quote', 'Comma', 'Period', 'Slash', 'Backslash', '#Dari', '#Sym', '#Mode'])
+    await expect(key(page, c)).toHaveCount(0);
   const codes = async (i: number) => osk.locator('.kb-row').nth(i).locator('[data-code]').evaluateAll((els) => els.map((e) => e.getAttribute('data-code')));
-  expect((await codes(0))[0]).toBe('#BackL');
-  expect((await codes(2)).slice(-2)).toEqual(['KeyL', '#Back']);
-  expect((await codes(3)).at(-1)).toBe('#Enter');
-  // #+= sits bottom-left, right after the language key
-  const order = await osk.locator('.kb-row').last().locator('[data-code]').evaluateAll((els) => els.map((e) => e.getAttribute('data-code')));
-  expect(order.slice(0, 2)).toEqual(['#Mode', '#Sym']);
-
-  // the layer: punctuation keys, the toggle reads অআ (Bangla) and is on
-  await press(page, '#Sym');
-  for (const c of ['Minus', 'Equal', 'BracketLeft', 'BracketRight', 'Semicolon', 'Quote', 'Comma', 'Period', 'Slash']) await expect(key(page, c)).toHaveCount(1);
-  await expect(key(page, '#Sym')).toHaveText('অআ');
+  expect(await codes(0)).toEqual(['Digit1', 'Digit2', 'Digit3', 'Digit4', 'Digit5', 'Digit6', 'Digit7', 'Digit8', 'Digit9', 'Digit0']);
+  expect((await codes(1)).length).toBe(10);
+  expect((await codes(2))[0]).toBe('#BackL'); // ⌫ before া for the left thumb
+  expect((await codes(3))).toEqual(['#Shift', 'KeyZ', 'KeyX', 'KeyC', 'KeyV', 'KeyB', 'KeyN', 'KeyM', '#Back']); // ⌫ where iOS has it
+  expect(await codes(4)).toEqual(['#EnterL', '#Space', '#Shift2', '#Enter']);
+  // 🌐 in the strip under the keys; ⌄ in its middle
+  await expect(page.getByTestId('kb-strip').locator('[data-code="#Globe"]')).toHaveCount(1);
+  await expect(page.getByTestId('kb-strip').getByTestId('kb-hide')).toHaveCount(1);
+  // one character per key: no Shift character in the corner
+  await expect(key(page, 'KeyK').locator('.s')).toHaveCount(0);
+  // the left ↵ flicked up: the marks
+  const c = (await key(page, '#EnterL').boundingBox())!;
+  await page.mouse.move(c.x + c.width / 2, c.y + c.height / 2); await page.mouse.down();
+  await page.mouse.move(c.x + c.width / 2, c.y - 30, { steps: 4 }); await page.mouse.up();
+  for (const k of ['Minus', 'Equal', 'BracketLeft', 'BracketRight', 'Semicolon', 'Quote', 'Comma', 'Period', 'Slash', 'Txt:~']) await expect(key(page, k)).toHaveCount(1);
+  await expect(key(page, '#EnterL').locator('.c')).toHaveText('অআ');
   // several marks in a row, then space brings the letters back (as on iOS)
   await press(page, 'Slash');
   await press(page, 'Minus');
@@ -47,7 +49,7 @@ test('phone keyboard: iOS-style — numbers and \\ stay, punctuation behind #+=,
   expect(Math.round(kb.x + kb.width)).toBe(vw);
   expect(Math.round(pg.x)).toBe(0);
   expect(Math.round(pg.x + pg.width)).toBe(vw);
-  // the letter keys are wider than before (11 to a row instead of 13), and their touch areas meet:
+  // the letter keys are wider than before (10 to a row), and their touch areas meet:
   // no dead gap between keys (only the drawn key is inset, iOS-style)
   const q = (await key(page, 'KeyQ').boundingBox())!;
   const w = (await key(page, 'KeyW').boundingBox())!;

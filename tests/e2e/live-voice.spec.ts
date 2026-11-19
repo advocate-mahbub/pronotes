@@ -81,12 +81,12 @@ test('a dropped connection pauses Live; what was written stays', async ({ page, 
 test.describe('phone', () => {
   const iphone = devices['iPhone 13'];
   test.use({ viewport: iphone.viewport, userAgent: iphone.userAgent, deviceScaleFactor: 2, isMobile: true, hasTouch: true });
-  test('the 🎙 key sits on the keyboard’s bottom row when Live can work', async ({ page }) => {
+  test('the 🎙 key sits in the strip under the keys when Live can work', async ({ page }) => {
     await page.route('https://generativelanguage.googleapis.com/**', (r) => r.fulfill({ json: { models: [] } }));
     await page.goto('./');
     await page.getByTestId('editor').click();
     await page.getByTestId('kb-toggle').tap();
-    const last = page.getByTestId('osk').locator('.kb-row').last();
+    const last = page.getByTestId('kb-strip'); // 🎙 lives in the strip under the keys, where iOS has it
     // an iPhone without a key: Safari's own recognition has no Bangla, so no Live key
     await expect(last.locator('[data-code="#Live"]')).toHaveCount(0);
     await section(page, 'voice');

@@ -34,30 +34,36 @@ export const ROWS: string[][] = [
  * wider keys. #Sym sits bottom-left next to the language key, where iOS keeps "123".
  */
 const NUMBERS = ['Backquote', 'Digit1', 'Digit2', 'Digit3', 'Digit4', 'Digit5', 'Digit6', 'Digit7', 'Digit8', 'Digit9', 'Digit0'];
-// #Live: the live-voice mic (shown only when it can work); #BackL: a second ⌫ for the left thumb
-const BOTTOM = ['#Mode', '#Sym', '#Alt', '#Space', '#Dari', '#Live'];
 /**
- * Phone letters (the owner's arrangement, decisions.md 73–74): ⌫ in the top-left corner for the left
- * thumb (where ৱ was), ⌫ at the end of the A row, ↵ at the end of the Z row. The keypads (123, ১২৩,
- * ৴৵৶) open from a long-press of #+=.
+ * The phone's bottom row (decisions.md 76, iOS-like): ↵ on both sides of the space bar — the left one
+ * opens #+= when flicked up and the keypad menu (123 | ১২৩ | ৴৵৶) when held; the right one offers line
+ * break, Tab and page break when held — and a second ⇧ for the right thumb. 🌐 and 🎙 sit in the strip
+ * under the keys, where iOS keeps them.
+ */
+const BOTTOM = ['#EnterL', '#Space', '#Shift2', '#Enter'];
+/**
+ * Phone letters, laid out like the iPhone keyboard the owner's thumbs know (decisions.md 76): ten keys in
+ * the number and Q rows (no ZWNJ key: ্্ makes the fixed hasanta, ্ + kar the vowel), ⌫ at the start
+ * of the A row for the left thumb and at the end of the Z row where iOS has it.
  */
 export const PHONE_ROWS: string[][] = [
-  ['#BackL', 'Digit1', 'Digit2', 'Digit3', 'Digit4', 'Digit5', 'Digit6', 'Digit7', 'Digit8', 'Digit9', 'Digit0'],
-  ['KeyQ', 'KeyW', 'KeyE', 'KeyR', 'KeyT', 'KeyY', 'KeyU', 'KeyI', 'KeyO', 'KeyP', 'Backslash'],
-  ['KeyA', 'KeyS', 'KeyD', 'KeyF', 'KeyG', 'KeyH', 'KeyJ', 'KeyK', 'KeyL', '#Back'],
-  ['#Shift', 'KeyZ', 'KeyX', 'KeyC', 'KeyV', 'KeyB', 'KeyN', 'KeyM', '#Enter'],
+  ['Digit1', 'Digit2', 'Digit3', 'Digit4', 'Digit5', 'Digit6', 'Digit7', 'Digit8', 'Digit9', 'Digit0'],
+  ['KeyQ', 'KeyW', 'KeyE', 'KeyR', 'KeyT', 'KeyY', 'KeyU', 'KeyI', 'KeyO', 'KeyP'],
+  ['#BackL', 'KeyA', 'KeyS', 'KeyD', 'KeyF', 'KeyG', 'KeyH', 'KeyJ', 'KeyK', 'KeyL'],
+  ['#Shift', 'KeyZ', 'KeyX', 'KeyC', 'KeyV', 'KeyB', 'KeyN', 'KeyM', '#Back'],
   BOTTOM,
 ];
 /**
- * The second layer: same height as the letters, so nothing jumps when it opens. Its number row types the
- * AltGr character of each key (the anna-ganda signs in the ProNotes layout; the digits stay on the letters
- * layer), and ৸ and ১৲ (AltGr of - and =) sit next to - = [ ]. "Alt+" codes = that key's AltGr character.
+ * The second layer (flick the left ↵ up): same height as the letters, so nothing jumps when it opens. Its
+ * number row types the AltGr character of each key (the anna-ganda signs in the ProNotes layout), and ৸
+ * and ১৲ (AltGr of - and =) sit next to - = [ ]. "Alt+" codes = that key's AltGr character; ~ and \ (the
+ * old ZWNJ key's Shift and English characters) are here now.
  */
 export const PHONE_SYMBOL_ROWS: string[][] = [
   NUMBERS.map((c) => 'Alt+' + c),
   ['Minus', 'Equal', 'BracketLeft', 'BracketRight', 'Alt+Minus', 'Alt+Equal'],
-  ['Semicolon', 'Quote', '#Back'],
-  ['#Shift', 'Comma', 'Period', 'Slash', '#Enter'],
+  ['#BackL', 'Semicolon', 'Quote', 'Txt:~', 'Txt:\\', 'Txt:|'],
+  ['#Shift', 'Comma', 'Period', 'Slash', '#Back'],
   BOTTOM,
 ];
 /** The keypads, chosen from a long-press of #+= (or the iPad's #Pad key). */
@@ -86,7 +92,7 @@ export const ANNA_PAD_ROWS: string[][] = [
 ];
 /** Where the right hand's half starts in a split keyboard (iOS splits after T, G and V). */
 const RIGHT_HALF = new Set(['Digit7', 'KeyY', 'KeyH', 'KeyB', 'Alt+Digit6']);
-const RIGHT_HALF_PHONE = new Set(['Digit6', 'KeyY', 'KeyH', 'KeyB', 'Alt+Digit6']);
+const RIGHT_HALF_PHONE = new Set(['Digit6', 'KeyY', 'KeyG', 'KeyV', 'Alt+Digit6', 'Period']);
 /**
  * A row cut in two for the split keyboard. The bottom row gets a space bar in each half (#Space2 types a
  * space too), so both thumbs reach one.

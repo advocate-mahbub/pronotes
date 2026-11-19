@@ -148,9 +148,18 @@ export interface TypeOptions {
   oldReph: boolean;
   /** Avro's "fix Chandrabindu position": ঁ typed before a kar moves after it (ক ঁ া → কাঁ). */
   fixChandra?: boolean;
+  /**
+   * ProNotes hasanta rules (decisions.md 76): ্ then a kar = the full vowel (ক্ + ি → কই, no ZWNJ needed);
+   * ্ twice = a fixed hasanta that joins nothing (্ + ZWNJ: বল্‌বো); a third ্ does nothing; এ then া = ও.
+   */
+  hasantaRules?: boolean;
 }
 
 const CHANDRA = 'ঁ';
+const HASANTA = '\u09CD';
+const ZWNJ = '\u200C';
+/** ্ + ZWNJ: a hasanta that stays visible and joins nothing; one ⌫ removes both. */
+export const FIXED_HASANTA = HASANTA + ZWNJ;
 const isKar = (c: string) => c.length === 1 && 'ািীুূৃেৈোৌৗ'.includes(c);
 
 const KAR: Record<string, string> = {
@@ -171,6 +180,12 @@ export function planInsert(before: string, collapsed: boolean, text: string, opt
   let t = text;
   if (opts.bangla && opts.fixChandra && collapsed && isKar(t) && before.endsWith(CHANDRA) && isCons(before[before.length - 2])) {
     return { deleteBefore: 1, text: fixNukta(t + CHANDRA) };
+  }
+  if (opts.bangla && opts.hasantaRules && collapsed) {
+    if (t === HASANTA && before.endsWith(FIXED_HASANTA)) return { deleteBefore: 0, text: '' };
+    if (t === HASANTA && before.endsWith(HASANTA)) return { deleteBefore: 0, text: ZWNJ };
+    if (KAR[t] && before.endsWith(HASANTA)) return { deleteBefore: 1, text: KAR[t] };
+    if (before.endsWith('এ') && (t === 'া' || t === 'ৗ')) return { deleteBefore: 1, text: t === 'া' ? 'ও' : 'ঔ' };
   }
   if (opts.bangla && opts.vowelForming && KAR[t] && collapsed) {
     const prev = before[before.length - 1];

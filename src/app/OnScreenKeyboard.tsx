@@ -35,12 +35,30 @@ interface Props {
   live?: { on: boolean; toggle: () => void };
 }
 
+/** Fired on window with detail true/false while the space bar moves the caret. */
+export const KB_TRACK_EVENT = 'pronotes:kb-track';
+
 export interface KbMenuItem { id: string; label: string; on?: boolean; act: () => void }
 
 /** The key back to the letters shows letters of the language being typed (like iOS's "ABC"). */
 const LETTERS_KEY = { bn: 'অআ', en: 'ABC' } as const;
 /** The keypads' names on the #Pad key and in the long-press menu. */
 const PAD_LABEL: Record<Pad, string> = { numEn: '123', num: '\u09e7\u09e8\u09e9', anna: '\u09f4\u09f5\u09f6' };
+/** Line icons for the strip under the phone keys (iOS draws 🌐 and 🎙 as plain lines, not emoji). */
+export const GLOBE_ICON = (
+  <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" strokeWidth="1.7" aria-hidden="true">
+    <circle cx="12" cy="12" r="9" /><path d="M3 12h18M12 3c2.6 2.8 3.9 5.8 3.9 9s-1.3 6.2-3.9 9c-2.6-2.8-3.9-5.8-3.9-9S9.4 5.8 12 3z" />
+  </svg>
+);
+export const LINE_MIC = (
+  <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" aria-hidden="true">
+    <rect x="9" y="3" width="6" height="11" rx="3" /><path d="M5.5 11a6.5 6.5 0 0 0 13 0M12 17.5V21M8.5 21h7" />
+  </svg>
+);
+/** Held right ↵: what the phone has no key for (decisions.md 76). */
+export const ENTER_ITEMS = ['br', 'tab', 'page'] as const;
+const ENTER_LABEL: Record<(typeof ENTER_ITEMS)[number], string> = { br: '⤶', tab: '⇥', page: '▭' };
+const ENTER_NAME: Record<(typeof ENTER_ITEMS)[number], string> = { br: 'লাইন ভাঙা', tab: 'Tab', page: 'নতুন পাতা' };
 /** "Alt+Digit5" = the AltGr character of Digit5 (the phone's symbol layer). */
 const baseOf = (code: string) => (code.startsWith('Alt+') ? code.slice(4) : code);
 
@@ -84,8 +102,12 @@ export function OnScreenKeyboard({ editor, map, bangla, getConfig, onToggleLangu
   // long-press #+= (or #Pad): which keypad to open
   const [padMenu, setPadMenu] = useState<{ idx: number; left: number; top: number; w: number } | null>(null);
   const [popup, setPopup] = useState<{ opts: string[]; idx: number; left: number; top: number; w: number } | null>(null);
+  // held right ↵: line break · Tab · new page
+  const [enterMenu, setEnterMenu] = useState<{ idx: number; left: number; top: number; w: number } | null>(null);
   const [menu, setMenu] = useState(false);
-  const [tracking, setTracking] = useState(false);
+  const [tracking, setTracking0] = useState(false);
+  // the caret overlay shows the loupe while the space bar moves the caret (decisions.md 76)
+  const setTracking = (v: boolean) => { setTracking0(v); window.dispatchEvent(new CustomEvent(KB_TRACK_EVENT, { detail: v })); };
   const rows = pad === 'anna' ? ANNA_PAD_ROWS : pad ? NUMPAD_ROWS : compact ? (sym ? PHONE_SYMBOL_ROWS : PHONE_ROWS) : ROWS;
   const [phys, setPhys] = useState({ shift: false, alt: false });
   const lastShift = useRef(0);
@@ -195,6 +217,16 @@ export function OnScreenKeyboard({ editor, map, bangla, getConfig, onToggleLangu
     editor.commands.enter();
   };
 
+  const enterItem = (id: (typeof ENTER_ITEMS)[number]) => {
+    setSym(false);
+    if (activeBornonaBox()) return id === 'tab' ? type('\t') : enter();
+    if (id === 'br') return editor.chain().setHardBreak().scrollIntoView().run();
+    if (id === 'page') return editor.chain().setPageBreak().scrollIntoView().run();
+    // Tab: a list item goes one step in; elsewhere a tab character (a Word tab in .docx)
+    if (editor.can().sinkListItem('listItem')) return editor.chain().sinkListItem('listItem').run();
+    type('\t');
+  };
+
   /** ½: the "a/b" just typed becomes a fraction (Bangla: raised/lowered Bangla digits; English: ½ ⁵⁄₁₆). */
   const fraction = () => {
     const f = findFraction(before());
@@ -268,11 +300,24 @@ export function OnScreenKeyboard({ editor, map, bangla, getConfig, onToggleLangu
     touch.current = null;
     const code = g.code;
     if (g.mode === 'track') { setTracking(false); return; }
+    if (code === '#Enter') {
+      if (g.mode === 'menu') { const m = enterMenu; setEnterMenu(null); if (m) enterItem(ENTER_ITEMS[m.idx]); return; }
+      return enter();
+    }
+    if (code === '#EnterL') {
+      // held: the keypad menu; flicked up: #+= (slide on to a mark and lift = that mark, then letters again)
+      if (g.mode === 'menu') { if (padMenu) { setPadMenu(null); openPad(PADS[padMenu.idx]); } return; }
+      if (g.mode === 'flick') {
+        const over = x !== undefined && y !== undefined ? keyAt(x, y) : null;
+        if (over && over !== code && !over.startsWith('#')) { typeKey(over); if (g.opened) setSym(false); }
+        return;
+      }
+      return enter();
+    }
     if (g.mode === 'menu' && !padMenu) return;
     if (code === '#Space' || code === '#Space2') return space();
-    if (code === '#Enter') return enter();
     if (code === '#Dari') return type(bangla ? '।' : '.');
-    if (code === '#Mode') return onToggleLanguage();
+    if (code === '#Mode' || code === '#Globe') return onToggleLanguage();
     if (code === '#Back' || code === '#BackL') return;
     if (code === '#Live') return live?.toggle();
     if (g.mode === 'menu' && padMenu) {
@@ -323,7 +368,8 @@ export function OnScreenKeyboard({ editor, map, bangla, getConfig, onToggleLangu
     try { e.currentTarget.setPointerCapture(e.pointerId); } catch { /* a synthetic press */ }
     const g: Touch = { code, el: e.currentTarget, x0: e.clientX, y0: e.clientY, mode: 'press' };
     switch (code) {
-      case '#Shift': {
+      case '#Shift':
+      case '#Shift2': {
         const now = Date.now();
         setShift((s) => (s === 0 ? (now - lastShift.current < 350 ? 2 : 1) : s === 1 && now - lastShift.current < 350 ? 2 : 0));
         lastShift.current = now;
@@ -348,7 +394,8 @@ export function OnScreenKeyboard({ editor, map, bangla, getConfig, onToggleLangu
         break;
       }
       case '#Sym':
-      case '#Pad': {
+      case '#Pad':
+      case '#EnterL': {
         if (code === '#Sym') { g.opened = !sym; setSym((v) => !v); }
         // held: the keypad menu (123 | ১২৩ | ৴৵৶) above the key; the finger slides to one and lifts
         const wasSym = sym;
@@ -363,7 +410,18 @@ export function OnScreenKeyboard({ editor, map, bangla, getConfig, onToggleLangu
         }, LONG);
         break;
       }
+      case '#Enter':
+        g.timer = window.setTimeout(() => {
+          if (g.mode !== 'press' || !root.current) return;
+          const r = g.el.getBoundingClientRect(), k = root.current.getBoundingClientRect();
+          const w = Math.max(52, r.width);
+          const left = Math.max(0, Math.min(k.width - w * ENTER_ITEMS.length, r.right - k.left - w * ENTER_ITEMS.length));
+          g.mode = 'menu';
+          setEnterMenu({ idx: 0, left, top: r.top - k.top - r.height - 10, w });
+        }, LONG);
+        break;
       case '#Mode':
+      case '#Globe':
         if (menuItems?.length) g.timer = window.setTimeout(() => { g.mode = 'menu'; setMenu(true); }, LONG + 80);
         break;
       case '#Space':
@@ -413,6 +471,20 @@ export function OnScreenKeyboard({ editor, map, bangla, getConfig, onToggleLangu
       if (idx !== padMenu.idx) setPadMenu({ ...padMenu, idx });
       return;
     }
+    if (g.mode === 'menu' && enterMenu && root.current && g.code === '#Enter') {
+      const k = root.current.getBoundingClientRect();
+      const idx = Math.max(0, Math.min(ENTER_ITEMS.length - 1, Math.floor((e.clientX - k.left - enterMenu.left) / enterMenu.w)));
+      if (idx !== enterMenu.idx) setEnterMenu({ ...enterMenu, idx });
+      return;
+    }
+    // the left ↵ flicked up: the #+= layer opens under the finger
+    if (g.code === '#EnterL' && g.mode === 'press' && -dy > FLICK && -dy > Math.abs(dx) * 1.2) {
+      clearTimeout(g.timer);
+      g.mode = 'flick';
+      g.opened = !sym;
+      setSym((v) => !v);
+      return;
+    }
     if (g.mode === 'press' && (g.code === '#Sym' || g.code === '#Pad') && Math.hypot(dx, dy) > MOVE) clearTimeout(g.timer); // sliding to a mark, not holding
     if (g.code.startsWith('#') || g.code.startsWith('Np') || g.code.startsWith('Txt:') || g.code.startsWith('Anna:')) return;
     if (g.mode === 'popup' && popup && root.current) {
@@ -436,11 +508,12 @@ export function OnScreenKeyboard({ editor, map, bangla, getConfig, onToggleLangu
     stopRepeat();
     setPopup(null);
     setPadMenu(null);
+    setEnterMenu(null);
     setTracking(false);
   };
 
   const label = (code: string) =>
-    ({ '#Enter': '↵', '#Shift': shift === 2 ? '⇪' : '⇧', '#Back': '⌫', '#BackL': '⌫', '#Space': t('স্পেস'), '#Space2': t('স্পেস'),
+    ({ '#Enter': '↵', '#EnterL': '↵', '#Shift': shift === 2 ? '⇪' : '⇧', '#Shift2': shift === 2 ? '⇪' : '⇧', '#Globe': t('লেখার ভাষা বদলান'), '#Back': '⌫', '#BackL': '⌫', '#Space': compact ? (bangla ? 'বাংলা' : 'English') : t('স্পেস'), '#Space2': compact ? (bangla ? 'বাংলা' : 'English') : t('স্পেস'),
       '#Pad': pad ? LETTERS_KEY[bangla ? 'bn' : 'en'] : PAD_LABEL[lastPad], '#Frac': '½', '#Live': live?.on ? '●' : '🎙', '#Dari': bangla ? '।' : '.', '#Mode': bangla ? 'EN' : 'বাং', '#Alt': 'Alt', '#Sym': sym ? LETTERS_KEY[bangla ? 'bn' : 'en'] : '#+=' })[code];
 
   const keyEl = (code: string) => {
@@ -451,15 +524,18 @@ export function OnScreenKeyboard({ editor, map, bangla, getConfig, onToggleLangu
     const hint = !fn && !compact && bangla && !al && base in ANNA_ALT && code === base ? charFor(map, base, false, true, true) : '';
     const plain = code.startsWith('Np') || code.startsWith('Txt:') || code.startsWith('Anna:');
     const cls = ['k', fn && code !== '#Dari' ? 'fn' : '', code === '#Space' && !split ? 'w6' : '', code.startsWith('#Space') && split ? 'w3' : '',
-      ['#Enter', '#Shift', '#Back', '#Mode', '#Sym', '#Pad'].includes(code) ? 'w15' : '', (code === '#Sym' && sym) || (code === '#Pad' && pad) ? 'on' : '',
-      (code === '#Shift' && shift > 0) || (code === '#Alt' && alt) || (code === '#Live' && live?.on) ? 'on' : '', flash === code ? 'hit' : '',
+      ['#Enter', '#EnterL', '#Shift', '#Shift2', '#Back', '#Mode', '#Sym', '#Pad'].includes(code) ? 'w15' : '', (code === '#Sym' && sym) || (code === '#Pad' && pad) ? 'on' : '',
+      ((code === '#Shift' || code === '#Shift2') && shift > 0) || (code === '#Alt' && alt) || (code === '#Live' && live?.on) ? 'on' : '', flash === code ? 'hit' : '',
       code.startsWith('Alt+') ? 'sign' : '', plain ? 'pad' : '', code === '#Live' ? 'live' : ''].filter(Boolean).join(' ');
     return (
       <button key={code} type="button" tabIndex={-1} className={cls} data-code={code}
         aria-label={fn ? label(code) : main}
         onPointerDown={(e) => down(e, code)}>
-        {fn ? (
-          <span className="m">{label(code)}</span>
+        {code === '#Globe' ? GLOBE_ICON : code === '#Live' && compact && !live?.on ? LINE_MIC : fn ? (
+          <>
+            <span className="m">{label(code)}</span>
+            {code === '#EnterL' && <span className="c">{sym ? LETTERS_KEY[bangla ? 'bn' : 'en'] : '#+='}</span>}
+          </>
         ) : plain ? (
           <>
             <span className="m">{main}</span>
@@ -468,8 +544,8 @@ export function OnScreenKeyboard({ editor, map, bangla, getConfig, onToggleLangu
         ) : (
           <>
             <span className={'m' + (/^ZW/.test(main) ? ' tiny' : '')}>{main}</span>
-            {code.startsWith('Alt+') ? <span className="s">{show(charFor(map, base, false, false, bangla))}</span> : <span className="s">{show(charFor(map, base, !sh, al, bangla))}</span>}
-            {hint ? <span className="a">{hint}</span> : <span className="l">{US[base]?.[1]}</span>}
+            {compact ? null : code.startsWith('Alt+') ? <span className="s">{show(charFor(map, base, false, false, bangla))}</span> : <span className="s">{show(charFor(map, base, !sh, al, bangla))}</span>}
+            {compact ? null : hint ? <span className="a">{hint}</span> : <span className="l">{US[base]?.[1]}</span>}
           </>
         )}
       </button>
@@ -486,13 +562,13 @@ export function OnScreenKeyboard({ editor, map, bangla, getConfig, onToggleLangu
   const rowsEl = rows.map((row0, ri) => {
     const row = row0.filter((c) => shown(c, ri));
     const last = ri === rows.length - 1;
-    if (!split) return <div className="kb-row" key={ri}>{row.map(keyEl)}{last && hideEl}</div>;
+    if (!split) return <div className="kb-row" key={ri}>{row.map(keyEl)}{last && !compact && hideEl}</div>;
     const [l, r] = splitRow(row, Boolean(compact));
     return (
       <div className="kb-row split" key={ri}>
         <div className="half">{l.map(keyEl)}</div>
         <div className="gap" aria-hidden="true" />
-        <div className="half">{r.map(keyEl)}{last && hideEl}</div>
+        <div className="half">{r.map(keyEl)}{last && !compact && hideEl}</div>
       </div>
     );
   });
@@ -502,11 +578,26 @@ export function OnScreenKeyboard({ editor, map, bangla, getConfig, onToggleLangu
       role="group" aria-label={t('বর্ণনা অন-স্ক্রিন কিবোর্ড')} data-testid="osk"
       onPointerMove={moveTo} onPointerUp={up} onPointerCancel={cancel}>
       {hand === 'right' && <HandStrip t={t} onFull={() => setHand?.(null)} onSwap={() => setHand?.('left')} side="left" />}
-      <div className="kb-main">{rowsEl}</div>
+      <div className="kb-main">
+        {rowsEl}
+        {compact && (
+          // the strip under the keys, where iOS keeps 🌐 and 🎙 (and the space the home bar leaves)
+          <div className="kb-strip" data-testid="kb-strip">
+            <span className="strip-side">{keyEl('#Globe')}{altKey && keyEl('#Alt')}</span>
+            {hideEl}
+            <span className="strip-side">{live && keyEl('#Live')}</span>
+          </div>
+        )}
+      </div>
       {hand === 'left' && <HandStrip t={t} onFull={() => setHand?.(null)} onSwap={() => setHand?.('right')} side="right" />}
       {popup && (
         <div className="kb-pop" data-testid="kb-pop" style={{ left: popup.left, top: popup.top }}>
           {popup.opts.map((c, i) => <span key={c} className={i === popup.idx ? 'on' : ''} style={{ width: popup.w }}>{show(c)}</span>)}
+        </div>
+      )}
+      {enterMenu && (
+        <div className="kb-pop pad-menu enter-menu" data-testid="kb-enter-menu" style={{ left: enterMenu.left, top: enterMenu.top }}>
+          {ENTER_ITEMS.map((id, i) => <span key={id} data-item={id} title={t(ENTER_NAME[id])} className={i === enterMenu.idx ? 'on' : ''} style={{ width: enterMenu.w }}>{ENTER_LABEL[id]}<small>{t(ENTER_NAME[id])}</small></span>)}
         </div>
       )}
       {padMenu && (

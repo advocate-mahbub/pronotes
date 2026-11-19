@@ -106,7 +106,12 @@ function runs(nodes: JSONContent[] = []): ParagraphChild[] {
     else if (n.type === 'text' && n.text) {
       const o = runOptions(n);
       // text typed in Bijoy (ANSI typing) is already Bijoy: keep it in its own font
-      if (!ANSI || isBijoyFont(nodeFont(n), ANSI.bijoyFont)) out.push(new TextRun(o));
+      // a Tab typed in ProNotes (the keyboard's ↵ menu) is a Word tab, not a character
+      if (n.text.includes('\t') && (!ANSI || isBijoyFont(nodeFont(n), ANSI.bijoyFont))) {
+        const { text: _t, ...rest } = o as IRunOptions & { text?: string };
+        void _t;
+        out.push(new TextRun({ ...rest, children: n.text.split('\t').flatMap((part, i) => (i ? [new Tab(), part] : [part])).filter((c) => c !== '') }));
+      } else if (!ANSI || isBijoyFont(nodeFont(n), ANSI.bijoyFont)) out.push(new TextRun(o));
       else for (const r of bijoyRuns(n.text, before)) out.push(new TextRun({ ...o, text: r.text, font: fontObj(r.en ? ANSI.englishFont : ANSI.bijoyFont) }));
     }
   }

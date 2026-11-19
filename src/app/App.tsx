@@ -510,7 +510,7 @@ export function App() {
     say('আগের ভার্সন ফেরত আনা হলো; এখনকার অবস্থাও ভার্সন হিসেবে রাখা আছে');
   };
   const sideCfg = useRef<BornonaConfig>({ bangla, map, vowelForming: vf, oldReph, suspended: false });
-  sideCfg.current = { bangla, map, vowelForming: vf, oldReph, suspended: false, fixChandra, toggleKey };
+  sideCfg.current = { bangla, map, vowelForming: vf, oldReph, suspended: false, fixChandra, toggleKey, hasantaRules: layoutId === PRONOTES_LAYOUT_ID };
   const getSideConfig = useCallback(() => sideCfg.current, []);
   const toggleBangla = useCallback(() => setBangla((b) => !b), []);
 
@@ -934,7 +934,7 @@ export function App() {
               toolbarExtra={<button type="button" className={'tb' + (showSide ? ' on' : '')} title={t('ডকুমেন্টের তালিকা')} aria-label={t('ডকুমেন্টের তালিকা')}
                 data-testid="side-toggle" onPointerDown={(e) => e.preventDefault()} onClick={() => setSideOpen((v) => !v)}>☰</button>} />
           ) : current && (
-            <Workspace key={current.id + ':' + reloadKey} doc={current} map={map} phonetic={layoutId === 'pronotes-phonetic'} rules={layout.kmx} bangla={bangla} vowelForming={vf} oldReph={oldReph}
+            <Workspace key={current.id + ':' + reloadKey} doc={current} map={map} phonetic={layoutId === 'pronotes-phonetic'} hasantaRules={layoutId === PRONOTES_LAYOUT_ID} rules={layout.kmx} bangla={bangla} vowelForming={vf} oldReph={oldReph}
               kbVisible={kbVisible} coarse={coarse} phone={phone} voiceEngine={voiceEngine === 'auto' ? (geminiKey ? 'ai' : 'device') : voiceEngine} bank={bank.current} bankVersion={bankVersion} onBankChanged={onBankChanged}
               onToggleLanguage={() => setBangla((b) => !b)} onSave={onSave}
               onRename={renameAny}

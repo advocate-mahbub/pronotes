@@ -1110,4 +1110,13 @@ export const EN: Record<string, string> = {
   "এতক্ষণ কোনো ব্যাকআপ (Drive বা ডিভাইস) না হলে ProNotes খুললে মনে করিয়ে দেবে; সেখান থেকেই ব্যাকআপ নেওয়া যায়। “পরে” চাপলে ১২ ঘণ্টা পর আবার।": "If there has been no backup (Drive or device) for this long, ProNotes reminds you when it opens, and you can back up from the reminder. “Later” asks again in 12 hours.",
   "Google Drive যুক্ত থাকা অবস্থায় ড্রাফট বদলালে ProNotes পেছনে গেলে আর প্রতি ১৫ মিনিটে নীরবে Drive-এ ব্যাকআপ নেয়। Google-এর অনুমতি প্রায় এক ঘণ্টা থাকে; মেয়াদ গেলে আবার যুক্ত করতে হয়।": "While Google Drive is connected and drafts have changed, ProNotes quietly backs up to Drive when it goes to the background and every 15 minutes. Google's permission lasts about an hour; after that, connect again.",
   "সব ড্রাফট (ট্র্যাশসহ), শেখা শব্দ, নিজের লেআউট, ভয়েসের সংশোধন আর সেটিংস একটা ফাইলে (ফন্ট ফাইল বাদে)। দুই জায়গায় রাখা যায়: এই ডিভাইসে (iPad-এ Files বা iCloud Drive) আর আপনার নিজের Google Drive-এর “ProNotes Backups” ফোল্ডারে। Drive-এ Gemini key কখনো যায় না। ফেরত আনলে আগের কিছু মুছবে না; বদলে যাওয়া ড্রাফট আলাদা কপি হয়ে আসবে।": "All drafts (with the Trash), learned words, your layouts, voice corrections and settings in one file (not font files). Keep it in two places: on this device (on iPad, Files or iCloud Drive) and in the “ProNotes Backups” folder of your own Google Drive. The Gemini key never goes to Drive. Restoring deletes nothing; changed drafts come back as separate copies.",
+  "লেখার ভাষা বদলান": "Change the writing language",
+  "লাইন ভাঙা": "Line break",
+  "নতুন পাতা": "New page",
+  "আগের অবস্থায় ফিরুন (Undo)": "Undo",
+  "আবার করুন (Redo)": "Redo",
+  "ProNotes-এর নিজের কিবোর্ড খোলা থাকলে কার্সর নীল ও মোটা দেখায়; লেখায় চাপলে নিচে একটা ফোঁটা আসে, ধরে টানলে কার্সর সরে। Space চেপে টানলেও কার্সর সরে।": "While ProNotes' own keyboard is up, the caret is thick and blue; tap the text and a drop appears under it — hold and drag it to move the caret. Holding and dragging Space moves it too.",
+  "কার্সর সরানোর সময় বড় করে দেখান": "Magnify while moving the caret",
+  "ফোঁটা বা Space টেনে কার্সর সরানোর সময় কার্সরের দুপাশের লেখা একটা ছোট জানালায় বড় করে দেখায়, যাতে কোন অক্ষরের পাশে কার্সর বসছে বোঝা যায়।": "While the drop or Space moves the caret, the words on both sides of it show larger in a small window, so you can see which letter it is next to.",
+  "Split": "Split",
 };

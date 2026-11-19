@@ -1064,3 +1064,56 @@ body:has([data-testid="osk"]) .sug.empty { display: flex; min-height: 46px; }
 .toast .toast-x { position: absolute; top: 6px; right: 6px; background: none; border: 0; color: inherit; font-size: 16px; width: 32px; height: 32px; cursor: pointer; }
 .backup-status { margin: 0 0 8px; }
 .backup-two > .btn { flex: 1 1 0; }
+/* ---- decisions.md 76: the iPhone-like keyboard ---- */
+/* the strip under the keys: 🌐 (and Alt) left, ⌄ in the middle, 🎙 right — where iOS keeps 🌐 and 🎙 */
+.kb-strip { display: flex; align-items: center; justify-content: space-between; height: 44px; padding: 0 8px; }
+.kb-strip .strip-side { display: flex; gap: 4px; min-width: 96px; }
+.kb-strip .strip-side:last-child { justify-content: flex-end; }
+.kb-strip .k, .kb-strip .k.fn { flex: 0 0 48px; height: 44px; background: transparent; box-shadow: none; color: var(--fg); opacity: .75; display: flex; align-items: center; justify-content: center; }
+.kb-strip .k::before { display: none; }
+.kb-strip .k:active, .kb-strip .k.hit { background: var(--accent-soft); border-radius: 22px; }
+.kb-strip .k.live.on { opacity: 1; color: #fff; background: #c62828; border-radius: 22px; }
+.kb-strip .hide { flex: 0 0 48px; height: 44px; }
+.kb-strip .k .m { font-size: 15px; }
+/* put down: the same strip stays at the bottom of the screen */
+.kb-strip.down { position: fixed; left: 0; right: 0; bottom: 0; z-index: 5; background: var(--key-2); border-top: 1px solid var(--line);
+  padding-bottom: max(0px, calc(env(safe-area-inset-bottom, 0px) - 14px)); height: auto; min-height: 44px; }
+.kb-strip.down .k { font-size: 22px; font-family: var(--f-sans); }
+.kb-strip.down > span.k { visibility: hidden; }
+@media print { .kb-strip { display: none !important; } }
+/* a small label in a key's corner: #+= on the left ↵ */
+.kb .k .c { position: absolute; top: 4px; right: 6px; font: 600 10px var(--f-sans); color: var(--muted); z-index: 1; }
+/* the space bar names the language being typed, like iOS */
+.kb.compact .k[data-code="#Space"] .m, .kb.compact .k[data-code="#Space2"] .m { font: 500 13px var(--f-sans); color: var(--muted); }
+/* held right ↵: ⤶ line break · ⇥ Tab · ▭ new page */
+.kb-pop.enter-menu span { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; font-size: 20px; }
+.kb-pop.enter-menu small { font: 500 10px var(--f-sans); white-space: nowrap; }
+/* ↶ ↷ at the left end of the suggestion row */
+.sug-tools { display: inline-flex; gap: 2px; margin-right: 6px; flex: 0 0 auto; }
+.sug .tool { width: 40px; height: 34px; border: 0; border-radius: 8px; background: transparent; color: var(--fg); font-size: 20px; cursor: pointer; }
+.sug .tool:disabled { opacity: .3; }
+.sug .tool:active { background: var(--accent-soft); }
+.sug.empty .sug-tools { margin-right: auto; }
+@media (max-width: 640px) {
+  /* the strip takes the room above the home bar, so the keys sit as low as iOS's own */
+  .kb.compact { padding-bottom: max(0px, calc(env(safe-area-inset-bottom, 0px) - 14px)); }
+  /* pressed and "on" colours only on the drawn key, never in the gaps around it */
+  .kb .k.on, .kb .k.live.on, .kb.track .k[data-code="#Space"] { background: transparent; }
+  .kb.track .k[data-code="#Space"]::before { background: var(--accent-soft); }
+  .kb .k > .c { position: absolute; top: 8px; right: 7px; }
+  .kb-strip .k::before { display: none; }
+}
+/* ProNotes' own caret, drop and loupe while its keyboard is up (decisions.md 76) */
+.caret-on .page-body { caret-color: transparent; }
+.caret-overlay { position: fixed; inset: 0; pointer-events: none; z-index: 7; }
+.pn-caret { position: fixed; width: 2px; background: #2f7cf6; border-radius: 1px; animation: pn-blink 1.05s steps(1) infinite; }
+@keyframes pn-blink { 50% { opacity: 0; } }
+.pn-drop { position: fixed; width: 28px; height: 28px; pointer-events: auto; touch-action: none; background: #2f7cf6; border-radius: 0 50% 50% 50%; transform: rotate(45deg); box-shadow: 0 1px 3px rgba(0, 0, 0, .3); }
+.pn-drop::after { content: ''; position: absolute; inset: -10px; }
+.pn-loupe { position: fixed; transform: translate(-50%, -100%); display: inline-flex; align-items: center; white-space: pre; padding: 6px 14px;
+  background: var(--bg); color: var(--fg); border: 1px solid var(--line); border-radius: 14px; box-shadow: 0 6px 18px rgba(0, 0, 0, .28); line-height: 1.25; max-width: 92vw; overflow: hidden; }
+.pn-loupe .c { display: inline-block; width: 2px; background: #2f7cf6; margin: 0 1px; }
+@media (prefers-reduced-motion: reduce) { .pn-caret { animation: none; } }
+@media print { .caret-overlay { display: none !important; } }
+/* the page's own mic buttons stay above the strip when the keyboard is put down */
+body:has(.kb-strip.down) .mic, body:has(.kb-strip.down) .live-mic { bottom: calc(56px + env(safe-area-inset-bottom, 0px)); }

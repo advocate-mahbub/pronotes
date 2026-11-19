@@ -303,6 +303,7 @@ function ArmedButton(p: { label: string; armedLabel: string; testid: string; onC
 const FONT_ACCEPT = '.ttf,.otf,.woff,.woff2,font/ttf,font/otf,font/woff,font/woff2';
 
 export function Settings(p: Props) {
+  const [loupe, setLoupe] = useState<boolean>(() => load('kb.loupe', true));
   const { t } = useT();
   // the Drive backup list is folded away until asked for
   const [driveOpen, setDriveOpen] = useState(false);
@@ -376,6 +377,10 @@ export function Settings(p: Props) {
                 ))}
               </ul>
             )}
+          </Group>
+          <Group title={t('অন-স্ক্রিন কিবোর্ড')} info="ProNotes-এর নিজের কিবোর্ড খোলা থাকলে কার্সর নীল ও মোটা দেখায়; লেখায় চাপলে নিচে একটা ফোঁটা আসে, ধরে টানলে কার্সর সরে। Space চেপে টানলেও কার্সর সরে।">
+            <Check testid="kb-loupe" checked={loupe} onChange={(v) => { setLoupe(v); save('kb.loupe', v); }} label={t('কার্সর সরানোর সময় বড় করে দেখান')}
+              info="ফোঁটা বা Space টেনে কার্সর সরানোর সময় কার্সরের দুপাশের লেখা একটা ছোট জানালায় বড় করে দেখায়, যাতে কোন অক্ষরের পাশে কার্সর বসছে বোঝা যায়।" />
           </Group>
           <Group title={t('শর্টকাট key')} info="iPad-এ Ctrl+Space অনেক সময় iPad নিজেই ভাষা বদলাতে নিয়ে নেয়; তখন F12 বা Ctrl+M বেছে নিন। ফিজিক্যাল কিবোর্ডেই কাজ করে; অন-স্ক্রিন কিবোর্ডে EN/বাং বাটন আছে।">
             <label className="srow"><span>{t('বাংলা ⇄ English বদল')}</span>
