@@ -10,6 +10,7 @@ import Heading from '@tiptap/extension-heading';
 import { BornonaExtension, type BornonaOptions } from './bornona-extension';
 import { LegalParagraph } from './legal-format';
 import { CharFormatting, FormattingMarks, PageBreak, ParagraphFormatting } from './formatting';
+import { InterimText } from './interim';
 import { FindReplace } from './find-replace';
 import { Pagination, type PageLayout } from './pagination';
 import { TableTools, SyncTableView } from './table-tools';
@@ -50,6 +51,7 @@ export function editorExtensions(bornona: Partial<BornonaOptions> & Pick<Bornona
     ParagraphFormatting,
     CharFormatting,
     PageBreak,
+    InterimText,
     FindReplace,
     FormattingMarks,
     Pagination.configure({ getLayout: opts.getLayout ?? (() => ({ on: false }) as PageLayout) }),

@@ -7,7 +7,7 @@ import { Extension } from '@tiptap/core';
 import { Plugin, PluginKey } from '@tiptap/pm/state';
 import type { EditorView } from '@tiptap/pm/view';
 import { closeHistory } from '@tiptap/pm/history';
-import { resolveKey, resolveTypedChar, planType, fixNukta, isAnsiKey, isToggleKey, transliterateLowercase, type LayoutMap, type ToggleKey, type AnsiKey, type KmxKeyboard } from '../bornona-engine';
+import { resolveKey, resolveTypedChar, planType, FIXED_HASANTA, fixNukta, isAnsiKey, isToggleKey, transliterateLowercase, type LayoutMap, type ToggleKey, type AnsiKey, type KmxKeyboard } from '../bornona-engine';
 import { typeAnsi, backspaceAnsi, insertEnglishAnsi, type AnsiConfig } from './ansi-typing';
 import { typeRulesKey, rulesKeyFromEvent, rulesKeyForChar } from './rules-typing';
 
@@ -27,6 +27,8 @@ export interface BornonaConfig {
   rules?: KmxKeyboard;
   /** ProNotes Phonetic: Latin letters are transliterated (Avro-style). */
   phonetic?: boolean;
+  /** The ProNotes layout's hasanta rules (্ + kar = vowel, ্্ = fixed hasanta). */
+  hasantaRules?: boolean;
 }
 
 /** The rules keyboard to type with now, if any. */
@@ -74,7 +76,7 @@ export function textBeforeCaret(view: EditorView): string {
 /** Type `out` at the caret, applying vowel forming / reph exactly like v8. */
 export function typeText(view: EditorView, out: string, cfg: BornonaConfig): void {
   if (cfg.ansi?.on) {
-    if (cfg.bangla) typeAnsi(view, out, { ...cfg.ansi, vowelForming: cfg.vowelForming, oldReph: cfg.oldReph, fixChandra: cfg.fixChandra });
+    if (cfg.bangla) typeAnsi(view, out, { ...cfg.ansi, vowelForming: cfg.vowelForming, oldReph: cfg.oldReph, fixChandra: cfg.fixChandra, hasantaRules: cfg.hasantaRules });
     else insertEnglishAnsi(view, out, cfg.ansi);
     return;
   }
@@ -116,7 +118,8 @@ export function deleteBackward(view: EditorView, joinBackward: () => boolean, cf
     // the last code unit of an emoji (or any character above U+FFFF) is a low surrogate: delete both halves
     const last = before.charCodeAt(before.length - 1);
     const prev = before.charCodeAt(before.length - 2);
-    const len = last >= 0xdc00 && last <= 0xdfff && prev >= 0xd800 && prev <= 0xdbff ? 2 : 1;
+    // a fixed hasanta (্ + ZWNJ) goes in one ⌫, like one character
+    const len = (last >= 0xdc00 && last <= 0xdfff && prev >= 0xd800 && prev <= 0xdbff) || before.endsWith(FIXED_HASANTA) ? 2 : 1;
     return view.dispatch(state.tr.delete(sel.from - len, sel.from).scrollIntoView());
   }
   joinBackward();
@@ -184,6 +187,12 @@ export const BornonaExtension = Extension.create<BornonaOptions>({
             }
             const ansi = cfg.ansi?.on && !cfg.suspended ? cfg.ansi : null;
             if (ansi && event.key === 'Backspace' && !event.ctrlKey && !event.altKey && !event.metaKey) return backspaceAnsi(view, ansi);
+            if (event.key === 'Backspace' && !event.ctrlKey && !event.altKey && !event.metaKey && !event.shiftKey && view.state.selection.empty
+              && textBeforeCaret(view).endsWith(FIXED_HASANTA)) {
+              const at = view.state.selection.from;
+              view.dispatch(view.state.tr.delete(at - 2, at).scrollIntoView());
+              return true;
+            }
             if (event.key === 'Enter' && !event.isComposing && !ansi) opts.onWordDone(textBeforeCaret(view));
             const a = resolveKey(
               ki,

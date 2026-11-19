@@ -87,7 +87,7 @@ function writeWord(view: EditorView, w: { from: number }, to: number, uni: strin
 }
 
 /** Type `out` (Unicode, from the layout) in Bijoy. */
-export function typeAnsi(view: EditorView, out: string, cfg: AnsiConfig & { vowelForming: boolean; oldReph: boolean; fixChandra?: boolean }): void {
+export function typeAnsi(view: EditorView, out: string, cfg: AnsiConfig & { vowelForming: boolean; oldReph: boolean; fixChandra?: boolean; hasantaRules?: boolean }): void {
   const { state } = view;
   const sel = state.selection;
   const marks = marksWithFont(view, bijoyFontAt(view, cfg));
@@ -98,7 +98,7 @@ export function typeAnsi(view: EditorView, out: string, cfg: AnsiConfig & { vowe
   }
   const w = bijoyWordBefore(view, cfg);
   const uni = wordUnicode(view, w);
-  const edit = planType(uni, true, out, { bangla: true, vowelForming: cfg.vowelForming, oldReph: cfg.oldReph, fixChandra: cfg.fixChandra });
+  const edit = planType(uni, true, out, { bangla: true, vowelForming: cfg.vowelForming, oldReph: cfg.oldReph, fixChandra: cfg.fixChandra, hasantaRules: cfg.hasantaRules });
   writeWord(view, w, sel.from, applyEdit(uni, uni.length, edit).value, marks);
 }
 

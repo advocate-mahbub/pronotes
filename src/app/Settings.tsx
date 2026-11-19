@@ -8,8 +8,10 @@ import { layoutAccept } from './layout-files';
 import { load, save } from './prefs';
 import { formatDateTime, num, useT, type UiLang } from '../i18n';
 import { AUTO_MODEL, FREE_MODELS, readAuto, type AutoOrder } from '../ai/gemini';
+import { LIVE_MODEL as LIVE_DEFAULT } from '../ai/live';
 import { KEEP_CHOICES, type DriveBackup } from '../storage/gdrive';
 import type { BackupLast } from './backup-status';
+import type { VoiceModes } from './voice-modes';
 import { WORD_SHORTCUTS, showKeys } from '../editor/word-shortcuts';
 
 export interface FontInfo {
@@ -75,6 +77,8 @@ interface Props {
   ai: AiSettings;
   dict: { on: boolean; setOn: (v: boolean) => void; count: number };
   voiceEngine: 'auto' | 'ai' | 'device';
+  voiceModes: VoiceModes;
+  setVoiceModes: (m: VoiceModes) => void;
   setVoiceEngine: (v: 'auto' | 'ai' | 'device') => void;
   onClose: () => void;
   /** Google Drive backups (off when the build has no Google Client ID). */
@@ -119,7 +123,7 @@ export interface AiSettings {
 }
 
 /** Gemini key (hidden), the model list and a short voice test. */
-function AiKeyBox({ ai, voice }: { ai: AiSettings; voice: { corrections: string; banglaDigits: boolean } }) {
+function AiKeyBox({ ai }: { ai: AiSettings; voice: { corrections: string; banglaDigits: boolean } }) {
   const { t } = useT();
   const [k, setK] = useState('');
   const [editing, setEditing] = useState(false);
@@ -198,7 +202,108 @@ function AiKeyBox({ ai, voice }: { ai: AiSettings; voice: { corrections: string;
           {' '}<button type="button" className="btn small" data-testid="ai-auto-measure" onClick={() => void measure()}>{t('আবার মাপুন')}</button>
         </p>
       )}
-      <VoiceTest ai={ai} voice={voice} />
+    </>
+  );
+}
+
+/**
+ * Voice: two cards (decisions.md 77). "লাইভ ভয়েস" — words appear while speaking (a tap on 🎙);
+ * "রেকর্ড করে লেখা" — record, then Gemini writes it (🎙 held). Each can be on or off, has its own model
+ * and its own test. With one off, 🎙 runs the other on a tap.
+ */
+function VoiceCards({ ai, voice, modes, setModes, engine }: { ai: AiSettings; voice: { corrections: string; banglaDigits: boolean }; modes: VoiceModes; setModes: (m: VoiceModes) => void; engine: ReactNode }) {
+  const { t } = useT();
+  const set = (m: Partial<VoiceModes>) => setModes({ ...modes, ...m });
+  const [liveModels, setLiveModels] = useState<string[]>([]);
+  useEffect(() => {
+    if (!ai.key || !modes.live) return;
+    let gone = false;
+    void import('../ai/gemini').then(({ geminiLiveModels }) => geminiLiveModels(ai.key)).then((l) => { if (!gone) setLiveModels(l); }).catch(() => {});
+    return () => { gone = true; };
+  }, [ai.key, modes.live]);
+  const short = (m: string) => m.replace(/^gemini-/, 'Gemini ').replace(/-/g, ' ');
+  const recChoices = [AUTO_MODEL, ...FREE_MODELS];
+  return (
+    <>
+      <div className="vcard" data-testid="voice-card-live">
+        <Check testid="voice-live-on" checked={modes.live} onChange={(v) => set({ live: v })} label={t('লাইভ ভয়েস')}
+          info="বলার সাথে সাথে লেখা পাতায় কার্সরের জায়গায় ধূসর হয়ে ভাসে, থামলে পাকা হয়। কিবোর্ডের 🎙 একবার চাপলে চালু হয়। Gemini key থাকলে Gemini Live, না থাকলে (কম্পিউটার/Android-এর Chrome-এ) ব্রাউজারের নিজের ভয়েস।" />
+        {modes.live && (
+          <>
+            {ai.key && (
+              <label className="srow"><span>{t('মডেল')}</span>
+                <select data-testid="live-model" value={modes.liveModel} onChange={(e) => set({ liveModel: e.target.value })}>
+                  <option value="">{short(LIVE_DEFAULT) + ' · ' + t('প্রস্তাবিত')}</option>
+                  {liveModels.filter((m) => m !== LIVE_DEFAULT).map((m) => <option key={m} value={m}>{short(m)}</option>)}
+                </select>
+              </label>
+            )}
+            <LiveTest ai={ai} model={modes.liveModel} voice={voice} />
+          </>
+        )}
+      </div>
+      <div className="vcard" data-testid="voice-card-rec">
+        <Check testid="voice-rec-on" checked={modes.rec} onChange={(v) => set({ rec: v })} label={t('রেকর্ড করে লেখা')}
+          info="পুরোটা বলে থামালে অডিও Gemini-তে যায়, পুরো লেখা একবারে আসে — লম্বা কথায় সাধারণত বেশি নির্ভুল। লাইভ চালু থাকলে 🎙 চেপে ধরলে এটা চলে, লাইভ বন্ধ থাকলে একবার চাপলেই। Gemini key লাগে।" />
+        {modes.rec && (
+          <>
+            {engine}
+            {ai.key ? (
+              <>
+                <label className="srow"><span>{t('মডেল')}</span>
+                  <select data-testid="rec-model" value={modes.recModel} onChange={(e) => set({ recModel: e.target.value })}>
+                    <option value="">{t('AI সহকারীর মডেলই')}</option>
+                    {recChoices.map((m) => <option key={m} value={m}>{m === AUTO_MODEL ? t('স্বয়ংক্রিয় (দ্রুততম ফ্রি)') : short(m) + ' · ' + t('ফ্রি')}</option>)}
+                  </select>
+                </label>
+                <VoiceTest ai={{ ...ai, model: modes.recModel || ai.model }} voice={voice} />
+              </>
+            ) : <p className="state-line">{t('ওপরের Gemini অংশে key দিলে চালু হবে')}</p>}
+          </>
+        )}
+      </div>
+    </>
+  );
+}
+
+/** Live for five seconds: shows what it heard, or where it stopped working. */
+function LiveTest({ ai, model, voice }: { ai: AiSettings; model: string; voice: { corrections: string; banglaDigits: boolean } }) {
+  const { t } = useT();
+  const [state, setState] = useState<'idle' | 'on'>('idle');
+  const [result, setResult] = useState<{ ok: boolean; text: string } | null>(null);
+  const run = async () => {
+    const a = await import('../ai');
+    const { parseCorrections } = await import('../voice');
+    const kind = a.liveEngineKind(Boolean(ai.key));
+    if (!kind) return setResult({ ok: false, text: t('এখানে Live ভয়েস চলে না: Settings-এ Gemini key দিন (বা কম্পিউটার/Android-এ Chrome ব্যবহার করুন)') });
+    setResult(null);
+    let heard = '';
+    let last = '';
+    let failed = '';
+    const ev = { onInterim: (s: string) => { last = s; }, onFinal: (s: string) => { heard += (heard ? ' ' : '') + s; last = ''; },
+      onState: (s: string, why?: string) => { if (s === 'cut') failed = why || 'cut'; } };
+    const e = kind === 'gemini' ? new a.GeminiLive(ai.key, 'bn-BD', ev, model || undefined) : new a.BrowserLive('bn-BD', ev);
+    try {
+      await e.start();
+    } catch (err) {
+      return setResult({ ok: false, text: t('Live ভয়েস চালু হলো না') + ' (' + a.errText(err) + ')' });
+    }
+    setState('on');
+    await new Promise((res) => setTimeout(res, 5000));
+    await e.stop().catch(() => {});
+    setState('idle');
+    const text = a.polishTranscript((heard + ' ' + last).trim(), voice, parseCorrections);
+    setResult(text ? { ok: true, text: t('চলছে') + ': “' + text + '”' } : { ok: false, text: failed ? t('সংযোগ কেটে গেছে') : t(a.VOICE_ERROR_TEXT.silent) });
+  };
+  return (
+    <>
+      <div className="srow">
+        <span>{t('লাইভ পরীক্ষা')}</span>
+        <button type="button" className="btn small" data-testid="live-test" disabled={state !== 'idle'} onClick={() => void run()}>
+          {state === 'on' ? t('বলুন… (৫ সেকেন্ড)') : t('৫ সেকেন্ড বলুন')}
+        </button>
+      </div>
+      {result && <p className={'state-line ' + (result.ok ? 'ok' : 'warn')} data-testid="live-test-result" role="status">{result.text}</p>}
     </>
   );
 }
@@ -303,6 +408,7 @@ function ArmedButton(p: { label: string; armedLabel: string; testid: string; onC
 const FONT_ACCEPT = '.ttf,.otf,.woff,.woff2,font/ttf,font/otf,font/woff,font/woff2';
 
 export function Settings(p: Props) {
+  const [loupe, setLoupe] = useState<boolean>(() => load('kb.loupe', true));
   const { t } = useT();
   // the Drive backup list is folded away until asked for
   const [driveOpen, setDriveOpen] = useState(false);
@@ -377,6 +483,10 @@ export function Settings(p: Props) {
               </ul>
             )}
           </Group>
+          <Group title={t('অন-স্ক্রিন কিবোর্ড')} info="ProNotes-এর নিজের কিবোর্ড খোলা থাকলে কার্সর নীল ও মোটা দেখায়; লেখায় চাপলে নিচে একটা ফোঁটা আসে, ধরে টানলে কার্সর সরে। Space চেপে টানলেও কার্সর সরে।">
+            <Check testid="kb-loupe" checked={loupe} onChange={(v) => { setLoupe(v); save('kb.loupe', v); }} label={t('কার্সর সরানোর সময় বড় করে দেখান')}
+              info="ফোঁটা বা Space টেনে কার্সর সরানোর সময় কার্সরের দুপাশের লেখা একটা ছোট জানালায় বড় করে দেখায়, যাতে কোন অক্ষরের পাশে কার্সর বসছে বোঝা যায়।" />
+          </Group>
           <Group title={t('শর্টকাট key')} info="iPad-এ Ctrl+Space অনেক সময় iPad নিজেই ভাষা বদলাতে নিয়ে নেয়; তখন F12 বা Ctrl+M বেছে নিন। ফিজিক্যাল কিবোর্ডেই কাজ করে; অন-স্ক্রিন কিবোর্ডে EN/বাং বাটন আছে।">
             <label className="srow"><span>{t('বাংলা ⇄ English বদল')}</span>
               <select data-testid="toggle-key" value={p.toggleKey} onChange={(e) => p.setToggleKey(e.target.value as ToggleKey)}>
@@ -420,13 +530,14 @@ export function Settings(p: Props) {
             <AiKeyBox ai={p.ai} voice={{ corrections: p.corrections, banglaDigits: p.voice.banglaDigits }} />
           </Group>
           <Group title={t('ভয়েস টাইপিং')} info="key ছাড়া বিকল্প (পরখ করে দেখুন): Google-এর ফ্রি Gboard কিবোর্ড অ্যাপ বসিয়ে বাংলা যোগ করুন, ProNotes-এ লেখার সময় সেই কিবোর্ডের মাইক চাপুন। ফোনের নিজের কিবোর্ডে যা আসে, ProNotes-এ সরাসরি বসে। Apple-এর নিজের ডিকটেশনে বাংলা আছে বলে নিশ্চিত হওয়া যায়নি।">
-            <label className="srow"><span>{t('মাইক চলবে')}</span>
-              <select data-testid="voice-engine" value={p.voiceEngine} onChange={(e) => p.setVoiceEngine(e.target.value as 'auto' | 'ai' | 'device')}>
-                <option value="auto">{t('নিজে থেকে')}</option>
-                <option value="ai">{t('AI ভয়েস (Gemini)')}</option>
-                <option value="device">{t('ডিভাইসের ভয়েস')}</option>
-              </select>
-            </label>
+            <VoiceCards ai={p.ai} voice={{ corrections: p.corrections, banglaDigits: p.voice.banglaDigits }} modes={p.voiceModes} setModes={p.setVoiceModes}
+              engine={<label className="srow"><span>{t('মাইক চলবে')}</span>
+                <select data-testid="voice-engine" value={p.voiceEngine} onChange={(e) => p.setVoiceEngine(e.target.value as 'auto' | 'ai' | 'device')}>
+                  <option value="auto">{t('নিজে থেকে')}</option>
+                  <option value="ai">{t('AI ভয়েস (Gemini)')}</option>
+                  <option value="device">{t('ডিভাইসের ভয়েস')}</option>
+                </select>
+              </label>} />
             <label className="srow"><span>{t('ভাষা')}</span>
               <select data-testid="vlang" value={p.voice.lang} onChange={(e) => sv({ lang: e.target.value })}>
                 <option value="auto">{t('লেখার মোড অনুযায়ী (বাংলা / English)')}</option>

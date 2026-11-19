@@ -12,10 +12,11 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import type { Editor } from '@tiptap/react';
 import { AiError, aiErrorMessage, addHeld, beginHeld, clearHeld, errText, loadHeld, PcmRecorder, polishTranscript, VOICE_ERROR_TEXT, VOICE_MAX_SECONDS, VoiceError, transcribe } from '../ai';
-import { insertPlainText, textBeforeCaret } from '../editor';
+import { insertPlainText, setInterim, textBeforeCaret } from '../editor';
 import { parseCorrections } from '../voice';
-import { num, useT } from '../i18n';
+import { useT } from '../i18n';
 import { load, save } from './prefs';
+import { VoiceControls } from './VoiceControls';
 
 interface Props {
   editor: Editor;
@@ -34,12 +35,12 @@ interface Props {
  * idle; rec = recording; paused = the user paused; cut = a call or another app took the mic;
  * busy = being written; held = written failed (no internet…) or left from before: kept, ready to send.
  */
-type State = 'idle' | 'rec' | 'paused' | 'cut' | 'busy' | 'held';
+export type AiVoiceState = 'idle' | 'rec' | 'paused' | 'cut' | 'busy' | 'held';
+type State = AiVoiceState;
 
-export function AiVoiceKey({ editor, gemini, say, onOpenSettings, disabled, voice, icon }: Props) {
-  const { t, lang } = useT();
-  // digits follow the menu language: no Bangla digit in an English menu
-  const clock = (s: number) => num(`${Math.floor(s / 60)}:${String(Math.floor(s) % 60).padStart(2, '0')}`, lang);
+/** The recording itself (record → Gemini → text), for the page's ✦ key and the keyboard strip's 🎙. */
+export function useAiVoice({ editor, gemini, say, onOpenSettings, disabled, voice }: Omit<Props, 'icon'>) {
+  const { t } = useT();
   const [state, setState] = useState<State>('idle');
   const [secs, setSecs] = useState(0);
   const [consent, setConsent] = useState(false);
@@ -132,6 +133,8 @@ export function AiVoiceKey({ editor, gemini, say, onOpenSettings, disabled, voic
   const send = async (samples: Float32Array) => {
     held.current = samples;
     setState('busy');
+    // "লিখছে…" at the caret while Gemini writes it
+    setInterim(editor.view, ' ' + t('লিখছে…'), 'busy');
     try {
       abort.current = new AbortController();
       const raw = await transcribe(samples, { key: gemini.key, model: gemini.model, signal: abort.current.signal, onModelChange: gemini.setModel });
@@ -153,6 +156,7 @@ export function AiVoiceKey({ editor, gemini, say, onOpenSettings, disabled, voic
       say(m.detail ? t(m.text) + ' (Google: ' + m.detail + ')' : m.text);
     } finally {
       abort.current = null;
+      setInterim(editor.view, '');
     }
   };
 
@@ -203,51 +207,41 @@ export function AiVoiceKey({ editor, gemini, say, onOpenSettings, disabled, voic
     void start();
   };
 
-  const label = state === 'rec' || state === 'paused' || state === 'cut' ? t('AI ভয়েস: থামিয়ে লেখায় বসান') : state === 'busy' ? t('লেখা হচ্ছে… (চাপলে থামে, রেকর্ড থাকে)') : state === 'held' ? t('রাখা রেকর্ডটা লেখায় বসান') : t('AI ভয়েস টাইপিং (Gemini)');
-  const b = (id: string, text: string, onClick: () => void, cls = '') => (
-    <button type="button" className={'btn ' + cls} data-testid={'aiv-' + id} onPointerDown={(e) => e.preventDefault()} onClick={onClick}>{text}</button>
+  const consentUi = consent && (
+    <div className="modal" role="dialog" aria-modal="true" aria-labelledby="aiv-title" data-testid="ai-voice-consent">
+      <div className="box">
+        <h2 id="aiv-title">{t('AI ভয়েস চালুর আগে')}</h2>
+        <p>{t('✦ চাপলে আপনার কথা রেকর্ড হয়, থামালে সেই অডিও আপনার Gemini key দিয়ে Google-এর কাছে যায় আর লেখা হয়ে ফেরে। Google-এর ফ্রি স্তরে পাঠানো জিনিস তাদের সেবা উন্নত করতে ব্যবহার হতে পারে।')}</p>
+        <p>{t('অডিওর ভেতরের নাম বা নম্বর লুকানো যায় না। মক্কেলের নাম, ঠিকানা, দলিল নম্বর বা গোপন তথ্য মুখে না বলে কিবোর্ডে লিখুন।')}</p>
+        <div className="row">
+          <button type="button" className="btn primary" data-testid="ai-voice-ok" onClick={() => { save('aiVoiceConsent', true); setConsent(false); void start(); }}>{t('বুঝেছি, চালু করুন')}</button>
+          <button type="button" className="btn" onClick={() => setConsent(false)}>{t('বাতিল')}</button>
+        </div>
+      </div>
+    </div>
   );
-  const trash = b('discard', armed ? t('মুছবেন?') : '🗑', discard, armed ? 'warn' : '');
+  return {
+    state, secs, armed, consentUi, press, pause, resume: () => void resume(), write: () => void stop(), discard,
+    sendHeld: () => { if (held.current) void send(held.current); },
+    cancel: () => abort.current?.abort(),
+  };
+}
+export type AiVoice = ReturnType<typeof useAiVoice>;
+
+/** The page's ✦ mic, driven by a useAiVoice() that the workspace owns (the keyboard strip uses the same one). */
+export function AiVoiceKey(props: { v: AiVoice; icon?: ReactNode; disabled?: boolean }) {
+  const { t } = useT();
+  const { v } = props;
+  const { state } = v;
+  const label = state === 'rec' || state === 'paused' || state === 'cut' ? t('AI ভয়েস: থামিয়ে লেখায় বসান') : state === 'busy' ? t('লেখা হচ্ছে… (চাপলে থামে, রেকর্ড থাকে)') : state === 'held' ? t('রাখা রেকর্ডটা লেখায় বসান') : t('AI ভয়েস টাইপিং (Gemini)');
   return (
     <>
       <button type="button" className={'mic ai-voice ' + state} data-testid="ai-voice" aria-pressed={state !== 'idle'} aria-label={label} title={label}
-        aria-disabled={disabled || undefined} onPointerDown={(e) => e.preventDefault()} onClick={press}>
-        {state === 'busy' ? <span className="spin" aria-hidden="true" /> : <>{icon ?? <span aria-hidden="true">✦</span>}<span className="ai-badge" aria-hidden="true">✦</span></>}
+        aria-disabled={props.disabled || undefined} onPointerDown={(e) => e.preventDefault()} onClick={v.press}>
+        {state === 'busy' ? <span className="spin" aria-hidden="true" /> : <>{props.icon ?? <span aria-hidden="true">✦</span>}<span className="ai-badge" aria-hidden="true">✦</span></>}
       </button>
-      {state !== 'idle' && (
-        <div className={'ai-voice-bar ' + state} role="status" data-testid="ai-voice-bar">
-          {state === 'rec' && (<>
-            <span className="dotrec" aria-hidden="true" /><span className="aiv-text">{t('বলুন… {time}', { time: clock(secs) })}</span>
-            {b('pause', '⏸', pause)}{b('write', t('■ লিখুন'), () => void stop(), 'primary')}{trash}
-          </>)}
-          {state === 'paused' && (<>
-            <span className="aiv-text">{t('বিরতি {time}', { time: clock(secs) })} <small>{t('এ পর্যন্ত বলা কথা রাখা আছে')}</small></span>
-            {b('resume', '▶', () => void resume())}{b('write', t('■ লিখুন'), () => void stop(), 'primary')}{trash}
-          </>)}
-          {state === 'cut' && (<>
-            <span className="aiv-text">{t('কল বা অন্য অ্যাপের কারণে থেমেছে · {time} রাখা আছে', { time: clock(secs) })}</span>
-            {b('resume', t('▶ চালিয়ে যান'), () => void resume(), 'primary')}{b('write', t('■ লিখুন'), () => void stop())}{trash}
-          </>)}
-          {state === 'busy' && <span className="aiv-text">{t('লেখা হচ্ছে…')}</span>}
-          {state === 'held' && (<>
-            <span className="aiv-text">{t('লেখা হয়নি · {time} রেকর্ড রাখা আছে', { time: clock(secs) })} <small>{t('ইন্টারনেট ফিরলে নিজেই পাঠাবে')}</small></span>
-            {b('send', t('▶ আবার পাঠান'), () => held.current && void send(held.current), 'primary')}{trash}
-          </>)}
-        </div>
-      )}
-      {consent && (
-        <div className="modal" role="dialog" aria-modal="true" aria-labelledby="aiv-title" data-testid="ai-voice-consent">
-          <div className="box">
-            <h2 id="aiv-title">{t('AI ভয়েস চালুর আগে')}</h2>
-            <p>{t('✦ চাপলে আপনার কথা রেকর্ড হয়, থামালে সেই অডিও আপনার Gemini key দিয়ে Google-এর কাছে যায় আর লেখা হয়ে ফেরে। Google-এর ফ্রি স্তরে পাঠানো জিনিস তাদের সেবা উন্নত করতে ব্যবহার হতে পারে।')}</p>
-            <p>{t('অডিওর ভেতরের নাম বা নম্বর লুকানো যায় না। মক্কেলের নাম, ঠিকানা, দলিল নম্বর বা গোপন তথ্য মুখে না বলে কিবোর্ডে লিখুন।')}</p>
-            <div className="row">
-              <button type="button" className="btn primary" data-testid="ai-voice-ok" onClick={() => { save('aiVoiceConsent', true); setConsent(false); void start(); }}>{t('বুঝেছি, চালু করুন')}</button>
-              <button type="button" className="btn" onClick={() => setConsent(false)}>{t('বাতিল')}</button>
-            </div>
-          </div>
-        </div>
-      )}
+      {state !== 'idle' && <div className="voice-pill-wrap"><VoiceControls ai={v} /></div>}
+      {v.consentUi}
     </>
   );
 }

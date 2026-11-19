@@ -71,10 +71,79 @@ export function annaText(f: Frac): string {
   return bnDigits(parts.join(' ') || '0');
 }
 
+/**
+ * আনা-গণ্ডা written in signs, the owner's way (decisions.md 75):
+ * annas ৴ ৵ ৶ ৷ ৸ (৹ after 4 and 8, ১৲ = 16), then ganda in digits, kara as ৷ (৸ = 3 kara), kranti as ৴,
+ * til in digits. ৻ marks a skipped unit: no anna (৻৯৷৷ = ৯ গণ্ডা ২ কড়া), no ganda (৵৻৷৷ = ২ আনা ২ কড়া,
+ * ৵৻১০ = ২ আনা ১০ তিল), or til right after ganda (৵৯৻১০). Example: ৵৯৷৷৴৴১০.
+ * Null when it is not this notation.
+ */
+export const ANNA_SIGN_RE = /[৴-৹৻]|[১1]৲/;
+export function readAnnaSigns(s0: string): Frac | null {
+  const s = ascii(s0).replace(/\s+/g, '');
+  if (!s || !/^(?:1৲|[৴-৹৻0-9])+$/.test(s)) return null;
+  if (s === '1৲') return ONE;
+  let i = 0;
+  const signs = (allowed: string) => { let out = ''; while (i < s.length && allowed.includes(s[i])) out += s[i++]; return out; };
+  const digits = () => { const m = s.slice(i).match(/^\d+/); if (!m) return null; i += m[0].length; return BigInt(m[0]); };
+  const AN: Record<string, number> = { '৴': 1, '৵': 2, '৶': 3, '৷': 4, '৸': 12 };
+  // anna
+  const a = signs('৴৵৶৷৸');
+  const anna = [...a].reduce((t, c) => t + AN[c], 0);
+  signs('৹');
+  if (anna > 15) return null;
+  // ganda: digits right after the annas; or ৻ — at the start ৻ + digits is ganda, after annas ৻ means "no ganda"
+  let ganda = 0n;
+  let skipped = false;
+  if (s[i] === '৻') {
+    i++;
+    skipped = true;
+    if (!a) { const g = digits(); if (g !== null) { ganda = g; skipped = false; } }
+  } else if (a) {
+    ganda = digits() ?? 0n;
+  } else return null;
+  if (ganda >= 20n) return null;
+  // kara (৷ = 1, ৸ = 3), then kranti (৴ each)
+  const k = signs('৷৸');
+  const kara = [...k].reduce((t, c) => t + (c === '৸' ? 3 : 1), 0);
+  const kranti = signs('৴').length;
+  if (kara > 3 || kranti > 2) return null;
+  // til: digits; after ৻ when it follows the ganda directly
+  if (s[i] === '৻' && !skipped && !k && !kranti) i++;
+  const til = digits() ?? 0n;
+  if (i !== s.length || til >= 20n) return null;
+  if (!a && !ganda && !kara && !kranti && !til) return null;
+  return add(add(add(frac(BigInt(anna), 16n), frac(ganda, 320n)), add(frac(BigInt(kara), 1280n), frac(BigInt(kranti), 3840n))), frac(til, 76800n));
+}
+
+/** A share in signs (the reverse of readAnnaSigns); null when the signs cannot say it (less than a til, or til alone). */
+export function annaSigns(f: Frac): string | null {
+  if (cmp(f, ONE) === 0) return '১৲';
+  if (f.n < 0n || cmp(f, ONE) > 0) return null;
+  const tilAll = f.n * 76800n;
+  if (tilAll % f.d !== 0n) return null;
+  let t = tilAll / f.d;
+  const anna = Number(t / 4800n); t %= 4800n;
+  const ganda = t / 240n; t %= 240n;
+  const kara = Number(t / 60n); t %= 60n;
+  const kranti = Number(t / 20n);
+  const til = t % 20n;
+  const AS = ['', '৴', '৵', '৶'];
+  let out = anna === 0 ? '' : anna === 4 ? '৷৹' : anna === 8 ? '৷৷৹'
+    : (anna >= 12 ? '৸' : '৷'.repeat(Math.floor(anna / 4))) + AS[anna >= 12 ? anna - 12 : anna % 4];
+  if (ganda) out += (anna ? '' : '৻') + ganda;
+  else if (kara || kranti || til) { if (!anna && !kara && !kranti) return null; out += '৻'; }
+  out += kara === 3 ? '৸' : '৷'.repeat(kara);
+  out += '৴'.repeat(kranti);
+  if (til) out += (ganda && !kara && !kranti ? '৻' : '') + til;
+  return bnDigits(out || '0');
+}
+
 /** "1/3", "2", "0.0825", "৮.২৫", "৮.২৫শ" or "৫ আনা ৬ গণ্ডা" → exact fraction; null when it is not a number. */
 export function readFrac(s: string | undefined): Frac | null {
   if (!s) return null;
   if (/আনা|গণ্ডা|গন্ডা|কড়া|কড়া|ক্রান্তি|তিল/.test(s)) return readAnna(s);
+  if (ANNA_SIGN_RE.test(s)) return readAnnaSigns(s);
   // ½ ¾ ⁵⁄₁₆ (the ½ key's forms) read as a/b; "২ ১/২" is a whole number and a fraction
   const t = ascii(unFraction(s)).trim().replace(/\s*(শতক|শতাংশ|শ\.?)$/, '');
   const m = t.match(/^(?:(\d+)\s+)?(\d+)\s*\/\s*(\d+)$/);

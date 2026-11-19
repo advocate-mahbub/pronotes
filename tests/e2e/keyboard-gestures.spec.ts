@@ -31,7 +31,8 @@ test.describe('phone', () => {
 
   test('flick down = Shift character; long-press = choices; two spaces = "। "', async ({ page }) => {
     await open(page);
-    const shiftK = (await key(page, 'KeyK').locator('.s').innerText()).trim();
+    // one character per key now (decisions.md 76): K's Shift character is খ
+    const shiftK = 'খ';
     await drag(page, 'KeyK', 0, 30);
     expect(await text(page)).toBe(shiftK);
     // long-press ৫: its choices pop up; slide to ৷৴ and lift
@@ -82,29 +83,47 @@ test.describe('phone', () => {
     expect((await text(page)).length).toBe(3);
   });
 
-  test('slide from #+= to a sign and lift: the sign, then back to the letters', async ({ page }) => {
+  test('flick the left ↵ up to #+=, slide to a sign and lift: the sign, then back to the letters', async ({ page }) => {
     await open(page);
-    const s = await center(page, '#Sym');
+    const s = await center(page, '#EnterL');
     await page.mouse.move(s.x, s.y);
     await page.mouse.down();
+    await page.mouse.move(s.x, s.y - 40, { steps: 4 });
     await expect(key(page, 'Alt+Digit5')).toBeVisible();
     const d = await center(page, 'Alt+Digit5');
     await page.mouse.move(d.x, d.y, { steps: 6 });
     await page.mouse.up();
     expect(await text(page)).toBe('৷৴');
     await expect(key(page, 'KeyK')).toBeVisible(); // letters again
-    // the layer itself: 16 annas and ৸ beside - = [ ]
-    await tap(page, '#Sym');
+    // flicked up and lifted on ↵ itself: the layer stays open; 16 annas and ৸ beside - = [ ]
+    await drag(page, '#EnterL', 0, -40);
     await tap(page, 'Alt+Equal');
     await tap(page, 'Alt+Minus');
     expect(await text(page)).toBe('৷৴১৲৸');
+    // a plain tap on either ↵ is Enter
+    await drag(page, '#EnterL', 0, -40); // back to the letters
+    await tap(page, '#EnterL');
+    await tap(page, '#Enter');
+    expect(await page.getByTestId('editor').locator('p').count()).toBe(3);
+  });
+
+  test('hold the right ↵: line break, Tab or a new page', async ({ page }) => {
+    await open(page);
+    await tap(page, 'KeyK');
+    const e = await center(page, '#Enter');
+    await page.mouse.move(e.x, e.y);
+    await page.mouse.down();
+    await expect(page.getByTestId('kb-enter-menu')).toBeVisible({ timeout: 2000 });
+    await page.mouse.up(); // lifted on the first one: line break
+    await expect(page.getByTestId('editor').locator('p').first().locator('br:not(.ProseMirror-trailingBreak)')).toHaveCount(1);
+    expect(await page.getByTestId('editor').locator('p').count()).toBe(1);
   });
 
   test('long-press the language key: one-handed keyboard, and back', async ({ page }) => {
     await open(page);
     const osk = page.getByTestId('osk');
     const vw = iphone.viewport.width;
-    await drag(page, '#Mode', 0, 0, 0, 650);
+    await drag(page, '#Globe', 0, 0, 0, 650);
     await page.getByTestId('kb-hand-left').click();
     await expect(osk).toHaveClass(/hand-left/);
     const q = (await key(page, 'KeyQ').boundingBox())!;
@@ -113,10 +132,10 @@ test.describe('phone', () => {
     expect(await page.evaluate(() => localStorage.getItem('pronotes.kb.hand'))).toBe('"left"');
     await page.getByTestId('kb-hand-strip').getByRole('button').first().click();
     await expect(osk).not.toHaveClass(/hand-/);
-    // a short tap on the language key still switches the language
-    const before = await key(page, '#Mode').innerText();
-    await tap(page, '#Mode');
-    await expect(key(page, '#Mode')).not.toHaveText(before);
+    // a short tap on 🌐 switches the language; the space bar names it, as on iOS
+    await expect(key(page, '#Space')).toHaveText('বাংলা');
+    await tap(page, '#Globe');
+    await expect(key(page, '#Space')).toHaveText('English');
   });
 });
 
