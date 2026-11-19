@@ -1,0 +1,527 @@
+From 851b6b34ad9b880ceea82a674ff156f0e10631b7 Mon Sep 17 00:00:00 2001
+From: Mahbubur Rahman <mahbub2bd@gmail.com>
+Date: Fri, 20 Nov 2026 03:36:33 +0600
+Subject: [PATCH] Number boxes that can be written freely; backup folds to one
+ line; restore updates the same draft
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+decisions.md 78:
+- the title size box kept "২" because an empty box jumped back to 23 and
+  Bangla digits were not taken. The number boxes (text and title size,
+  table rows and columns) now keep what is written: a whole value inside
+  the limits is used at once, anything else goes back to the last good
+  value when the box is left (Enter leaves, Esc puts it back); Bangla
+  digits work; − + in Settings.
+- Settings → App → Backup folds to one line showing the last backup; open
+  or closed is remembered on this device; back from Google it is open.
+- restoring no longer makes "(ব্যাকআপ থেকে)" copies: the same draft (same
+  id, from any device) is updated when the backup's state is newer and
+  left as it is when this device's is; the other state is kept in the
+  draft's version history. The open draft is saved first and reloaded if
+  it was updated.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01T69dVbubfB9R2bUgWo6BZy
+---
+ docs/decisions.md                     |  1 +
+ src/app/App.tsx                       |  9 +++-
+ src/app/DocSheets.tsx                 |  2 +-
+ src/app/NumberField.tsx               | 61 +++++++++++++++++++++++++
+ src/app/Settings.tsx                  | 36 +++++++++++----
+ src/app/TableRibbon.tsx               |  5 +-
+ src/app/app.css                       | 11 +++++
+ src/i18n/en.ts                        |  5 ++
+ src/storage/backup.ts                 | 24 ++++++++--
+ src/storage/db.ts                     | 12 ++++-
+ tests/e2e/settings-tab.ts             |  5 ++
+ tests/e2e/step3-fields-backup.spec.ts | 66 +++++++++++++++++++++++++++
+ tests/unit/storage.test.ts            | 27 +++++++----
+ 13 files changed, 235 insertions(+), 29 deletions(-)
+ create mode 100644 src/app/NumberField.tsx
+ create mode 100644 tests/e2e/step3-fields-backup.spec.ts
+
+diff --git a/docs/decisions.md b/docs/decisions.md
+index 8b83386..a225c2b 100644
+--- a/docs/decisions.md
++++ b/docs/decisions.md
+@@ -79,3 +79,4 @@
+ | 75 | টাইটেল চার্ট আনা-গণ্ডার চিহ্ন পড়ে | মালিকের নিয়ম (মিলিয়ে নেওয়া): আগে আনার চিহ্ন ৴ ৵ ৶ ৷ ৸ (৪ আর ৮ আনায় ৹, ১৬ আনা ১৲), তারপর গণ্ডা অঙ্কে, কড়া ৷ দিয়ে (৩ কড়া = ৸), ক্রান্তি সবসময় ৴ দিয়ে (২ ক্রান্তি ৴৴), শেষে তিল অঙ্কে: ৵৯৷৷৴৴১০ = ২ আনা ৯ গণ্ডা ২ কড়া ২ ক্রান্তি ১০ তিল। ৻ মানে একটা একক বাদ গেছে: আনা নেই ৻৯৷৷, গণ্ডা নেই ৵৻৷৷ বা ৵৻১০ (= ১০ তিল), গণ্ডার পরে সরাসরি তিল ৵৯৻১০। আনার পরে গণ্ডা ৻ ছাড়া (৵১০ = ১০ গণ্ডা)। Unicode-এর ৻ প্রস্তাবে (Pandey, L2/07-192R) ৻ বসে গণ্ডার অঙ্কের আগে (১৭৷৷৴৻৪); মালিকের চর্চা আলাদা, তাই ৵৻১০ অন্যের পুরোনো দলিলে ১০ গণ্ডাও হতে পারে — চার্ট মালিকের নিয়মে পড়ে। চার্টের হিস্যা আর জমির ঘরে এই চিহ্নে লিখলে হিসাবে ধরা হয় (readAnnaSigns); উল্টো দিকে লেখার ফাংশনও আছে (annaSigns), শুধু তিল একা থাকলে চিহ্নে লেখা যায় না। |
+ | 76 | iPhone-এর মতো কিবোর্ড, হসন্তের দুই নিয়ম, নিজের কার্সর-ফোঁটা-loupe | মালিকের সিদ্ধান্ত: আঙুল iPhone-এর কিবোর্ডে অভ্যস্ত। ফোন, iPad-এর Split আর ভাসমান কিবোর্ডে (ফোন-ধরনের): সংখ্যা ১–০ আর Q সারি ১০টা করে (ZWNJ কী নেই); A সারির শুরুতে ⌫ (বাঁ হাতের জন্য), Z সারির শেষে ⌫ (iPhone-এর জায়গায়); নিচের সারি ↵ · Space · ⇧ · ↵ — বাঁয়ের ↵ চাপলে Enter, ওপরে টানলে #+= (টেনে কোনো চিহ্নে ছাড়লে সেটা, তারপর অক্ষর), চেপে ধরলে 123 | ১২৩ | ৴৵৶; ডানের ↵ চেপে ধরলে ⤶ লাইন ভাঙা · ⇥ Tab · ▭ নতুন পাতা। Space-এ চলতি ভাষার নাম। দাঁড়ির কী নেই: Shift + ল, বা দুবার Space। নিচের খালি জায়গায় 🌐 (চাপলে ভাষা, চেপে ধরলে আগের মেনু) · ⌄ · 🎙; কিবোর্ড নামালেও সারিটা থাকে (🌐 · ⌨ · 🎙)। প্রতি কী-তে একটাই অক্ষর (Shift চাপলে Shift-এর অক্ষর)। চাপের রঙ শুধু আঁকা কী-তে। পরামর্শের সারির বাঁয়ে ↶ ↷। iPad-এ Split একটাই, ফোনের আদলে (পুরো কিবোর্ডের Split বাদ; আগে বাছা থাকলে নিজে বদলে যায়); iPad-এর পুরো কিবোর্ড যেমন ছিল। ProNotes লেআউটে: ্ + কার = স্বরবর্ণ (ক্ + ি = কই, ZWNJ লাগে না), এ + া = ও; দুবার ্ = ফিক্সড হসন্ত ্ + ZWNJ (বল্‌বো), তৃতীয় ্ কিছু করে না, একবার ⌫ দুটোই মোছে (ফিজিক্যাল কিবোর্ডেও)। Tab .docx-এ Word-এর Tab হয়। ProNotes-এর কিবোর্ড খোলা থাকলে ProNotes নিজেই কার্সর আঁকে (২px নীল, জ্বলা-নেভা); লেখায় চাপলে Android-এর মতো ফোঁটা, ধরে টানলে কার্সর সরে; ফোঁটা বা Space টানার সময় loupe কার্সরের দুপাশের লেখা বড় করে দেখায় (সেটিংসে বন্ধ করা যায়)। |
+ | 77 | একটাই 🎙, তিন বোতাম, বলা কথা পাতাতেই | মালিকের সিদ্ধান্ত। কিবোর্ডের নিচের সারিতে একটাই 🎙: একবার চাপলে লাইভ ভয়েস, চেপে ধরলে (আধা সেকেন্ড) রেকর্ড করে লেখা; একটা বন্ধ থাকলে একবার চাপলেই অন্যটা। চালু হলে 🎙-এর জায়গায় ● সময় (লাল, জ্বলা-নেভা) · ⏸/▶ · ■, আর 🌐 ঝাপসা হয়ে থামে; কিবোর্ড নামানো থাকলেও একই সারি (🌐 · ⌨ · 🎙)। রেকর্ড করে লেখায় বিরতি দিলে বা না-পাঠানো রেকর্ডে 🗑 (দুবার চাপলে মোছে)। বলা কথা পাতায় কার্সরের জায়গায় ধূসর আর একটু ঝাপসা হয়ে ভাসে (লেখার অংশ নয়: undo, সেভ বা এক্সপোর্টে যায় না), থামলে পাকা লেখা হয়; রেকর্ড পাঠানোর সময় সেখানে "লিখছে…"। লম্বা বার আর "বলুন, লেখা এখানেই ভেসে উঠবে…" বাদ। নিচের সারি থাকলে পাতার আলাদা মাইক বোতাম লুকায়; সারি না থাকলে (কম্পিউটার, iPad-এর পুরো কিবোর্ড) পাতার মাইকের পাশে একই তিন বোতাম। নতুন বোতাম 🎙-এর জায়গায় আসে বলে একই চাপের পরের click নতুন বোতামে লাগে না। Settings → ভয়েস: দুটো কার্ড — "লাইভ ভয়েস" (চালু/বন্ধ, Live মডেল — key-এর Live মডেলগুলো থেকে, লাইভ পরীক্ষা ৫ সেকেন্ড) আর "রেকর্ড করে লেখা" (চালু/বন্ধ, মাইক চলবে, আলাদা মডেল বা AI-র মডেলই, ৩ সেকেন্ডের পরীক্ষা)। |
++| 78 | সংখ্যার ঘর, ব্যাকআপ গুটানো, Restore-এ আপডেট | মালিকের অভিযোগ: বড় শিরোনামের ঘরে "২" আটকে যায়। কারণ: ঘর খালি হলেই ডিফল্ট (২৩) ফিরে আসত, তাই শেষ অঙ্ক মোছা যেত না; আর type=number বাংলা অঙ্ক নিত না, ProNotes-এর কিবোর্ডে ১৮ লিখলে খালি হয়ে ২৩ বসত। এখন সংখ্যার ঘর (মূল লেখা, বড় শিরোনাম, টেবিলের সারি/কলাম) যা লেখা হয় তা-ই রাখে; সীমার ভেতরের পুরো মান সাথে সাথে বসে, বাকিটা ঘর ছাড়লে শেষ ঠিক মানে ফেরে (Enter = ছাড়া, Esc = আগের মান); বাংলা অঙ্ক চলে; সেটিংসে − + আছে। Settings → অ্যাপ → ব্যাকআপ গুটানো যায়: গুটানো অবস্থায় এক লাইনে শেষ ব্যাকআপের সময়; খোলা-বন্ধ এই ডিভাইসে মনে থাকে (device.fold.backup); Google থেকে ফিরলে খোলা থাকে। Restore আর আলাদা কপি ("(ব্যাকআপ থেকে)") বানায় না: একই ড্রাফট (একই id, যে ডিভাইসেই তৈরি) — ব্যাকআপেরটা পরে বদলানো হলে এখানে হালনাগাদ হয়, এখানকারটা পরে হলে যেমন আছে থাকে; যেটা বাদ পড়ল সেটা ড্রাফটের ভার্সন-ইতিহাসে ("ব্যাকআপ মেলানোর সময়") থাকে, তাই কিছু হারায় না। Restore-এর আগে খোলা ড্রাফট সেভ হয়, হালনাগাদ হলে নতুন লেখা দেখায়। |
+diff --git a/src/app/App.tsx b/src/app/App.tsx
+index fbe844a..d18ea1f 100644
+--- a/src/app/App.tsx
++++ b/src/app/App.tsx
+@@ -669,6 +669,7 @@ export function App() {
+     const back = takeRedirect();
+     if (!back) return;
+     save('settings.tab', 'app');
++    save('device.fold.backup', true); // back from Google: show the Drive part
+     setSettingsOpen(true);
+     if (!back.ok) { setTimeout(() => say(back.error === 'access_denied' ? 'Google-এ অনুমতি দেওয়া হয়নি' : 'Google-এ যুক্ত হওয়া গেল না'), 300); return; }
+     setDriveTick((n) => n + 1);
+@@ -678,6 +679,7 @@ export function App() {
+   const restore = async (file: File) => {
+     try {
+       const f = parseBackup(await file.text());
++      await flushAll(); // the open draft is saved first, so "which is newer" is decided on what is really there
+       const r = await restoreAll(f);
+       if (f.aiKey && !geminiKey) setGeminiKey(f.aiKey);
+       bank.current = (await loadBank()) ?? bank.current;
+@@ -685,7 +687,12 @@ export function App() {
+       setCustomLayouts(await loadLayouts());
+       setCorrectionsState(await loadCorrections());
+       await refresh();
+-      const msg = tr('ফেরত এসেছে: নতুন {a}টা, আলাদা কপি {c}টা, আগে থেকেই ছিল {u}টা', { a: r.added, c: r.copies, u: r.unchanged });
++      // the open draft was updated from the backup: show the updated text
++      if (current && r.updatedIds.includes(current.id)) await open(current.id);
++      // the same draft is updated, never copied (decisions.md 78); the other state is in its history
++      const msg = tr('ফেরত এসেছে: নতুন {a}টা, হালনাগাদ {up}টা, আগে থেকেই ছিল {u}টা', { a: r.added, up: r.updated, u: r.unchanged })
++        + (r.kept ? ' · ' + tr('এখানে নতুনতর {k}টা যেমন ছিল রইল', { k: r.kept }) : '')
++        + (r.updated + r.kept ? ' · ' + tr('অন্যটা ড্রাফটের ভার্সন-ইতিহাসে আছে') : '');
+       say(msg);
+       const store = (r.prefs as { store?: Record<string, unknown> }).store;
+       if (store && restorePrefs(store)) {
+diff --git a/src/app/DocSheets.tsx b/src/app/DocSheets.tsx
+index 7456e23..77f16be 100644
+--- a/src/app/DocSheets.tsx
++++ b/src/app/DocSheets.tsx
+@@ -31,7 +31,7 @@ export function InfoSheet({ doc, folders, kindLabel, onClose }: { doc: Doc; fold
+   );
+ }
+ 
+-const REASON_LABEL: Record<Version['reason'], string> = { auto: 'নিজে থেকে', manual: 'হাতে রাখা', restore: 'ফেরত আনার আগে' };
++const REASON_LABEL: Record<Version['reason'], string> = { auto: 'নিজে থেকে', manual: 'হাতে রাখা', restore: 'ফেরত আনার আগে', backup: 'ব্যাকআপ মেলানোর সময়' };
+ 
+ export function VersionsSheet({ doc, onClose, onRestore, onSnapshot }: {
+   doc: Doc;
+diff --git a/src/app/NumberField.tsx b/src/app/NumberField.tsx
+new file mode 100644
+index 0000000..d933aff
+--- /dev/null
++++ b/src/app/NumberField.tsx
+@@ -0,0 +1,61 @@
++/**
++ * A number box that lets you write freely (decisions.md 78). The old boxes put the default back the
++ * moment they were empty, so the last digit could not be deleted ("২৩" → "২" stuck), and they took no
++ * Bangla digits, so ProNotes' own keyboard could not fill them. Here the box keeps what you write; a
++ * whole value inside the limits is used at once, anything else goes back to the last good value when
++ * you leave the box (Enter leaves it, Esc puts it back). − and + step it.
++ */
++import { useEffect, useState } from 'react';
++import { num, useT } from '../i18n';
++
++const toAscii = (s: string) => s.replace(/[০-৯]/g, (d) => String(d.charCodeAt(0) - 0x09e6)).replace(/[٫,]/g, '.');
++
++export function parseNumber(s: string, min: number, max: number): number | null {
++  const t = toAscii(s.trim());
++  if (!/^\d+(\.\d+)?$/.test(t)) return null;
++  const n = Number(t);
++  return n >= min && n <= max ? n : null;
++}
++
++interface Props {
++  value: number;
++  onChange: (n: number) => void;
++  min: number;
++  max: number;
++  step?: number;
++  testid?: string;
++  /** − and + beside the box. */
++  steppers?: boolean;
++  label?: string;
++}
++
++export function NumberField({ value, onChange, min, max, step = 1, testid, steppers = false, label }: Props) {
++  const { lang } = useT();
++  const show = (n: number) => num(String(n), lang);
++  const [draft, setDraft] = useState(show(value));
++  const [editing, setEditing] = useState(false);
++  useEffect(() => { if (!editing) setDraft(show(value)); }, [value, editing, lang]); // eslint-disable-line react-hooks/exhaustive-deps
++  const bump = (d: number) => {
++    const n = Math.round(Math.min(max, Math.max(min, value + d)) * 100) / 100;
++    if (n !== value) onChange(n);
++    setDraft(show(n));
++  };
++  return (
++    <span className={'numfield' + (steppers ? ' steps' : '')}>
++      {steppers && <button type="button" className="btn small" aria-label="−" data-testid={testid && testid + '-minus'} onClick={() => bump(-step)}>−</button>}
++      <input type="text" inputMode="decimal" className="num" data-testid={testid} aria-label={label} value={draft}
++        onFocus={() => setEditing(true)}
++        onChange={(e) => {
++          setDraft(e.target.value);
++          const n = parseNumber(e.target.value, min, max);
++          if (n !== null && n !== value) onChange(n);
++        }}
++        onBlur={() => { setEditing(false); const n = parseNumber(draft, min, max); setDraft(show(n ?? value)); }}
++        onKeyDown={(e) => {
++          if (e.key === 'Enter') (e.target as HTMLInputElement).blur();
++          if (e.key === 'Escape') { setDraft(show(value)); setEditing(false); (e.target as HTMLInputElement).blur(); }
++        }} />
++      {steppers && <button type="button" className="btn small" aria-label="+" data-testid={testid && testid + '-plus'} onClick={() => bump(step)}>+</button>}
++    </span>
++  );
++}
+diff --git a/src/app/Settings.tsx b/src/app/Settings.tsx
+index 29fe012..e15891e 100644
+--- a/src/app/Settings.tsx
++++ b/src/app/Settings.tsx
+@@ -1,6 +1,6 @@
+ import { useEffect, useRef, useState, type ReactNode } from 'react';
+ import { toBijoy } from '../bijoy';
+-import { DEFAULT_FORMAT, type DocFormat } from '../docx-export/format';
++import type { DocFormat } from '../docx-export/format';
+ import { ENGLISH_FONTS, LOCAL_ANSI, LOCAL_UNI, WEB_FONTS, isFontAvailable } from '../fonts';
+ import { TOGGLE_KEYS, ANSI_KEYS, type Layout, type ToggleKey, type AnsiKey } from '../bornona-engine';
+ import type { VoicePrefs } from './prefs-types';
+@@ -12,6 +12,7 @@ import { LIVE_MODEL as LIVE_DEFAULT } from '../ai/live';
+ import { KEEP_CHOICES, type DriveBackup } from '../storage/gdrive';
+ import type { BackupLast } from './backup-status';
+ import type { VoiceModes } from './voice-modes';
++import { NumberField } from './NumberField';
+ import { WORD_SHORTCUTS, showKeys } from '../editor/word-shortcuts';
+ 
+ export interface FontInfo {
+@@ -583,10 +584,10 @@ export function Settings(p: Props) {
+               </select>
+             </label>
+             <label className="srow"><span>{t('মূল লেখা (pt)')}</span>
+-              <input type="number" min={8} max={40} step={0.5} data-testid="fmt-size" value={p.format.size} onChange={(e) => p.setFormat({ ...p.format, size: Number(e.target.value) || DEFAULT_FORMAT.size })} />
++              <NumberField min={8} max={40} step={0.5} steppers testid="fmt-size" value={p.format.size} onChange={(n) => p.setFormat({ ...p.format, size: n })} />
+             </label>
+             <label className="srow"><span>{t('বড় শিরোনাম (pt)')}</span>
+-              <input type="number" min={8} max={60} step={0.5} data-testid="fmt-title" value={p.format.titleSize} onChange={(e) => p.setFormat({ ...p.format, titleSize: Number(e.target.value) || DEFAULT_FORMAT.titleSize })} />
++              <NumberField min={8} max={60} step={0.5} steppers testid="fmt-title" value={p.format.titleSize} onChange={(n) => p.setFormat({ ...p.format, titleSize: n })} />
+             </label>
+             <label className="srow"><span>{t('লাইন স্পেসিং')}</span>
+               <select data-testid="fmt-line" value={p.format.lineSpacing} onChange={(e) => p.setFormat({ ...p.format, lineSpacing: Number(e.target.value) })}>
+@@ -661,7 +662,8 @@ export function Settings(p: Props) {
+               <button type="button" aria-pressed={p.uiLang === 'en'} data-testid="ui-en" onClick={() => p.setUiLang('en')}>English</button>
+             </div>
+           </Group>
+-          <Group title={t('ব্যাকআপ')} info="সব ড্রাফট (ট্র্যাশসহ), শেখা শব্দ, নিজের লেআউট, ভয়েসের সংশোধন আর সেটিংস একটা ফাইলে (ফন্ট ফাইল বাদে)। দুই জায়গায় রাখা যায়: এই ডিভাইসে (iPad-এ Files বা iCloud Drive) আর আপনার নিজের Google Drive-এর “ProNotes Backups” ফোল্ডারে। Drive-এ Gemini key কখনো যায় না। ফেরত আনলে আগের কিছু মুছবে না; বদলে যাওয়া ড্রাফট আলাদা কপি হয়ে আসবে।">
++          <Group title={t('ব্যাকআপ')} info="সব ড্রাফট (ট্র্যাশসহ), শেখা শব্দ, নিজের লেআউট, ভয়েসের সংশোধন আর সেটিংস একটা ফাইলে (ফন্ট ফাইল বাদে)। দুই জায়গায় রাখা যায়: এই ডিভাইসে (iPad-এ Files বা iCloud Drive) আর আপনার নিজের Google Drive-এর “ProNotes Backups” ফোল্ডারে। Drive-এ Gemini key কখনো যায় না। ফেরত আনলে একই ড্রাফট আলাদা কপি হয় না: যেটা পরে বদলানো হয়েছে সেটা থাকে, অন্যটা ড্রাফটের ভার্সন-ইতিহাসে রাখা হয়, তাই কিছু হারায় না।" fold={{ id: 'backup', summary: !p.backupInfo.last.drive && !p.backupInfo.last.device ? t('এখনো কোনো ব্যাকআপ নেওয়া হয়নি')
++            : t('শেষ ব্যাকআপ') + ': ' + formatDateTime(Math.max(p.backupInfo.last.drive ?? 0, p.backupInfo.last.device ?? 0), p.uiLang) }}>
+             <p className="backup-status muted" data-testid="backup-status">
+               {!p.backupInfo.last.drive && !p.backupInfo.last.device ? t('এখনো কোনো ব্যাকআপ নেওয়া হয়নি') : (
+                 <>
+@@ -802,13 +804,29 @@ function InfoText({ text, vars }: { text: string; vars?: Record<string, string |
+ }
+ 
+ /** A titled block of settings, with its ⓘ next to the title. */
+-function Group({ title, info, children }: { title: string; info?: string; children: ReactNode }) {
++/**
++ * A Settings group. With `fold` it can be closed to one line (decisions.md 78): the title, a short
++ * status (e.g. when the last backup was made) and ▸/▾; whether it is open is kept on this device only.
++ */
++function Group({ title, info, children, fold }: { title: string; info?: string; children: ReactNode; fold?: { id: string; summary?: ReactNode } }) {
+   const [open, setOpen] = useState(false);
++  const foldKey = fold ? 'device.fold.' + fold.id : '';
++  const [unfolded, setUnfolded0] = useState<boolean>(() => (fold ? load(foldKey, false) : true));
++  const setUnfolded = (v: boolean) => { setUnfolded0(v); if (fold) save(foldKey, v); };
+   return (
+-    <section className="sgroup">
+-      <div className="sgroup-head"><h3>{title}</h3>{info && <InfoButton open={open} onClick={() => setOpen(!open)} />}</div>
+-      {open && info && <InfoText text={info} />}
+-      {children}
++    <section className={'sgroup' + (fold ? ' foldable' + (unfolded ? ' open' : '') : '')}>
++      <div className="sgroup-head">
++        {fold ? (
++          <button type="button" className="sgroup-fold" data-testid={fold.id + '-fold'} aria-expanded={unfolded} onClick={() => setUnfolded(!unfolded)}>
++            <span className="fold-arrow" aria-hidden="true">{unfolded ? '▾' : '▸'}</span>
++            <h3>{title}</h3>
++            {!unfolded && fold.summary && <small className="fold-summary">{fold.summary}</small>}
++          </button>
++        ) : <h3>{title}</h3>}
++        {info && (!fold || unfolded) && <InfoButton open={open} onClick={() => setOpen(!open)} />}
++      </div>
++      {open && info && (!fold || unfolded) && <InfoText text={info} />}
++      {unfolded && children}
+     </section>
+   );
+ }
+diff --git a/src/app/TableRibbon.tsx b/src/app/TableRibbon.tsx
+index 378e374..4fda40b 100644
+--- a/src/app/TableRibbon.tsx
++++ b/src/app/TableRibbon.tsx
+@@ -4,6 +4,7 @@
+  * alignment, header repeat, sort, sum). Large touch targets and sheets instead of hover menus (iPad).
+  */
+ import { useState, type ReactNode } from 'react';
++import { NumberField } from './NumberField';
+ import type { Editor } from '@tiptap/react';
+ import { TABLE_STYLES, QUICK_TABLES, LINE_WIDTHS, type Delimiter, type CellSide, type TableBorders } from '../editor';
+ import { useT } from '../i18n';
+@@ -64,8 +65,8 @@ export function TableInsertMenu({ ed, say }: { ed: Editor; say: (m: string) => v
+         <Sheet title={t('টেবিল ঢোকান')} onClose={() => setSheet(null)} testid="table-insert-sheet"
+           footer={<button type="button" className="btn primary" data-testid="ti-ok" onClick={() => { insert(rows, cols, header); setSheet(null); }}>{t('ঢোকান')}</button>}>
+           <div className="form">
+-            <label>{t('সারি')}<input type="number" inputMode="numeric" min={1} max={200} data-testid="ti-rows" value={rows} onChange={(e) => setRows(Math.max(1, Math.min(200, Number(e.target.value) || 1)))} /></label>
+-            <label>{t('কলাম')}<input type="number" inputMode="numeric" min={1} max={20} data-testid="ti-cols" value={cols} onChange={(e) => setCols(Math.max(1, Math.min(20, Number(e.target.value) || 1)))} /></label>
++            <label>{t('সারি')}<NumberField min={1} max={200} testid="ti-rows" value={rows} onChange={setRows} /></label>
++            <label>{t('কলাম')}<NumberField min={1} max={20} testid="ti-cols" value={cols} onChange={setCols} /></label>
+             <label className="chk"><input type="checkbox" data-testid="ti-header" checked={header} onChange={(e) => setHeader(e.target.checked)} /> {t('প্রথম সারি হেডার (প্রতি পাতায় আবার আসবে)')}</label>
+           </div>
+         </Sheet>
+diff --git a/src/app/app.css b/src/app/app.css
+index fb7bff8..e969ec7 100644
+--- a/src/app/app.css
++++ b/src/app/app.css
+@@ -1145,3 +1145,14 @@ body:has(.kb-strip.down) .mic, body:has(.kb-strip.down) .live-mic { bottom: calc
+ /* the old bars' styles no longer apply to the three buttons (decisions.md 77) */
+ .voice-ctl.ai-voice-bar, .voice-ctl.live-strip { position: static; inset: auto; right: auto; bottom: auto; left: auto; top: auto; max-width: none; width: auto;
+   background: transparent; color: inherit; padding: 0; border: 0; box-shadow: none; flex-wrap: nowrap; transform: none; animation: none; margin: 0; }
++/* number boxes that can be written freely (decisions.md 78) */
++.numfield { display: inline-flex; align-items: center; gap: 4px; }
++.numfield input.num { width: 4.2em; text-align: center; }
++.numfield .btn.small { min-width: 34px; }
++/* a Settings group that folds to one line (backup) */
++.sgroup-fold { display: flex; align-items: baseline; gap: 8px; flex: 1; min-width: 0; background: none; border: 0; padding: 0; color: inherit; cursor: pointer; text-align: left; }
++.sgroup-fold h3 { margin: 0; }
++.sgroup-fold .fold-summary { color: var(--muted); font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
++.sgroup.foldable:not(.open) { padding-bottom: 6px; }
++.srow .numfield { flex: 0 0 auto; margin-left: auto; }
++.srow .numfield input.num, .form .numfield input.num { width: 4.5em; min-width: 0; flex: 0 0 auto; }
+diff --git a/src/i18n/en.ts b/src/i18n/en.ts
+index c784495..c335e00 100644
+--- a/src/i18n/en.ts
++++ b/src/i18n/en.ts
+@@ -1135,4 +1135,9 @@ export const EN: Record<string, string> = {
+   "বলার সাথে সাথে লেখা পাতায় কার্সরের জায়গায় ধূসর হয়ে ভাসে, থামলে পাকা হয়। কিবোর্ডের 🎙 একবার চাপলে চালু হয়। Gemini key থাকলে Gemini Live, না থাকলে (কম্পিউটার/Android-এর Chrome-এ) ব্রাউজারের নিজের ভয়েস।": "As you speak, the words appear grey at the caret in the page and turn solid when you pause. A tap on the keyboard's 🎙 starts it. Gemini Live with a Gemini key; without one (Chrome on a computer or Android), the browser's own voice.",
+   "পুরোটা বলে থামালে অডিও Gemini-তে যায়, পুরো লেখা একবারে আসে — লম্বা কথায় সাধারণত বেশি নির্ভুল। লাইভ চালু থাকলে 🎙 চেপে ধরলে এটা চলে, লাইভ বন্ধ থাকলে একবার চাপলেই। Gemini key লাগে।": "Say it all and stop: the audio goes to Gemini and the whole text comes back at once — usually more accurate for long passages. With Live on, hold 🎙 for this; with Live off, a tap. Needs a Gemini key.",
+ 
++  "ফেরত এসেছে: নতুন {a}টা, হালনাগাদ {up}টা, আগে থেকেই ছিল {u}টা": "Restored: {a} new, {up} updated, {u} already here",
++  "এখানে নতুনতর {k}টা যেমন ছিল রইল": "{k} newer here left as they were",
++  "অন্যটা ড্রাফটের ভার্সন-ইতিহাসে আছে": "the other state is in the draft's version history",
++  "সব ড্রাফট (ট্র্যাশসহ), শেখা শব্দ, নিজের লেআউট, ভয়েসের সংশোধন আর সেটিংস একটা ফাইলে (ফন্ট ফাইল বাদে)। দুই জায়গায় রাখা যায়: এই ডিভাইসে (iPad-এ Files বা iCloud Drive) আর আপনার নিজের Google Drive-এর “ProNotes Backups” ফোল্ডারে। Drive-এ Gemini key কখনো যায় না। ফেরত আনলে একই ড্রাফট আলাদা কপি হয় না: যেটা পরে বদলানো হয়েছে সেটা থাকে, অন্যটা ড্রাফটের ভার্সন-ইতিহাসে রাখা হয়, তাই কিছু হারায় না।": "All drafts (with the Trash), learned words, your layouts, voice corrections and settings in one file (not font files). Keep it in two places: on this device (on iPad, Files or iCloud Drive) and in the “ProNotes Backups” folder of your own Google Drive. The Gemini key never goes to Drive. Restoring never makes a second copy of the same draft: the one changed later stays and the other goes into the draft's version history, so nothing is lost.",
++  "ব্যাকআপ মেলানোর সময়": "When a backup was merged",
+ };
+diff --git a/src/storage/backup.ts b/src/storage/backup.ts
+index a27aa0e..bbe3ede 100644
+--- a/src/storage/backup.ts
++++ b/src/storage/backup.ts
+@@ -4,7 +4,7 @@
+  * comes back as a separate copy.
+  * Font files are never included (size, and font licences such as SutonnyMJ's).
+  */
+-import { db, getMeta, setMeta, type Doc, type Folder, type DictionarySource, type DictionaryEntry, type DictionarySense, type DictionaryEquivalent, type DictionaryRelation } from './db';
++import { db, getMeta, keepVersion, setMeta, type Doc, type Folder, type DictionarySource, type DictionaryEntry, type DictionarySense, type DictionaryEquivalent, type DictionaryRelation } from './db';
+ import { emptyBank, type WordBank } from '../suggest';
+ import { fixNukta, type Layout } from '../bornona-engine';
+ 
+@@ -49,7 +49,14 @@ export function backupFileName(now = new Date()): string {
+ 
+ export interface RestoreResult {
+   added: number;
++  /** Drafts that came back as separate copies (no longer happens: kept for older callers). */
+   copies: number;
++  /** The same draft, newer in the backup: updated here; this device's state kept in its history. */
++  updated: number;
++  /** The same draft, newer here: left as it is; the backup's state kept in its history. */
++  kept: number;
++  /** Ids of the drafts updated (an open one must be loaded again). */
++  updatedIds: string[];
+   unchanged: number;
+   words: number;
+   dictionaryAdded: number;
+@@ -57,7 +64,6 @@ export interface RestoreResult {
+   prefs: Record<string, unknown>;
+ }
+ 
+-const newId = () => (crypto.randomUUID ? crypto.randomUUID() : Date.now().toString(36) + Math.random().toString(36).slice(2));
+ const same = (a: Doc, b: Doc) => a.updatedAt === b.updatedAt && JSON.stringify(a.content) === JSON.stringify(b.content) && a.title === b.title;
+ 
+ /** Word counts: keep the larger count, so restoring the same backup twice does not inflate them. */
+@@ -118,7 +124,7 @@ export function parseBackup(json: string): BackupFile {
+ 
+ export async function restoreAll(f: BackupFile): Promise<RestoreResult> {
+   const d = await db();
+-  const r: RestoreResult = { added: 0, copies: 0, unchanged: 0, words: 0, dictionaryAdded: 0, dictionaryUnchanged: 0, prefs: f.prefs || {} };
++  const r: RestoreResult = { added: 0, copies: 0, updated: 0, kept: 0, updatedIds: [], unchanged: 0, words: 0, dictionaryAdded: 0, dictionaryUnchanged: 0, prefs: f.prefs || {} };
+   for (const raw of f.docs) {
+     const doc: Doc = { ...raw, title: fixNukta(raw.title), text: fixNukta(raw.text || ''), content: JSON.parse(fixNukta(JSON.stringify(raw.content))) };
+     const existing = await d.get('docs', doc.id);
+@@ -127,9 +133,17 @@ export async function restoreAll(f: BackupFile): Promise<RestoreResult> {
+       r.added++;
+     } else if (same(existing, doc)) {
+       r.unchanged++;
++    } else if ((doc.updatedAt ?? 0) > (existing.updatedAt ?? 0)) {
++      // the same draft, changed later elsewhere: it is updated here — no second copy (decisions.md 78);
++      // what this device had is kept in the draft's version history
++      await keepVersion(existing, 'backup');
++      await d.put('docs', doc);
++      r.updated++;
++      r.updatedIds.push(doc.id);
+     } else {
+-      await d.put('docs', { ...doc, id: newId(), title: doc.title + ' (ব্যাকআপ থেকে)' });
+-      r.copies++;
++      // this device has the later state: it stays; the backup's state goes into the version history
++      await keepVersion({ ...doc, id: existing.id }, 'backup');
++      r.kept++;
+     }
+   }
+   // Dictionary restore is additive and ID-based: never overwrite local records silently.
+diff --git a/src/storage/db.ts b/src/storage/db.ts
+index df9dec4..f2fd884 100644
+--- a/src/storage/db.ts
++++ b/src/storage/db.ts
+@@ -55,8 +55,11 @@ export interface Version {
+   title: string;
+   content: JSONContent;
+   text: string;
+-  /** 'auto' = timed snapshot, 'restore' = taken just before an older version was brought back, 'manual' */
+-  reason: 'auto' | 'restore' | 'manual';
++  /**
++   * 'auto' = timed snapshot, 'restore' = taken just before an older version was brought back, 'manual',
++   * 'backup' = the side that lost when a backup was restored over this draft (decisions.md 78)
++   */
++  reason: 'auto' | 'restore' | 'manual' | 'backup';
+ }
+ 
+ /** A font file the user added (kept only in this browser; never put in backups). */
+@@ -314,6 +317,11 @@ async function deleteVersions(docId: string): Promise<void> {
+   for (const v of await d.getAllFromIndex('versions', 'docId', docId)) await d.delete('versions', v.id);
+ }
+ 
++/** Keep a state of a draft in its version history (used by restore: nothing is thrown away). */
++export async function keepVersion(doc: Doc, reason: Version['reason'], now = Date.now()): Promise<Version> {
++  return addVersion(doc, reason, now);
++}
++
+ async function addVersion(doc: Doc, reason: Version['reason'], now: number): Promise<Version> {
+   const d = await db();
+   const v: Version = { id: newId(), docId: doc.id, at: now, title: doc.title, content: structuredClone(doc.content), text: doc.text, reason };
+diff --git a/tests/e2e/settings-tab.ts b/tests/e2e/settings-tab.ts
+index a1fd3b3..7c46e72 100644
+--- a/tests/e2e/settings-tab.ts
++++ b/tests/e2e/settings-tab.ts
+@@ -17,4 +17,9 @@ export async function section(page: Page, name: string): Promise<void> {
+   if (!tab) throw new Error('no Settings tab for ' + name);
+   if (!(await page.getByTestId('settings-panel').isVisible())) await page.getByTestId('settings').click();
+   await page.getByTestId('stab-' + tab).click();
++  // the backup group can be folded (decisions.md 78): open it for the tests that use it
++  if (tab === 'app') {
++    const f = page.getByTestId('backup-fold');
++    if ((await f.count()) && (await f.getAttribute('aria-expanded')) === 'false') await f.click();
++  }
+ }
+diff --git a/tests/e2e/step3-fields-backup.spec.ts b/tests/e2e/step3-fields-backup.spec.ts
+new file mode 100644
+index 0000000..22f17a3
+--- /dev/null
++++ b/tests/e2e/step3-fields-backup.spec.ts
+@@ -0,0 +1,66 @@
++import { test, expect } from '@playwright/test';
++import fs from 'node:fs';
++import { section } from './settings-tab';
++
++// decisions.md 78: number boxes that can be written freely (and in Bangla digits), the backup group that
++// folds to one line, and a restore that updates the same draft instead of making a copy.
++
++test('the title size box: the last digit can be deleted; Bangla digits work; − + step it', async ({ page }) => {
++  await page.goto('./');
++  await section(page, 'font');
++  const box = page.getByTestId('fmt-title');
++  await box.click();
++  await box.press('End');
++  await box.press('Backspace');
++  await box.press('Backspace');
++  await expect(box).toHaveValue(''); // empty stays empty while writing (it used to jump back to ২৩)
++  await box.pressSequentially('১৮');
++  await box.press('Enter');
++  await expect(box).toHaveValue(/^(১৮|18)$/);
++  expect(await page.evaluate(() => JSON.parse(localStorage.getItem('pronotes.format') || '{}').titleSize)).toBe(18);
++  await page.getByTestId('fmt-title-plus').click();
++  expect(await page.evaluate(() => JSON.parse(localStorage.getItem('pronotes.format') || '{}').titleSize)).toBe(18.5);
++  // a value outside the limits goes back to the last good one when the box is left
++  await box.fill('3');
++  await box.press('Enter');
++  await expect(box).toHaveValue(/^(১৮\.৫|18\.5)$/);
++});
++
++test('the backup group folds to one line with the last backup; it remembers being open', async ({ page }) => {
++  await page.goto('./');
++  await page.getByTestId('settings').click();
++  await page.getByTestId('stab-app').click();
++  const fold = page.getByTestId('backup-fold');
++  await expect(fold).toHaveAttribute('aria-expanded', 'false');
++  await expect(page.getByTestId('backup')).toHaveCount(0);
++  await expect(fold).toContainText(/এখনো কোনো ব্যাকআপ|No backup/);
++  await fold.click();
++  await expect(page.getByTestId('backup')).toBeVisible();
++  await page.reload();
++  await page.getByTestId('settings').click();
++  await page.getByTestId('stab-app').click();
++  await expect(page.getByTestId('backup')).toBeVisible();
++});
++
++test('restoring a backup updates the same draft — no "(ব্যাকআপ থেকে)" copy', async ({ page }) => {
++  await page.goto('./');
++  await page.getByTestId('editor').click();
++  await page.keyboard.type('kkk');
++  await page.waitForTimeout(800);
++  await section(page, 'app');
++  const [dl] = await Promise.all([page.waitForEvent('download'), page.getByTestId('backup').click()]);
++  const file = await dl.path();
++  // the backup made "elsewhere, later": the same draft with newer text
++  const json = JSON.parse(fs.readFileSync(file, 'utf8'));
++  const d = json.docs[0];
++  d.updatedAt = Date.now() + 60_000;
++  d.text = 'অন্য ডিভাইসের লেখা';
++  d.content = { type: 'doc', content: [{ type: 'paragraph', content: [{ type: 'text', text: 'অন্য ডিভাইসের লেখা' }] }] };
++  const newer = file + '.newer.json';
++  fs.writeFileSync(newer, JSON.stringify(json));
++  await page.getByTestId('restore-file').setInputFiles(newer);
++  await expect(page.getByTestId('toast')).toContainText(/হালনাগাদ ১টা|1 updated/);
++  await page.getByTestId('settings').click();
++  await expect(page.getByTestId('editor')).toHaveText('অন্য ডিভাইসের লেখা'); // the open draft shows it
++  await expect(page.getByTestId('sidebar').getByTestId('doc-row')).toHaveCount(1);
++});
+diff --git a/tests/unit/storage.test.ts b/tests/unit/storage.test.ts
+index 41286d6..460eead 100644
+--- a/tests/unit/storage.test.ts
++++ b/tests/unit/storage.test.ts
+@@ -82,19 +82,28 @@ describe('backup and restore', () => {
+     expect(await listDocs({ trash: true })).toHaveLength(1);
+     expect(await loadBank()).toEqual({ w: { দলিল: 3 }, b: { দলিল: { মূলে: 2 } } });
+   });
+-  it('never overwrites a changed document; restoring twice changes nothing', async () => {
++  it('the same draft is updated, never copied; the other state goes into its history (decisions.md 78)', async () => {
+     const a = await createDoc('আরজি', para('পুরোনো'), 'পুরোনো', 1000);
+     await saveBank({ w: { দলিল: 3 }, b: {} });
+-    const file = await exportAll({});
++    const older = await exportAll({});
++    // changed here later: the backup is older, this device's text stays
+     await saveContent(a.id, para('নতুন লেখা'), 'নতুন লেখা', 2000);
+-    const r1 = await restoreAll(file);
+-    expect(r1.copies).toBe(1);
++    const r1 = await restoreAll(older);
++    expect(r1).toMatchObject({ copies: 0, kept: 1, updated: 0 });
+     expect((await getDoc(a.id))!.text).toBe('নতুন লেখা');
+-    const titles = (await listDocs()).map((d) => d.title).sort();
+-    expect(titles).toEqual(['আরজি', 'আরজি (ব্যাকআপ থেকে)']);
+-    const r2 = await restoreAll(await exportAll({}));
+-    expect(r2.copies).toBe(0);
+-    expect(r2.unchanged).toBe(2);
++    expect((await listDocs()).map((d) => d.title)).toEqual(['আরজি']); // no "(ব্যাকআপ থেকে)" copy
++    expect((await listVersions(a.id)).some((v) => v.reason === 'backup' && v.text === 'পুরোনো')).toBe(true);
++    // a backup made later elsewhere: this device's draft is updated, its old text kept in the history
++    const newer = await exportAll({});
++    newer.docs[0] = { ...newer.docs[0], content: para('অন্য ডিভাইসে আরো নতুন'), text: 'অন্য ডিভাইসে আরো নতুন', updatedAt: 3000 };
++    const r2 = await restoreAll(newer);
++    expect(r2).toMatchObject({ updated: 1, kept: 0, copies: 0, updatedIds: [a.id] });
++    expect((await getDoc(a.id))!.text).toBe('অন্য ডিভাইসে আরো নতুন');
++    expect((await listDocs())).toHaveLength(1);
++    expect((await listVersions(a.id)).some((v) => v.reason === 'backup' && v.text === 'নতুন লেখা')).toBe(true);
++    // restoring the same again changes nothing
++    const r3 = await restoreAll(await exportAll({}));
++    expect(r3).toMatchObject({ unchanged: 1, updated: 0, kept: 0 });
+     expect((await loadBank())!.w['দলিল']).toBe(3);
+   });
+   it('rejects files that are not ProNotes backups', () => {
+-- 
+2.43.0
+
