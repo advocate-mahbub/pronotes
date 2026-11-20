@@ -22,8 +22,8 @@ jobs:
     env:
       VITE_GOOGLE_CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID }}
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
         with:
           node-version-file: .nvmrc
           cache: npm
@@ -35,16 +35,18 @@ jobs:
       - run: npx playwright install --with-deps chromium
       - run: npx playwright test --project=chromium
       # Craft apps (src/craft/apps.json): official web zips, checked against their SHA-256, into dist/apps/
-      - uses: actions/cache@v4
+      - uses: actions/cache@v5
         with:
           path: .craft-cache
           key: craft-${{ hashFiles('src/craft/apps.json') }}
           restore-keys: craft-
       - run: npm run craft:dist
-      - uses: actions/configure-pages@v5
-      - uses: actions/upload-pages-artifact@v3
+      - uses: actions/configure-pages@v6
+      # v5 (Node 24) leaves out files whose names start with a dot unless told; v3 took them, so the site stays the same
+      - uses: actions/upload-pages-artifact@v5
         with:
           path: dist
+          include-hidden-files: true
   deploy:
     needs: build
     runs-on: ubuntu-latest
@@ -53,4 +55,4 @@ jobs:
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - id: deployment
-        uses: actions/deploy-pages@v4
+        uses: actions/deploy-pages@v5
