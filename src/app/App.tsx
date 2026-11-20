@@ -10,7 +10,7 @@ import {
   setPinned, moveToFolder, loadFolders, createFolder, renameFolder, deleteFolder, snapshotNow, restoreVersion, type Folder, setDocPage, kindOf, type Doc, type DocKind,
 } from '../storage';
 import { setAnsiFamilies } from '../bijoy';
-import { MAX_FONT_BYTES, familyFor, registerFont, unregisterFont, LOCAL_ANSI, readFontStyle, prepareFontFile } from '../fonts';
+import { MAX_FONT_BYTES, familyFor, registerFont, unregisterFont, LOCAL_ANSI, readFontStyle, prepareFontFile, fontHash, duplicateFonts, keeperOf } from '../fonts';
 import { decideVoice, detectVoiceEnv } from '../voice';
 import { AUTO_MODEL } from '../ai/gemini';
 import { DEFAULT_VOICE_MODES, type VoiceModes } from './voice-modes';
@@ -755,9 +755,27 @@ export function App() {
   };
 
   // ---------- fonts ----------
+  // each stored font's fingerprint, so the same file is never kept twice (decisions.md 85)
+  const fontHashes = useRef(new Map<string, string>());
+  const forgetFont = async (id: string) => {
+    try { await removeFont(id); } catch { /* already gone */ }
+    unregisterFont(id);
+    fontHashes.current.delete(id);
+    // its Drive copy goes at the next sync
+    save('device.fontsGone', [...new Set([...load<string[]>('device.fontsGone', []), id])]);
+  };
   const loadStoredFonts = async () => {
     const list: FontInfo[] = [];
-    for (const f of await listFonts()) {
+    let stored = await listFonts();
+    for (const f of stored) if (!fontHashes.current.has(f.id)) { try { fontHashes.current.set(f.id, await fontHash(f.data)); } catch { /* no crypto: left alone */ } }
+    // copies of one file that came in before this check: the keeper stays, the rest go
+    const dups = duplicateFonts(stored.map((f) => f.id), fontHashes.current);
+    if (dups.length) {
+      const drop = new Set(dups.flatMap((d) => d.drop));
+      for (const id of drop) await forgetFont(id);
+      stored = stored.filter((f) => !drop.has(f.id));
+    }
+    for (const f of stored) {
       try {
         await registerFont(f);
         const st = readFontStyle(f.data, f.fileName);
@@ -777,6 +795,10 @@ export function App() {
   };
   const addFontData = async (data: ArrayBuffer, fileName: string, role: 'uni' | 'ansi' | 'en') => {
     if (data.byteLength > MAX_FONT_BYTES) return say('ফন্ট ফাইলটা অনেক বড় (১৫ MB-এর বেশি)');
+    let hash = '';
+    try { hash = await fontHash(data); } catch { /* no crypto: no check */ }
+    const same = hash ? [...fontHashes.current].find(([, h]) => h === hash)?.[0] : undefined;
+    if (same) return say('{name} আগে থেকেই আছে', { name: fonts.find((f) => f.id === same)?.family ?? familyFor(data, fileName) });
     const rec = { id: 'font-' + Date.now() + '-' + Math.random().toString(36).slice(2, 6), family: familyFor(data, fileName), fileName, role, data, addedAt: Date.now() };
     try {
       await registerFont(rec);
@@ -786,6 +808,7 @@ export function App() {
     let stored = true;
     try {
       await putFont(rec);
+      if (hash) fontHashes.current.set(rec.id, hash);
     } catch {
       stored = false;
       say('ফন্ট এবার কাজ করবে, কিন্তু ডিভাইসে সেভ করা গেল না');
@@ -801,16 +824,10 @@ export function App() {
     say('{name} যোগ হয়েছে', { name: rec.family });
   };
   const deleteFont = async (id: string) => {
-    try {
-      await removeFont(id);
-    } catch {
-      /* already gone */
-    }
-    unregisterFont(id);
+    // gone from Drive too, now or at the next sync (until then it is not brought back)
+    await forgetFont(id);
     setFonts((l) => l.filter((f) => f.id !== id));
     say('ফন্ট মুছে ফেলা হয়েছে');
-    // gone from Drive too, now or at the next sync (until then it is not brought back)
-    save('device.fontsGone', [...new Set([...load<string[]>('device.fontsGone', []), id])]);
     void syncFonts();
   };
 
@@ -831,16 +848,25 @@ export function App() {
         if (f) await uploadDriveFont(tk, { id: f.id, role: f.role, fileName: f.fileName, data: f.data });
       }
       let got = 0;
+      let merged = false;
       for (const r of plan.down) {
         const data = await downloadDriveFont(tk, r.id);
+        const id = r.appProperties!.pnFont!;
+        // the same file already here under another id (added on two devices): every device keeps the smaller id
+        let hash = '';
+        try { hash = await fontHash(data); } catch { /* no crypto: no check */ }
+        const twin = hash ? [...fontHashes.current].find(([, h]) => h === hash)?.[0] : undefined;
+        if (twin && keeperOf(twin, id) === twin) { await trashBackup(tk, r.id); continue; }
         const role = (['uni', 'ansi', 'en'].includes(r.appProperties?.role ?? '') ? r.appProperties!.role : 'uni') as 'uni' | 'ansi' | 'en';
-        const rec = { id: r.appProperties!.pnFont!, family: familyFor(data, r.name), fileName: r.name, role, data, addedAt: Date.now() };
-        try { await registerFont(rec); await putFont(rec); got++; } catch { /* not a usable font: leave it in Drive */ }
+        const rec = { id, family: familyFor(data, r.name), fileName: r.name, role, data, addedAt: Date.now() };
+        try {
+          await registerFont(rec); await putFont(rec);
+          if (hash) fontHashes.current.set(id, hash);
+          if (twin) { await forgetFont(twin); merged = true; } else got++;
+        } catch { /* not a usable font: leave it in Drive */ }
       }
-      if (got) {
-        await loadStoredFonts();
-        say('Google Drive থেকে {n}টা ফন্ট এল', { n: got });
-      }
+      if (got || merged) await loadStoredFonts();
+      if (got) say('Google Drive থেকে {n}টা ফন্ট এল', { n: got });
     } catch {
       /* Drive away or the sign-in ran out: tried again the next time Drive is on */
     } finally {

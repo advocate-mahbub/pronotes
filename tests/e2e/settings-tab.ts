@@ -22,4 +22,12 @@ export async function section(page: Page, name: string): Promise<void> {
     const f = page.getByTestId('backup-fold');
     if ((await f.count()) && (await f.getAttribute('aria-expanded')) === 'false') await f.click();
   }
+  // own font files are folded too (decisions.md 85)
+  if (tab === 'font') await openOwnFonts(page);
+}
+
+/** Unfolds Settings → ফন্ট → নিজের ফন্ট ফাইল. */
+export async function openOwnFonts(page: Page): Promise<void> {
+  const f = page.getByTestId('own-fonts-fold');
+  if ((await f.count()) && (await f.getAttribute('aria-expanded')) === 'false') await f.click();
 }

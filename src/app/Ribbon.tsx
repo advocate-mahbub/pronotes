@@ -621,9 +621,10 @@ export function Ribbon(p: Props) {
   if (inTable) tabs.push(['tdesign', 'টেবিল ডিজাইন'], ['table', 'টেবিল লেআউট']);
   return (
     <nav ref={navRef} className={'ribbon glass' + (collapsed ? ' collapsed' : '') + (narrow ? ' narrow' : '')} aria-label={t('লেখার সরঞ্জাম')}>
+      <div className="ribbon-tabbar">
+      {/* ☰ sits outside the sideways-scrolling tab row, so it needs no cover of its own (decisions.md 82, 85) */}
+      {p.start && <span className="tab-start" data-testid="tab-start">{p.start}</span>}
       <div className="ribbon-tabs" role="tablist">
-        {/* ☰ stays put while the tab row scrolls sideways (decisions.md 82) */}
-        {p.start && <span className="tab-start" data-testid="tab-start">{p.start}</span>}
         {tabs.map(([id, label]) => (
           <button key={id} type="button" role="tab" aria-selected={tab === id} className={'rtab' + (id === 'table' || id === 'tdesign' ? ' ctx' : '')} data-testid={'tab-' + id}
             onPointerDown={(e) => e.preventDefault()}
@@ -640,6 +641,7 @@ export function Ribbon(p: Props) {
         {p.end}
         <button type="button" className="tb" data-testid="ribbon-collapse" title={collapsed ? t('সরঞ্জাম দেখান') : t('সরঞ্জাম লুকান')} aria-label={collapsed ? t('সরঞ্জাম দেখান') : t('সরঞ্জাম লুকান')}
           onPointerDown={(e) => e.preventDefault()} onClick={() => setCollapsed((c) => !c)}>{collapsed ? '▾' : '▴'}</button>
+      </div>
       </div>
       {!collapsed && (
         <div className="ribbon-body" role="tabpanel" data-testid={'panel-' + tab}>

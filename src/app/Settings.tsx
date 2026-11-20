@@ -637,7 +637,7 @@ export function Settings(p: Props) {
             <Check testid="font-convert-ask" checked={convertAsk} onChange={setConvertAsk} label={t('ফন্ট বদলালে লেখা বদলানোর আগে জিজ্ঞেস করো')}
               info="নির্বাচিত ইউনিকোড লেখায় বিজয় (ANSI) ফন্ট দিলে, বা উল্টোটা, অক্ষরগুলোই বদলে যায়। চালু থাকলে আগে জিজ্ঞেস করে (কতটা লেখা বদলাবে, পুরো ডকুমেন্ট কি না)। বন্ধ থাকলে সঙ্গে সঙ্গে বদলায়; ↶ দিয়ে ফেরানো যায়।" />
           </Group>
-          <Group title={t('নিজের ফন্ট ফাইল')} info="যে ফন্ট এই ডিভাইসে নেই (যেমন iPad-এ SutonnyOMJ), তার ফাইল (.ttf, .otf, .woff, .woff2, .ttc, .eot; একসাথে কয়েকটা) যোগ করুন, তাহলে পর্দায় সেই ফন্টেই দেখাবে। Google Drive চালু থাকলে ফাইলটা আপনার Drive-এর “ProNotes Fonts” ফোল্ডারেও রাখা হয়, অন্য ডিভাইসে Drive চালু করলে নিজে থেকে নেমে আসে। GitHub বা অন্য কোথাও যায় না।">
+          <Group title={t('নিজের ফন্ট ফাইল') + ' (' + num(p.fonts.length, p.uiLang) + ')'} fold={{ id: 'own-fonts' }} info="যে ফন্ট এই ডিভাইসে নেই (যেমন iPad-এ SutonnyOMJ), তার ফাইল (.ttf, .otf, .woff, .woff2, .ttc, .eot; একসাথে কয়েকটা) যোগ করুন, তাহলে পর্দায় সেই ফন্টেই দেখাবে। Google Drive চালু থাকলে ফাইলটা আপনার Drive-এর “ProNotes Fonts” ফোল্ডারেও রাখা হয়, অন্য ডিভাইসে Drive চালু করলে নিজে থেকে নেমে আসে। GitHub বা অন্য কোথাও যায় না।">
             <div className="row">
               <FileButton label={t('ইউনিকোড ফন্ট যোগ করুন')} accept={FONT_ACCEPT} testid="font-add-uni" multiple onFile={(f) => p.onAddFont(f, 'uni')} />
               <FileButton label={t('বিজয় (ANSI) ফন্ট যোগ করুন')} accept={FONT_ACCEPT} testid="font-add-ansi" multiple onFile={(f) => p.onAddFont(f, 'ansi')} />
@@ -711,7 +711,7 @@ export function Settings(p: Props) {
               <NumberField min={SCALE_MIN} max={SCALE_MAX} step={5} steppers testid="app-font-en-size" value={p.appFonts.enScale ?? 100} onChange={(n) => p.setAppFonts({ ...p.appFonts, enScale: n })} />
             </label>
             <p className="app-font-sample" data-testid="app-font-sample">{en ? 'Aa Bb 123' : 'আমার সোনার বাংলা · ক্ষ ক্ত ন্ত্র · Aa Bb 123'}</p>
-            <p className="note">{t('তালিকায় নেই? ফন্ট ফাইল যোগ করুন')} — <button type="button" className="linkbtn" data-testid="app-font-add" onClick={() => setTab('font')}>{t('ফন্ট ও বিজয়')}</button></p>
+            <p className="note">{t('তালিকায় নেই? ফন্ট ফাইল যোগ করুন')} — <button type="button" className="linkbtn" data-testid="app-font-add" onClick={() => { save('device.fold.own-fonts', true); setTab('font'); }}>{t('ফন্ট ও বিজয়')}</button></p>
           </Group>
           <Group title={t('ব্যাকআপ')} info="সব ড্রাফট (ট্র্যাশসহ), শেখা শব্দ, নিজের লেআউট, ভয়েসের সংশোধন আর সেটিংস একটা ফাইলে (ফন্ট ফাইল বাদে)। দুই জায়গায় রাখা যায়: এই ডিভাইসে (iPad-এ Files বা iCloud Drive) আর আপনার নিজের Google Drive-এর “ProNotes Backups” ফোল্ডারে। Drive-এ Gemini key কখনো যায় না। ফেরত আনলে একই ড্রাফট আলাদা কপি হয় না: যেটা পরে বদলানো হয়েছে সেটা থাকে, অন্যটা ড্রাফটের ভার্সন-ইতিহাসে রাখা হয়, তাই কিছু হারায় না।" fold={{ id: 'backup', summary: !p.backupInfo.last.drive && !p.backupInfo.last.device ? t('এখনো কোনো ব্যাকআপ নেওয়া হয়নি')
             : t('শেষ ব্যাকআপ') + ': ' + formatDateTime(Math.max(p.backupInfo.last.drive ?? 0, p.backupInfo.last.device ?? 0), p.uiLang) }}>

@@ -232,9 +232,18 @@ export function planFontSync(local: { id: string }[], remote: DriveFont[], gone:
   const here = new Set(local.map((l) => l.id));
   const there = new Set(remote.map((r) => r.appProperties?.pnFont).filter(Boolean) as string[]);
   const dead = new Set(gone);
+  // the same font uploaded twice (two files with one id): one stays, the rest go (decisions.md 85)
+  const seen = new Set<string>();
+  const extra = new Set<DriveFont>();
+  for (const r of remote) {
+    const id = r.appProperties?.pnFont;
+    if (!id) continue;
+    if (seen.has(id)) extra.add(r);
+    seen.add(id);
+  }
   return {
-    down: remote.filter((r) => r.appProperties?.pnFont && !here.has(r.appProperties.pnFont) && !dead.has(r.appProperties.pnFont)),
+    down: remote.filter((r) => r.appProperties?.pnFont && !extra.has(r) && !here.has(r.appProperties.pnFont) && !dead.has(r.appProperties.pnFont)),
     up: local.map((l) => l.id).filter((id) => !there.has(id) && !dead.has(id)),
-    trash: remote.filter((r) => r.appProperties?.pnFont && dead.has(r.appProperties.pnFont)),
+    trash: remote.filter((r) => r.appProperties?.pnFont && (dead.has(r.appProperties.pnFont) || extra.has(r))),
   };
 }

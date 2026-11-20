@@ -30,7 +30,8 @@ test('a pinch on a note makes its text bigger, and it is kept', async ({ page })
   await expect(page.locator('.page.note')).toBeVisible();
   await editor(page).click();
   await page.keyboard.insertText('নোট');
-  const size = () => editor(page).evaluate((el) => parseFloat(getComputedStyle(el).fontSize));
+  // the letters as drawn, not the base size: paragraphs carry their own size, so only real zoom shows here (decisions.md 85)
+  const size = () => editor(page).evaluate((el) => { const r = document.createRange(); r.selectNodeContents(el.querySelector('p') ?? el); return r.getBoundingClientRect().width; });
   const before = await size();
   const box = (await page.locator('.desk').boundingBox())!;
   await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
@@ -41,6 +42,7 @@ test('a pinch on a note makes its text bigger, and it is kept', async ({ page })
   // kept once the fingers lift (a moment after the last wheel step)
   await expect.poll(() => page.evaluate(() => JSON.parse(localStorage.getItem('pronotes.view') || '{}').textZoom ?? 100)).toBeGreaterThan(120);
   await page.reload();
+  if (!((await editor(page).textContent()) ?? '').includes('নোট')) { await editor(page).click(); await page.keyboard.insertText('নোট'); }
   await expect.poll(size).toBeGreaterThan(before * 1.2);
 });
 

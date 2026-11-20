@@ -5,6 +5,7 @@
 import type { StoredFont } from '../storage';
 
 export * from './font-file';
+export * from './dedupe';
 import { readFontStyle } from './font-file';
 
 /** Unicode Bangla fonts commonly installed on Bangladeshi computers (v8 LOCAL_UNI, legal-drafting ones first). */
