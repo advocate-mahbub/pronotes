@@ -1267,3 +1267,11 @@ body:has(.kb-strip.down) .mic, body:has(.kb-strip.down) .live-mic { bottom: calc
 .kb-liftwrap:not(.phone):has(.kb.compact) { background: transparent; }
 .kb-liftwrap:not(.phone) .kb.compact { border-bottom-left-radius: var(--dev-r); border-bottom-right-radius: var(--dev-r); border-bottom: 0; }
 .kb-float, .kb-float .kb { border-bottom-left-radius: var(--dev-r, 18px); border-bottom-right-radius: var(--dev-r, 18px); }
+/* decisions.md 84: the home-bar room (safe-area-inset-bottom) was taken twice — by .app and again by the
+   keyboard / put-down strip — so the keys sat a home bar too high. Whatever sits at the bottom takes it alone. */
+@media (max-width: 640px) {
+  .app:has(.kb-liftwrap), .dock:has(.kb-liftwrap) { padding-bottom: 0; }
+}
+.app:has(.kb-strip.down) { padding-bottom: 0; }
+/* the put-down strip lies over the page's foot: the page keeps room so its last line can scroll above it */
+.app:has(.kb-strip.down) .desk { padding-bottom: calc(64px + env(safe-area-inset-bottom, 0px)); }
