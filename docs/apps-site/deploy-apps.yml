@@ -1,0 +1,44 @@
+# Copy this file into the repository advocate-mahbub/pronotes-apps as .github/workflows/deploy-apps.yml
+# (decisions.md 81, docs/APPS.md). It needs no token or secret: it reads the public pronotes repository,
+# builds the apps site (npm run build:apps) and publishes it on GitHub Pages at apps.mahbuburrahman.bd.
+# Runs every day by itself, and at once from Actions → "Deploy apps site" → Run workflow.
+# One-time setup there: Settings → Pages → Source: "GitHub Actions"; Custom domain: apps.mahbuburrahman.bd.
+name: Deploy apps site
+on:
+  schedule:
+    - cron: '17 21 * * *' # every day, 03:17 in Dhaka
+  workflow_dispatch:
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+concurrency:
+  group: pages
+  cancel-in-progress: false
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          repository: advocate-mahbub/pronotes
+          ref: main
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+      - run: npm run build:apps
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist-apps
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

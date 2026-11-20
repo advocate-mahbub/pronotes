@@ -1161,4 +1161,6 @@ export const EN: Record<string, string> = {
   "এটা পুরোনো Windows bitmap ফন্ট (.fon); ব্রাউজার এটা দেখাতে পারে না — একই ফন্টের .ttf বা .otf ফাইল যোগ করুন": "This is an old Windows bitmap font (.fon), which browsers cannot show — add a .ttf or .otf file of the same font",
   "এটা Type 1 ফন্ট (.pfb/.pfa); ব্রাউজার এটা দেখাতে পারে না — .otf বা .ttf ফাইল যোগ করুন": "This is a Type 1 font (.pfb/.pfa), which browsers cannot show — add an .otf or .ttf file",
   "এই ফাইলটা ফন্ট হিসেবে খোলা গেল না (চলে: .ttf, .otf, .woff, .woff2, .ttc, .otc, .eot)": "This file could not be opened as a font (works: .ttf, .otf, .woff, .woff2, .ttc, .otc, .eot)",
+  "আমার অ্যাপ": "My apps",
+  "নিজের ওয়েব অ্যাপ (.zip) যোগ করুন ও চালান; লেখার ঘরে ProNotes-এর কিবোর্ড লেআউট": "Add and run your own web apps (.zip); their text boxes use the ProNotes keyboard layout",
 };
