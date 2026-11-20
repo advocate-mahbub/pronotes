@@ -7,9 +7,11 @@ import type { Plugin } from 'vite';
  * Content-Security-Policy as a <meta> tag in the production build, for hosts that cannot send
  * headers (GitHub Pages). Same rules as public/_headers, minus frame-ancestors (not allowed in
  * <meta>). Not added to the single-file claude.ai preview, which inlines its script.
+ * frame-src: the user's own apps run on apps.mahbuburrahman.bd (decisions.md 81); localhost:4174 is its
+ * local test copy (npm run preview:apps) and can only be reached from the same computer.
  */
 const CSP = "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data: blob:; " +
-  "connect-src 'self' data: blob: https://generativelanguage.googleapis.com wss://generativelanguage.googleapis.com https://www.googleapis.com https://oauth2.googleapis.com; worker-src 'self'; manifest-src 'self'; base-uri 'self'; form-action 'none'; object-src 'none'";
+  "connect-src 'self' data: blob: https://generativelanguage.googleapis.com wss://generativelanguage.googleapis.com https://www.googleapis.com https://oauth2.googleapis.com; worker-src 'self'; manifest-src 'self'; frame-src 'self' https://apps.mahbuburrahman.bd http://localhost:4174; base-uri 'self'; form-action 'none'; object-src 'none'";
 const cspMeta = (): Plugin => ({
   name: 'pronotes-csp-meta',
   apply: 'build',

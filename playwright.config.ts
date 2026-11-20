@@ -7,7 +7,11 @@ export default defineConfig({
   timeout: 30_000,
   // on GitHub Actions a test that fails once is tried again (a few service-worker/timing tests are flaky under load)
   retries: process.env.CI ? 1 : 0,
-  webServer: { command: 'npm run build && npm run preview -- --port 4173 --strictPort', port: 4173, reuseExistingServer: true, timeout: 120_000 },
+  webServer: [
+    { command: 'npm run build && npm run preview -- --port 4173 --strictPort', port: 4173, reuseExistingServer: true, timeout: 120_000 },
+    // the user's own apps run on a second address (apps.mahbuburrahman.bd; decisions.md 81): its local copy
+    { command: 'npm run build:apps && npm run preview:apps', port: 4174, reuseExistingServer: true, timeout: 120_000 },
+  ],
   use: { baseURL: 'http://localhost:4173/' },
   projects: [
     { name: 'chromium', use: { ...devices['Desktop Chrome'] } },

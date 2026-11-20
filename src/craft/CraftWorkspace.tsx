@@ -7,6 +7,8 @@
  * in a same-origin iframe. Files it saves land in ProNotes' "pronotes-craft" database on this
  * device (store.ts) and can be downloaded from here. ProNotes' own editor and data are untouched.
  */
+import { UserApps } from './UserApps';
+import type { BridgeConfig } from '../../apps-site/protocol';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useT } from '../i18n';
 import { saveFile } from '../storage/download';
@@ -61,13 +63,17 @@ interface Props {
   /** Tells ProNotes whether an app fills the screen (its header then steps aside). */
   onViewChange?: (v: CraftView) => void;
   say: (m: string, v?: Record<string, string | number>) => void;
+  /** ProNotes' typing settings for the user's own apps (আমার অ্যাপ), and the language switch. */
+  typing?: { cfg: BridgeConfig; onToggleLanguage: () => void };
 }
 
-export function CraftWorkspace({ visible, initialApp, handoff, onShowDrafts, onViewChange, say }: Props) {
+export function CraftWorkspace({ visible, initialApp, handoff, onShowDrafts, onViewChange, say, typing }: Props) {
   const { t } = useT();
   // the running app (its iframe stays alive) and what is on screen
   const [app, setApp] = useState<CraftApp | null>(() => craftApp(initialApp) ?? null);
-  const [view, setView] = useState<CraftView>(() => (craftApp(initialApp) ? 'app' : 'launcher'));
+  const [view, setView] = useState<CraftView | 'mine'>(() => (craftApp(initialApp) ? 'app' : 'launcher'));
+  // আমার অ্যাপ: once opened it stays (its apps keep running) until the page is reloaded
+  const [mineOn, setMineOn] = useState(false);
   const [run, setRun] = useState(0); // a new number restarts the app (fresh iframe)
   const [files, setFiles] = useState<CraftFileInfo[]>([]);
   const [status, setStatus] = useState<Status>('checking');
@@ -77,7 +83,7 @@ export function CraftWorkspace({ visible, initialApp, handoff, onShowDrafts, onV
   const ready = useRef(false);
   const pending = useRef<{ name: string; bytes: ArrayBuffer } | null>(null);
 
-  useEffect(() => { onViewChange?.(visible ? view : 'launcher'); }, [visible, view, onViewChange]);
+  useEffect(() => { onViewChange?.(visible ? (view === 'mine' ? 'app' : view) : 'launcher'); }, [visible, view, onViewChange]);
 
   const refresh = useCallback(async () => {
     try { setFiles(await listCraftFiles()); } catch { setFiles([]); }
@@ -206,7 +212,7 @@ export function CraftWorkspace({ visible, initialApp, handoff, onShowDrafts, onV
   const busy = status === 'checking' || status === 'loading' || status === 'slow';
 
   return (
-    <section className={'craft' + (view === 'app' && app ? ' craft-running' : '')} hidden={!visible} data-testid="craft">
+    <section className={'craft' + ((view === 'app' && app) || view === 'mine' ? ' craft-running' : '')} hidden={!visible} data-testid="craft">
       {view === 'launcher' && (
         <div className="craft-launcher" data-testid="craft-launcher">
           <header className="craft-bar">
@@ -230,6 +236,18 @@ export function CraftWorkspace({ visible, initialApp, handoff, onShowDrafts, onV
               </button>
             ))}
           </div>
+          {typing && (
+            <>
+              <h3 className="craft-h">{t('আমার অ্যাপ')}</h3>
+              <div className="craft-grid">
+                <button type="button" className={'craft-card' + (mineOn ? ' running' : '')} data-testid="craft-mine" onClick={() => { setMineOn(true); setView('mine'); }}>
+                  <strong>{t('আমার অ্যাপ')}</strong>
+                  <span>{t('নিজের ওয়েব অ্যাপ (.zip) যোগ করুন ও চালান; লেখার ঘরে ProNotes-এর কিবোর্ড লেআউট')}</span>
+                  <small>{mineOn ? t('চলছে') : 'apps.mahbuburrahman.bd'}</small>
+                </button>
+              </div>
+            </>
+          )}
           <p className="craft-note">{t('অ্যাপগুলো ArtCraft-এর ওপেন-সোর্স (MIT/Apache-2.0) web build, অপরিবর্তিত অবস্থায় এই সাইট থেকে চলে। ProNotes-এর সাথে এদের দলের কোনো সম্পর্ক নেই।')}</p>
           <h3 className="craft-h">{t('এই ডিভাইসে রাখা ফাইল')}</h3>
           <ul className="craft-files" data-testid="craft-files">
@@ -272,6 +290,17 @@ export function CraftWorkspace({ visible, initialApp, handoff, onShowDrafts, onV
               {busy && <div className="craft-loading" role="status"><span className="craft-spinner" aria-hidden="true" />{t(statusText[status])}</div>}
             </div>
           )}
+        </div>
+      )}
+      {typing && mineOn && (
+        <div className="craft-app" hidden={view !== 'mine'} data-testid="user-apps">
+          <header className="craft-slim">
+            <button type="button" className="craft-slim-btn" data-testid="user-apps-back" onClick={() => setView('launcher')}>← {t('অ্যাপস')}</button>
+            <strong>{t('আমার অ্যাপ')}</strong>
+            <span className="craft-spacer" />
+            <button type="button" className="craft-slim-btn" onClick={onShowDrafts}>✎ ProNotes</button>
+          </header>
+          <UserApps cfg={typing.cfg} onToggleLanguage={typing.onToggleLanguage} />
         </div>
       )}
     </section>

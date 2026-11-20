@@ -520,6 +520,11 @@ export function App() {
   const sideCfg = useRef<BornonaConfig>({ bangla, map, vowelForming: vf, oldReph, suspended: false });
   sideCfg.current = { bangla, map, vowelForming: vf, oldReph, suspended: false, fixChandra, toggleKey, hasantaRules: layoutId === PRONOTES_LAYOUT_ID };
   const getSideConfig = useCallback(() => sideCfg.current, []);
+  // the same layout and rules for the user's own apps (▦ → আমার অ্যাপ; decisions.md 81)
+  const appTyping = useMemo(() => ({
+    cfg: { bangla, map, vowelForming: vf, oldReph, fixChandra, toggleKey, hasantaRules: layoutId === PRONOTES_LAYOUT_ID },
+    onToggleLanguage: () => setBangla((b) => !b),
+  }), [bangla, map, vf, oldReph, fixChandra, toggleKey, layoutId]);
   const toggleBangla = useCallback(() => setBangla((b) => !b), []);
 
   // every setting on this device goes into the backup (store), and comes back on restore
@@ -996,7 +1001,7 @@ export function App() {
       <div className="body">
         {!lawDictionaryOpen && !craftOpen && showSide && (wide ? sidebar : <div className="drawer" onClick={(e) => e.target === e.currentTarget && setSideOpen(false)}>{sidebar}</div>)}
         <div className="work">
-          {craftMounted && <CraftWorkspace visible={craftOpen} initialApp={craftStart} handoff={craftHandoff} onShowDrafts={() => setCraftOpen(false)} onViewChange={setCraftView} say={say} />}
+          {craftMounted && <CraftWorkspace visible={craftOpen} initialApp={craftStart} handoff={craftHandoff} onShowDrafts={() => setCraftOpen(false)} onViewChange={setCraftView} say={say} typing={appTyping} />}
           {craftOpen ? null : lawDictionaryOpen ? <LawDictionary onClose={() => setLawDictionaryOpen(false)} /> : current && kindOf(current) === 'chart' ? (
             <ChartWorkspace key={current.id + ':' + reloadKey} doc={current} cfg={getSideConfig} toggle={toggleBangla} say={say} onRename={renameAny}
               toolbarExtra={<button type="button" className={'tb' + (showSide ? ' on' : '')} title={t('ডকুমেন্টের তালিকা')} aria-label={t('ডকুমেন্টের তালিকা')}

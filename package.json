@@ -19,7 +19,9 @@
     "icons": "node tools/make-icons.mjs",
     "craft:fetch": "node tools/fetch-craft-apps.mjs public",
     "craft:dist": "node tools/fetch-craft-apps.mjs dist",
-    "craft:check": "node tools/check-craft-updates.mjs"
+    "craft:check": "node tools/check-craft-updates.mjs",
+    "build:apps": "node tools/build-apps.mjs",
+    "preview:apps": "vite preview --config vite.apps.preview.mjs"
   },
   "dependencies": {
     "@fontsource/hind-siliguri": "5.3.0",
