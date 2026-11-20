@@ -19,20 +19,22 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           repository: advocate-mahbub/pronotes
           ref: main
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v6
         with:
           node-version-file: .nvmrc
           cache: npm
       - run: npm ci
       - run: npm run build:apps
-      - uses: actions/configure-pages@v5
-      - uses: actions/upload-pages-artifact@v3
+      - uses: actions/configure-pages@v6
+      # v5 (Node 24) leaves out files whose names start with a dot unless told; v3 took them, so the site stays the same
+      - uses: actions/upload-pages-artifact@v5
         with:
           path: dist-apps
+          include-hidden-files: true
   deploy:
     needs: build
     runs-on: ubuntu-latest
@@ -41,4 +43,4 @@ jobs:
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - id: deployment
-        uses: actions/deploy-pages@v4
+        uses: actions/deploy-pages@v5

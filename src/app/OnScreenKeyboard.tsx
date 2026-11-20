@@ -29,6 +29,8 @@ export interface RemoteTarget {
 }
 
 interface Props {
+  /** The strip's middle, between 🌐 and 🎙 (iPad split/floating: voice; decisions.md 83). */
+  gap?: ReactNode;
   /** The draft's editor; null when the keyboard types into `target`. */
   editor: Editor | null;
   target?: RemoteTarget;
@@ -68,13 +70,15 @@ const LETTERS_KEY = { bn: 'অআ', en: 'ABC' } as const;
 const PAD_LABEL: Record<Pad, string> = { numEn: '123', num: '\u09e7\u09e8\u09e9', anna: '\u09f4\u09f5\u09f6' };
 /** Line icons for the strip under the phone keys (iOS draws 🌐 and 🎙 as plain lines, not emoji). */
 export const GLOBE_ICON = (
-  <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" strokeWidth="1.7" aria-hidden="true">
-    <circle cx="12" cy="12" r="9" /><path d="M3 12h18M12 3c2.6 2.8 3.9 5.8 3.9 9s-1.3 6.2-3.9 9c-2.6-2.8-3.9-5.8-3.9-9S9.4 5.8 12 3z" />
+  // drawn in the iPhone keyboard's shape (decisions.md 83): the outline, a centre line, one oval meridian, the
+  // equator and two latitude lines curving with the sphere
+  <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" aria-hidden="true">
+    <circle cx="12" cy="12" r="9.25" /><ellipse cx="12" cy="12" rx="4.1" ry="9.25" /><path d="M12 2.75v18.5M2.75 12h18.5M4.4 7.1c2.1 1 4.7 1.5 7.6 1.5s5.5-.5 7.6-1.5M4.4 16.9c2.1-1 4.7-1.5 7.6-1.5s5.5.5 7.6 1.5" />
   </svg>
 );
 export const LINE_MIC = (
-  <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" aria-hidden="true">
-    <rect x="9" y="3" width="6" height="11" rx="3" /><path d="M5.5 11a6.5 6.5 0 0 0 13 0M12 17.5V21M8.5 21h7" />
+  <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" aria-hidden="true">
+    <rect x="9" y="2.5" width="6" height="11.5" rx="3" /><path d="M5.75 10.75a6.25 6.25 0 0 0 12.5 0M12 17v4.25M8.75 21.25h6.5" />
   </svg>
 );
 /** Held right ↵: what the phone has no key for (decisions.md 76). */
@@ -110,7 +114,7 @@ interface Touch {
  * left = the word; two spaces = "। "; slide from #+= to a mark and lift = that mark, back to letters;
  * ⇧ twice = Shift lock; long-press the language key = one-handed (phones) or floating (iPad).
  */
-export function OnScreenKeyboard({ editor: ed, target, map, bangla, getConfig, onToggleLanguage, onWordDone, flash, onHide, compact, hand, setHand, split, menuItems, live, mic, voicing }: Props) {
+export function OnScreenKeyboard({ editor: ed, target, map, bangla, getConfig, onToggleLanguage, onWordDone, flash, onHide, compact, hand, setHand, split, menuItems, live, mic, voicing, gap }: Props) {
   const { t } = useT();
   const [shift, setShift] = useState(0); // 0 off, 1 next key, 2 locked
   const [alt, setAlt] = useState(false);
@@ -613,9 +617,10 @@ export function OnScreenKeyboard({ editor: ed, target, map, bangla, getConfig, o
         {rowsEl}
         {compact && (
           // the strip under the keys, where iOS keeps 🌐 and 🎙 (and the space the home bar leaves)
-          <div className={'kb-strip' + (voicing ? ' voicing' : '')} data-testid="kb-strip">
-            <span className="strip-side">{keyEl('#Globe')}{altKey && keyEl('#Alt')}</span>
-            {hideEl}
+          <div className={'kb-strip' + (voicing ? ' voicing' : '') + (gap ? ' with-gap' : '')} data-testid="kb-strip">
+            <span className="strip-side">{keyEl('#Globe')}{altKey && keyEl('#Alt')}{gap && hideEl}</span>
+            {/* iPad split/floating (decisions.md 83): the room between 🌐 and 🎙 is for voice */}
+            {gap ?? hideEl}
             <span className="strip-side">{mic !== undefined ? mic : live && keyEl('#Live')}</span>
           </div>
         )}
