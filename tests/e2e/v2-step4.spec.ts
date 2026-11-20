@@ -40,6 +40,8 @@ test('ANSI typing: ে-কার after রু stays inside the word (ফার�
 });
 
 test('ANSI typing: Bornona keys typed straight into Bijoy, ⌫ removes one letter, English in its own font', async ({ page }) => {
+  // Live off: this test is about the other voice mode (one 🎙 starts Live first; decisions.md 82)
+  await page.addInitScript(() => localStorage.setItem('pronotes.voice.modes', JSON.stringify({ live: false })));
   await start(page);
   await page.keyboard.press('Control+Shift+KeyA');
   await expect(page.getByTestId('ansi-typing-badge')).toBeVisible();

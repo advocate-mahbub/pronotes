@@ -4,7 +4,8 @@ import { EditorContent, useEditor, type Editor } from '@tiptap/react';
 import { fixNukta, type LayoutMap, type KmxKeyboard } from '../bornona-engine';
 import { editorExtensions, insertPlainText, textBeforeCaret, type BornonaConfig } from '../editor';
 import { bijoyRuns, convertBijoyPaste, runsToClipboardHtml, isBijoyFont, type Run } from '../bijoy';
-import { VoiceController, VoiceDeduper, cleanVoice, decideVoice, detectVoiceEnv, voiceInsertText } from '../voice';
+import { VoiceController, VoiceDeduper, cleanVoice, decideVoice, detectVoiceEnv, voiceInsertText, toBanglaVoice, banglaScript } from '../voice';
+import { geminiRescript } from '../ai';
 import { voiceLang, type VoicePrefs } from './prefs-types';
 import { BijoyPanel } from './BijoyPanel';
 import { AiPanel } from './AiPanel';
@@ -150,6 +151,17 @@ export function Workspace(p: Props) {
   const { w: pwTw, h: phTw } = pageSize(pg);
   const geo = { pw: pwTw / 15, ph: phTw / 15, mt: pg.margins.top / 15, mr: pg.margins.right / 15, mb: pg.margins.bottom / 15, ml: pg.margins.left / 15 };
   const deskRef = useRef<HTMLDivElement>(null);
+  // the zoom bar comes back for a moment when the page is scrolled or touched (decisions.md 82)
+  const [zoomWake, setZoomWake] = useState(0);
+  useEffect(() => {
+    const el = deskRef.current;
+    if (!el) return;
+    let last = 0;
+    const wake = () => { const now = Date.now(); if (now - last > 400) { last = now; setZoomWake((n) => n + 1); } };
+    el.addEventListener('scroll', wake, { passive: true });
+    el.addEventListener('pointerdown', wake, { passive: true });
+    return () => { el.removeEventListener('scroll', wake); el.removeEventListener('pointerdown', wake); };
+  }, []);
   /** On-screen keyboard put down for reading (not saved; a tap on the page brings it back). */
   const [kbDown, setKbDown] = useState(false);
   // phones: one-handed keyboard; iPad and computers: a small floating keyboard (both: long-press the language key)
@@ -255,6 +267,22 @@ export function Workspace(p: Props) {
   const liveOk = p.voiceModes.live && live.available;
   const recOk = p.voiceModes.rec && p.voiceEngine === 'ai';
   const voicing = live.on || aiv.state !== 'idle';
+  const toggleVoiceRef = useRef<() => void>(() => {});
+  // the page's one 🎙: Live first, then record-to-text (AI) or the device's voice; whatever is on is shown
+  const deviceOk = p.voiceEngine === 'device';
+  const tapAct = liveOk ? live.toggle : recOk ? aiv.press : deviceOk ? () => toggleVoiceRef.current() : null;
+  const holdAct = liveOk ? (recOk ? aiv.press : deviceOk ? () => toggleVoiceRef.current() : undefined) : undefined;
+  const floatMic = recOk && aiv.state !== 'idle' && !stripShown ? <AiVoiceKey v={aiv} disabled={p.ansiTyping} icon={MIC} />
+    : !tapAct || stripShown ? null
+    : (
+      <MicKey onTap={tapAct} onHold={holdAct} disabled={p.ansiTyping && !liveOk}
+        testid={liveOk ? 'live-mic' : recOk ? 'ai-voice' : 'mic'}
+        className={'mic one-mic' + (liveOk ? ' is-live' : recOk ? ' ai-voice' : '') + (live.on || listening ? ' live' : '') + (deviceKb ? ' device' : '')}
+        pressed={live.on || listening || deviceKb}
+        label={listening ? t('ভয়েস থামান') : holdAct ? t('ভয়েস: চাপলে Live, চেপে ধরলে রেকর্ড করে লেখা') : liveOk ? t('Live ভয়েস: বলার সাথে সাথে লেখা') : recOk ? t('AI ভয়েস টাইপিং (Gemini)') : t('ভয়েস টাইপিং')}>
+        {live.on ? <span aria-hidden="true">●</span> : MIC}
+      </MicKey>
+    );
   const micSlot = voicing ? <VoiceControls live={live} ai={aiv} />
     : liveOk || recOk ? <MicKey onTap={liveOk ? live.toggle : aiv.press} onHold={liveOk && recOk ? aiv.press : undefined} /> : null;
 
@@ -406,6 +434,7 @@ export function Workspace(p: Props) {
   const lang = () => voiceLang(cb.current.voice, cfg.current.bangla);
   const voiceOpts = () => ({ commands: cb.current.voice.commands, banglaDigits: cb.current.voice.banglaDigits, corrections: cb.current.corrections });
   const ctrl = useRef<VoiceController | null>(null);
+  const voiceQueue = useRef(Promise.resolve());
   const edRef = useRef(editor);
   edRef.current = editor;
 
@@ -430,7 +459,20 @@ export function Workspace(p: Props) {
   if (!ctrl.current) {
     ctrl.current = new VoiceController(env, {
       lang,
-      onFinal: (raw) => {
+      onFinal: (raw0) => {
+        // Bangla in Bengali letters only (decisions.md 82); the rewrite of Latin letters needs a moment
+        const l0 = lang();
+        voiceQueue.current = voiceQueue.current.then(async () => putFinal(await toBanglaVoice(raw0, l0, geminiRescript(cb.current.gemini.key))));
+      },
+      onInterim: (s) => setInterim(lang().startsWith('bn') ? banglaScript(s).text : s),
+      onListening: setListening,
+      onError: (msg, fallback) => {
+        if (fallback) enterDeviceKb();
+        cb.current.say(msg);
+      },
+    });
+  }
+  function putFinal(raw: string) {
         const ed = edRef.current;
         if (!ed) return;
         const l = lang();
@@ -438,14 +480,6 @@ export function Workspace(p: Props) {
         const t = cleanVoice(raw, l, o);
         if (!t || !dedupe.current.accept(t)) return;
         insertPlainText(ed.view, voiceInsertText(textBeforeCaret(ed.view), raw, l, o));
-      },
-      onInterim: setInterim,
-      onListening: setListening,
-      onError: (msg, fallback) => {
-        if (fallback) enterDeviceKb();
-        cb.current.say(msg);
-      },
-    });
   }
   const toggleVoice = () => {
     const c = ctrl.current!;
@@ -460,6 +494,7 @@ export function Workspace(p: Props) {
     if (!load('voiceConsent', false)) return setConsentOpen(true);
     startLive();
   };
+  toggleVoiceRef.current = toggleVoice;
   const startLive = () => {
     dedupe.current.reset();
     edRef.current?.commands.focus();
@@ -711,7 +746,7 @@ export function Workspace(p: Props) {
           {legal && !reflow && p.view.grid.on && <GridOverlay g={p.view.grid} geo={geo} lineH={(p.format.size * 4) / 3 * p.format.lineSpacing * 1.3} />}
           <EditorContent editor={editor} />
         </div>
-        <ZoomBar pct={paper ? Math.round(zoom * 100) : Math.round(textZoom * 100)} live={pinchPct} paper={paper} min={paper ? 25 : 60} max={paper ? 300 : 250}
+        <ZoomBar wake={zoomWake} pct={paper ? Math.round(zoom * 100) : Math.round(textZoom * 100)} live={pinchPct} paper={paper} min={paper ? 25 : 60} max={paper ? 300 : 250}
           setPct={(z) => {
             setPinchPct(null);
             if (paper) p.setView({ ...p.view, zoom: z });
@@ -726,19 +761,13 @@ export function Workspace(p: Props) {
           <button type="button" className="ansi-badge" data-testid="ansi-badge" title={t('কপি করলে বিজয় (ANSI) যাবে। চাপলে ইউনিকোডে ফিরবে।')}
             onPointerDown={(e) => e.preventDefault()} onClick={() => p.setOutput('unicode')}>{t('কপি: ANSI')}</button>
         )}
-        {p.voiceEngine === 'device' && <button type="button" className={'mic' + (listening ? ' live' : '') + (deviceKb ? ' device' : '')} data-testid="mic"
-          aria-pressed={listening || deviceKb} aria-label={listening ? t('ভয়েস থামান') : t('ভয়েস টাইপিং')} title={listening ? t('ভয়েস থামান') : t('ভয়েস টাইপিং')}
-          disabled={p.ansiTyping}
-          onPointerDown={(e) => e.preventDefault()} onClick={toggleVoice}>{MIC}</button>}
-        {recOk && !stripShown && <AiVoiceKey v={aiv} disabled={p.ansiTyping} icon={MIC} />}
-        {stripShown && aiv.consentUi}
+        {/* one 🎙 on the page (decisions.md 82): a tap = the first voice mode, held = the second, as in the keyboard strip.
+            The compact keyboard's strip has its own 🎙, so this one steps aside while that strip is up. */}
+        {floatMic}
+        {/* the record mode's consent box: AiVoiceKey shows its own while it is on screen */}
+        {!(recOk && aiv.state !== 'idle' && !stripShown) && aiv.consentUi}
         {live.ui}
         {live.on && !stripShown && <div className="voice-pill-wrap"><VoiceControls live={live} /></div>}
-        {liveOk && !stripShown && !(p.kbVisible && !deviceKb) && (
-          <button type="button" className={'live-mic' + (live.on ? ' on' : '')} data-testid="live-mic" aria-pressed={live.on}
-            aria-label={t('Live ভয়েস: বলার সাথে সাথে লেখা')} title={t('Live ভয়েস: বলার সাথে সাথে লেখা')}
-            onPointerDown={(e) => e.preventDefault()} onClick={live.toggle}>{live.on ? '●' : '🎙'}<span className="live-badge" aria-hidden="true">LIVE</span></button>
-        )}
         {kbDown && p.kbVisible && !deviceKb && (
           // the keyboard put down: its bottom strip stays (🌐 · ⌨ · 🎙), so voice and the language are a tap away
           <div className={'kb-strip down' + (voicing ? ' voicing' : '')} data-testid="kb-strip-down" onPointerDown={(e) => e.preventDefault()}>

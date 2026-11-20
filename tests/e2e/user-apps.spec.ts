@@ -68,3 +68,40 @@ test('a zip without a web page is refused with a clear reason', async ({ page })
   await runner.getByTestId('apps-add-file').setInputFiles({ name: 'bad.zip', mimeType: 'application/zip', buffer: Buffer.from('not a zip') });
   await expect(runner.getByTestId('apps-msg')).toContainText('zip');
 });
+
+test('ProNotes’ own on-screen keyboard types into an app’s text box (decisions.md 82)', async ({ page }) => {
+  const runner = await openMine(page);
+  await runner.getByTestId('apps-add-file').setInputFiles({ name: 'khata.zip', mimeType: 'application/zip', buffer: APP });
+  await runner.locator('[data-testid^="apps-open-"]').click();
+  const app = runner.frameLocator('[data-testid="apps-frame"]');
+  await expect(app.locator('#js')).toHaveText('script ran');
+  // the keyboard is off: tapping a text box shows none
+  await app.locator('#t').click();
+  await expect(page.getByTestId('user-apps-kb')).toHaveCount(0);
+  // on: it comes up under the app while a text box has focus, and the device's keyboard stays down
+  await page.getByTestId('user-apps-back').click();
+  await page.getByTestId('craft-close').click();
+  await page.getByTestId('kb-toggle').click();
+  await page.getByTestId('craft-toggle').click();
+  await page.getByTestId('craft-mine').click();
+  await app.locator('#t').click();
+  const kb = page.getByTestId('user-apps-kb');
+  await expect(kb).toBeVisible();
+  await expect(app.locator('#t')).toHaveAttribute('inputmode', 'none');
+  const key = (c: string) => kb.locator(`[data-code="${c}"]`).first();
+  for (const c of ['KeyK', 'KeyH', 'KeyH', 'KeyL']) await key(c).click();
+  await expect(app.locator('#t')).toHaveValue('ক্‌ল'); // the ProNotes rules, there too
+  await key('#Back').click();
+  await key('#Back').click(); // ্ + ZWNJ go in one ⌫
+  await expect(app.locator('#t')).toHaveValue('ক');
+  await key('#Space').click();
+  await key('KeyJ').click();
+  await expect(app.locator('#t')).toHaveValue('ক জ');
+  await key('#Enter').click();
+  await key('KeyK').click();
+  await expect(app.locator('#t')).toHaveValue('ক জ\nক');
+  // a contenteditable editor too
+  await app.locator('#ce').click();
+  await key('KeyL').click();
+  await expect(app.locator('#ce')).toHaveText('ল');
+});

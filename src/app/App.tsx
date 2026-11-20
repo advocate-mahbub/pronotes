@@ -96,6 +96,9 @@ export function App() {
   const [theme, setTheme] = useState<Theme>(() => load<Theme>('theme', 'auto'));
   useEffect(() => save('uiLang', uiLang), [uiLang]);
   // the app's own Bangla and English fonts (menus, buttons, keyboard keys); decisions.md 80
+  // the top bar folded away to a thin strip (decisions.md 82); remembered on this device
+  const [topMin, setTopMin0] = useState<boolean>(() => load('device.topMin', false));
+  const setTopMin = (v: boolean) => { setTopMin0(v); save('device.topMin', v); };
   const [appFonts, setAppFonts] = useState<AppFonts>(() => ({ bn: DEFAULT_APP_BN, en: DEFAULT_APP_EN, ...load<Partial<AppFonts>>('appFonts', {}) }));
   useEffect(() => {
     save('theme', theme);
@@ -524,7 +527,9 @@ export function App() {
   const appTyping = useMemo(() => ({
     cfg: { bangla, map, vowelForming: vf, oldReph, fixChandra, toggleKey, hasantaRules: layoutId === PRONOTES_LAYOUT_ID },
     onToggleLanguage: () => setBangla((b) => !b),
-  }), [bangla, map, vf, oldReph, fixChandra, toggleKey, layoutId]);
+    // ProNotes' own on-screen keyboard under an app's text box (decisions.md 82): the same on/off as for drafts
+    keyboard: { on: kbVisible, compact: phone || (typeof window !== 'undefined' && window.innerWidth < 700), getConfig: getSideConfig },
+  }), [bangla, map, vf, oldReph, fixChandra, toggleKey, layoutId, kbVisible, phone, getSideConfig]);
   const toggleBangla = useCallback(() => setBangla((b) => !b), []);
 
   // every setting on this device goes into the backup (store), and comes back on restore
@@ -539,11 +544,11 @@ export function App() {
   const [autoDrive, setAutoDrive0] = useState<boolean>(() => load('device.autoDrive', true));
   const setAutoDrive = (v: boolean) => { setAutoDrive0(v); save('device.autoDrive', v); };
 
-  const backup = async (withKey = false) => {
+  const backup = async (withKey = false, withFonts = false) => {
     try {
-      const f = await exportAll(prefs(), new Date(), withKey && geminiKey ? geminiKey : undefined);
+      const f = await exportAll(prefs(), new Date(), withKey && geminiKey ? geminiKey : undefined, withFonts);
       const ok = await saveFile(backupFileName(), new Blob([JSON.stringify(f)], { type: 'application/json' }));
-      if (ok) { markBackup('device'); say('{n}টা ড্রাফট আর শব্দভান্ডারের ব্যাকআপ তৈরি হয়েছে', { n: f.docs.length }); }
+      if (ok) { markBackup('device'); say(f.fonts?.length ? '{n}টা ড্রাফট, শব্দভান্ডার আর {f}টা ফন্টের ব্যাকআপ তৈরি হয়েছে' : '{n}টা ড্রাফট আর শব্দভান্ডারের ব্যাকআপ তৈরি হয়েছে', { n: f.docs.length, f: f.fonts?.length ?? 0 }); }
     } catch {
       say('ব্যাকআপ তৈরি করা যায়নি');
     }
@@ -685,6 +690,7 @@ export function App() {
     setTimeout(() => { if (back.after === 'backup') void driveBackup(); else void driveRefresh(); }, 600);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+  const syncFontsRef = useRef<() => Promise<void>>(async () => {});
   const restore = async (file: File) => {
     try {
       const f = parseBackup(await file.text());
@@ -701,7 +707,10 @@ export function App() {
       // the same draft is updated, never copied (decisions.md 78); the other state is in its history
       const msg = tr('ফেরত এসেছে: নতুন {a}টা, হালনাগাদ {up}টা, আগে থেকেই ছিল {u}টা', { a: r.added, up: r.updated, u: r.unchanged })
         + (r.kept ? ' · ' + tr('এখানে নতুনতর {k}টা যেমন ছিল রইল', { k: r.kept }) : '')
-        + (r.updated + r.kept ? ' · ' + tr('অন্যটা ড্রাফটের ভার্সন-ইতিহাসে আছে') : '');
+        + (r.updated + r.kept ? ' · ' + tr('অন্যটা ড্রাফটের ভার্সন-ইতিহাসে আছে') : '')
+        + (r.fonts ? ' · ' + tr('ফন্ট {f}টা', { f: r.fonts }) : '');
+      // fonts from the backup: in use at once, and into Drive when it is on
+      if (r.fonts) { await loadStoredFonts(); void syncFontsRef.current(); }
       say(msg);
       const store = (r.prefs as { store?: Record<string, unknown> }).store;
       if (store && restorePrefs(store)) {
@@ -838,6 +847,7 @@ export function App() {
       fontSyncBusy.current = false;
     }
   };
+  syncFontsRef.current = syncFonts;
   // whenever Drive comes on (sign-in, a new session with a token) and once the fonts here are loaded
   useEffect(() => { if (driveConnected) void syncFonts(); }, [driveConnected]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -976,7 +986,7 @@ export function App() {
   return (
     <I18nContext.Provider value={i18n}>
     <div className={'app' + (!lawDictionaryOpen && !craftOpen && showSide && wide ? ' with-side' : '')}>
-      <header className="top" hidden={appFullscreen}>
+      <header className="top" hidden={appFullscreen || topMin}>
         <div className="brand" id="title-slot">
           {!current && <picture className="brand-picture">
             <source media="(prefers-color-scheme: dark)" srcSet="./branding/brand-dark.svg" />
@@ -996,7 +1006,17 @@ export function App() {
           onClick={() => setTheme(themeNext[theme])}>{THEME_ICON[theme]}</button>
         <button type="button" className={'tb' + (settingsOpen ? ' on' : '')} title={t('সেটিংস')} aria-label={t('সেটিংস')} data-testid="settings"
           onClick={() => setSettingsOpen((v) => !v)}>⚙</button>
+        <button type="button" className="tb top-fold" title={t('উপরের বার গুটিয়ে রাখুন')} aria-label={t('উপরের বার গুটিয়ে রাখুন')} data-testid="top-collapse"
+          onPointerDown={(e) => e.preventDefault()} onClick={() => setTopMin(true)}>⌃</button>
       </header>
+      {/* the top bar folded away (decisions.md 82): a thin strip with ⌄ brings it back */}
+      {topMin && !appFullscreen && (
+        <div className="top-mini" data-testid="top-mini">
+          <span className={'status ' + saveState} role="status" title={statusText} />
+          <button type="button" className="top-unfold" title={t('উপরের বার দেখান')} aria-label={t('উপরের বার দেখান')} data-testid="top-expand"
+            onPointerDown={(e) => e.preventDefault()} onClick={() => setTopMin(false)}>⌄</button>
+        </div>
+      )}
 
       <div className="body">
         {!lawDictionaryOpen && !craftOpen && showSide && (wide ? sidebar : <div className="drawer" onClick={(e) => e.target === e.currentTarget && setSideOpen(false)}>{sidebar}</div>)}

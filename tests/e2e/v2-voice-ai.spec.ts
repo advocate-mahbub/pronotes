@@ -4,6 +4,8 @@ import { section } from './settings-tab';
 test.use({ launchOptions: { args: ['--use-fake-ui-for-media-stream', '--use-fake-device-for-media-stream'] } });
 
 test('✦ AI voice: consent once, records, sends WAV to Gemini, types the Bangla text', async ({ page, context }) => {
+  // Live off: this test is about the other voice mode (one 🎙 starts Live first; decisions.md 82)
+  await page.addInitScript(() => localStorage.setItem('pronotes.voice.modes', JSON.stringify({ live: false })));
   await context.grantPermissions(['microphone']);
   const bodies: string[] = [];
   await page.route('https://generativelanguage.googleapis.com/**', async (route) => {

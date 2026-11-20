@@ -64,6 +64,94 @@ function typeOut(target: Element | null, out: string) {
   else if (isCE(target)) typeInEditable(out, cfg);
 }
 
+// ---------- ProNotes' own on-screen keyboard typing here (decisions.md 82) ----------
+/** The text box the on-screen keyboard types into: the one that had focus last. */
+let last: Element | null = null;
+let oskOn = false;
+const editable = (el: Element | null) => isBox(el) || isCE(el);
+const current = (): Element | null => (editable(document.activeElement) ? document.activeElement : last && last.isConnected ? last : null);
+
+function textBefore(el: Element | null): string {
+  if (isBox(el)) return el.value.slice(0, el.selectionStart ?? el.value.length).slice(-60);
+  const sel = getSelection();
+  if (!sel || !sel.rangeCount) return '';
+  const r = sel.getRangeAt(0);
+  return r.startContainer.nodeType === Node.TEXT_NODE ? (r.startContainer.textContent ?? '').slice(0, r.startOffset).slice(-60) : '';
+}
+/** Tell ProNotes where the caret is (for its keyboard: double-space dari, word delete, whether to show). */
+function report() { const el = current(); toHost({ pn: 'ctx', editable: editable(document.activeElement), before: textBefore(el) }); }
+
+export function backIn(el: Element | null) {
+  if (isBox(el)) {
+    const s = el.selectionStart ?? 0, e = el.selectionEnd ?? s;
+    if (s !== e) return setValue(el, el.value.slice(0, s) + el.value.slice(e), s);
+    if (!s) return;
+    // ্ + ZWNJ (a fixed hasanta) goes in one ⌫, and a surrogate pair too
+    const two = el.value.slice(s - 2, s);
+    const n = two === '\u09CD\u200C' || /[\uDC00-\uDFFF]/.test(el.value[s - 1]) ? 2 : 1;
+    setValue(el, el.value.slice(0, s - n) + el.value.slice(s), s - n);
+  } else if (isCE(el)) document.execCommand('delete');
+}
+function enterIn(el: Element | null) {
+  if (el instanceof HTMLTextAreaElement) return insertRaw(el, '\n');
+  if (isBox(el)) {
+    // a one-line box: the app decides (search, send…)
+    el.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', code: 'Enter', bubbles: true }));
+    el.dispatchEvent(new KeyboardEvent('keyup', { key: 'Enter', code: 'Enter', bubbles: true }));
+    return;
+  }
+  if (isCE(el)) document.execCommand('insertParagraph');
+}
+function insertRaw(el: Element | null, text: string) {
+  if (isBox(el)) {
+    const s = el.selectionStart ?? el.value.length, e = el.selectionEnd ?? s;
+    setValue(el, el.value.slice(0, s) + text + el.value.slice(e), s + text.length);
+  } else if (isCE(el)) document.execCommand('insertText', false, text);
+}
+function moveIn(el: Element | null, dx: number, dy: number, select: boolean) {
+  if (isBox(el)) {
+    const v = el.value;
+    let head = el.selectionDirection === 'backward' ? el.selectionStart ?? 0 : el.selectionEnd ?? 0;
+    const anchor = el.selectionDirection === 'backward' ? el.selectionEnd ?? 0 : el.selectionStart ?? 0;
+    head = Math.max(0, Math.min(v.length, head + dx));
+    if (dy && el instanceof HTMLTextAreaElement) {
+      const ls = v.lastIndexOf('\n', head - 1) + 1, col = head - ls;
+      if (dy < 0 && ls > 0) { const ps = v.lastIndexOf('\n', ls - 2) + 1; head = Math.min(ps + col, ls - 1); }
+      if (dy > 0) { const ne = v.indexOf('\n', head); if (ne >= 0) { const ee = v.indexOf('\n', ne + 1); head = Math.min(ne + 1 + col, ee < 0 ? v.length : ee); } }
+    }
+    const a = select ? anchor : head;
+    el.setSelectionRange(Math.min(a, head), Math.max(a, head), head < a ? 'backward' : 'forward');
+  } else if (isCE(el)) {
+    const sel = getSelection() as Selection & { modify?: (a: string, d: string, g: string) => void };
+    if (!sel?.modify) return;
+    const how = select ? 'extend' : 'move';
+    for (let i = 0; i < Math.abs(dx); i++) sel.modify(how, dx < 0 ? 'backward' : 'forward', 'character');
+    for (let i = 0; i < Math.abs(dy); i++) sel.modify(how, dy < 0 ? 'backward' : 'forward', 'line');
+  }
+}
+/** While ProNotes' keyboard is up, the device's own keyboard stays down (as in the ProNotes editor). */
+function quietDeviceKeyboard(el: Element | null) {
+  if (!(el instanceof HTMLElement)) return;
+  if (oskOn) { if (!el.hasAttribute('data-pn-im')) el.setAttribute('data-pn-im', el.getAttribute('inputmode') ?? ''); el.setAttribute('inputmode', 'none'); }
+  else if (el.hasAttribute('data-pn-im')) { const was = el.getAttribute('data-pn-im'); if (was) el.setAttribute('inputmode', was); else el.removeAttribute('inputmode'); el.removeAttribute('data-pn-im'); }
+}
+
+type FromHost = { pn: 'cfg'; cfg: BridgeConfig } | { pn: 'type'; text: string } | { pn: 'back' } | { pn: 'enter' } | { pn: 'tab' }
+  | { pn: 'move'; dx: number; dy: number; select: boolean } | { pn: 'osk'; on: boolean };
+export function fromHost(d: FromHost) {
+  const el = current();
+  if (d.pn === 'cfg') { cfg = d.cfg; return; }
+  if (d.pn === 'osk') { oskOn = d.on; quietDeviceKeyboard(el); return; }
+  if (!el) return;
+  if (el instanceof HTMLElement && document.activeElement !== el) el.focus({ preventScroll: true });
+  if (d.pn === 'type' && cfg) typeOut(el, d.text);
+  else if (d.pn === 'back') backIn(el);
+  else if (d.pn === 'enter') enterIn(el);
+  else if (d.pn === 'tab') insertRaw(el, '\t');
+  else if (d.pn === 'move') moveIn(el, d.dx, d.dy, d.select);
+  report();
+}
+
 const toHost = (msg: unknown) => { const h = host(); if (h && window.top && window.top !== window) window.top.postMessage(msg, h); };
 
 function onKey(ev: KeyboardEvent) {
@@ -96,9 +184,13 @@ export function startBridge() {
   (window as unknown as { __pnBridge?: boolean }).__pnBridge = true;
   window.addEventListener('message', (e) => {
     if (!host() || e.origin !== host()) return;
-    const d = e.data as { pn?: string; cfg?: BridgeConfig };
-    if (d?.pn === 'cfg' && d.cfg) cfg = d.cfg;
+    const d = e.data as FromHost | null;
+    if (d && typeof d.pn === 'string') fromHost(d);
   });
+  document.addEventListener('focusin', (e) => { if (editable(e.target as Element)) { last = e.target as Element; quietDeviceKeyboard(last); } report(); }, true);
+  document.addEventListener('focusout', () => setTimeout(report, 0), true);
+  document.addEventListener('selectionchange', () => report());
+  document.addEventListener('input', () => report(), true);
   document.addEventListener('keydown', onKey, true);
   document.addEventListener('beforeinput', onBeforeInput as EventListener, true);
   toHost({ pn: 'hello' });

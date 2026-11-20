@@ -80,6 +80,16 @@ describe('the app font (decisions.md 80)', () => {
     // an own file is used through its blob: URL; an empty English side adds no rule
     const own = appFontCss({ bn: 'SutonnyOMJ', en: '' }, (n) => (n === 'SutonnyOMJ' ? 'blob:x' : undefined));
     expect(own).toContain('url("blob:x")');
-    expect(own.split('@font-face')).toHaveLength(2);
+    expect(own.split('@font-face')).toHaveLength(3); // menus' Bangla + the keys' Bangla (PN KB); no English rule
+  });
+
+  it('sizes (decisions.md 82): Bangla, English and the keys each by size-adjust, only when not 100%', () => {
+    const css = appFontCss({ bn: 'Kalpurush', en: '', bnScale: 120, enScale: 90, kb: 'SutonnyOMJ', kbScale: 130 }, (n) => (n === 'SutonnyOMJ' ? 'blob:s' : undefined));
+    const rules = css.split('\n');
+    expect(rules[0]).toMatch(/"PN UI".*U\+0980.*size-adjust: 120%/);
+    expect(rules[1]).toMatch(/"PN UI".*local\("Helvetica Neue"\).*size-adjust: 90%/); // the device's own English font, smaller
+    expect(rules[2]).toMatch(/"PN KB".*blob:s.*size-adjust: 130%/);
+    expect(appFontCss({ bn: 'Kalpurush', en: '' }, () => undefined)).not.toContain('size-adjust');
+    expect(appFontCss({ bn: 'Kalpurush', en: '', bnScale: 999 }, () => undefined)).toContain('size-adjust: 150%');
   });
 });

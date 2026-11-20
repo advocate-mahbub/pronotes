@@ -2,9 +2,10 @@
  * Full backup: every document (Trash included), the word bank and settings in one JSON file.
  * Restore never overwrites silently: a document that already exists with different content
  * comes back as a separate copy.
- * Font files are never included (size, and font licences such as SutonnyMJ's).
+ * Font files only when the owner ticks "ফন্টও রাখুন" (decisions.md 82): off by default (size, and font
+ * licences such as SutonnyMJ's — a backup file handed to someone carries its fonts).
  */
-import { db, getMeta, keepVersion, setMeta, type Doc, type Folder, type DictionarySource, type DictionaryEntry, type DictionarySense, type DictionaryEquivalent, type DictionaryRelation } from './db';
+import { db, getMeta, keepVersion, setMeta, listFonts, putFont, type StoredFont, type Doc, type Folder, type DictionarySource, type DictionaryEntry, type DictionarySense, type DictionaryEquivalent, type DictionaryRelation } from './db';
 import { emptyBank, type WordBank } from '../suggest';
 import { fixNukta, type Layout } from '../bornona-engine';
 
@@ -24,9 +25,26 @@ export interface BackupFile {
   aiKey?: string;
   /** v4+: offline legal dictionary data; optional for backward compatibility. */
   dictionary?: { sources: DictionarySource[]; entries: DictionaryEntry[]; senses: DictionarySense[]; equivalents: DictionaryEquivalent[]; relations: DictionaryRelation[] };
+  /** Only with "ফন্টও রাখুন": the user's own font files, base64 (decisions.md 82). */
+  fonts?: BackupFont[];
+}
+export interface BackupFont { id: string; family: string; fileName: string; role: StoredFont['role']; addedAt: number; data: string }
+
+/** ArrayBuffer ⇄ base64, in pieces (a font is megabytes; one String.fromCharCode call would overflow). */
+export function toBase64(buf: ArrayBuffer): string {
+  const u = new Uint8Array(buf);
+  let s = '';
+  for (let i = 0; i < u.length; i += 0x8000) s += String.fromCharCode(...u.subarray(i, i + 0x8000));
+  return btoa(s);
+}
+export function fromBase64(b64: string): ArrayBuffer {
+  const s = atob(b64);
+  const u = new Uint8Array(s.length);
+  for (let i = 0; i < s.length; i++) u[i] = s.charCodeAt(i);
+  return u.buffer;
 }
 
-export async function exportAll(prefs: Record<string, unknown>, now = new Date(), aiKey?: string): Promise<BackupFile> {
+export async function exportAll(prefs: Record<string, unknown>, now = new Date(), aiKey?: string, withFonts = false): Promise<BackupFile> {
   const docs = await (await db()).getAll('docs');
   const wordBank = (await getMeta<WordBank>('wordBank')) ?? emptyBank();
   const layouts = (await getMeta<Layout[]>('layouts')) ?? [];
@@ -40,7 +58,8 @@ export async function exportAll(prefs: Record<string, unknown>, now = new Date()
     equivalents: await database.getAll('dictionaryEquivalents'),
     relations: await database.getAll('dictionaryRelations'),
   };
-  return { app: 'pronotes', version: 1, exportedAt: now.toISOString(), docs, wordBank, prefs, layouts, corrections, folders, dictionary, ...(aiKey ? { aiKey } : {}) };
+  const fonts = withFonts ? (await listFonts()).map((f) => ({ id: f.id, family: f.family, fileName: f.fileName, role: f.role, addedAt: f.addedAt, data: toBase64(f.data) })) : [];
+  return { app: 'pronotes', version: 1, exportedAt: now.toISOString(), docs, wordBank, prefs, layouts, corrections, folders, dictionary, ...(aiKey ? { aiKey } : {}), ...(fonts.length ? { fonts } : {}) };
 }
 
 export function backupFileName(now = new Date()): string {
@@ -58,6 +77,8 @@ export interface RestoreResult {
   /** Ids of the drafts updated (an open one must be loaded again). */
   updatedIds: string[];
   unchanged: number;
+  /** Font files added from the backup (decisions.md 82). */
+  fonts: number;
   words: number;
   dictionaryAdded: number;
   dictionaryUnchanged: number;
@@ -124,7 +145,7 @@ export function parseBackup(json: string): BackupFile {
 
 export async function restoreAll(f: BackupFile): Promise<RestoreResult> {
   const d = await db();
-  const r: RestoreResult = { added: 0, copies: 0, updated: 0, kept: 0, updatedIds: [], unchanged: 0, words: 0, dictionaryAdded: 0, dictionaryUnchanged: 0, prefs: f.prefs || {} };
+  const r: RestoreResult = { added: 0, copies: 0, updated: 0, kept: 0, updatedIds: [], unchanged: 0, words: 0, dictionaryAdded: 0, dictionaryUnchanged: 0, fonts: 0, prefs: f.prefs || {} };
   for (const raw of f.docs) {
     const doc: Doc = { ...raw, title: fixNukta(raw.title), text: fixNukta(raw.text || ''), content: JSON.parse(fixNukta(JSON.stringify(raw.content))) };
     const existing = await d.get('docs', doc.id);
@@ -183,6 +204,17 @@ export async function restoreAll(f: BackupFile): Promise<RestoreResult> {
     await setMeta('folders', have);
   }
   if (f.corrections) await setMeta('corrections', mergeCorrections((await getMeta<string>('corrections')) ?? '', f.corrections));
+  // fonts: those this device lacks are added; the ones here stay as they are
+  if (Array.isArray(f.fonts) && f.fonts.length) {
+    const have = new Set((await listFonts()).map((x) => x.id));
+    for (const x of f.fonts) {
+      if (!x?.id || !x.data || have.has(x.id) || !['uni', 'ansi', 'en'].includes(x.role)) continue;
+      try {
+        await putFont({ id: x.id, family: x.family, fileName: x.fileName, role: x.role, addedAt: x.addedAt || Date.now(), data: fromBase64(x.data) });
+        r.fonts++;
+      } catch { /* a broken entry: skipped */ }
+    }
+  }
   return r;
 }
 

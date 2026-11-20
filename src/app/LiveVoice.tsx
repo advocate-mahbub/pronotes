@@ -5,9 +5,9 @@
  */
 import { useEffect, useRef, useState } from 'react';
 import type { Editor } from '@tiptap/react';
-import { BrowserLive, GeminiLive, liveEngineKind, polishTranscript, type LiveEngine, type LiveState } from '../ai';
+import { BrowserLive, GeminiLive, liveEngineKind, polishTranscript, geminiRescript, type LiveEngine, type LiveState } from '../ai';
 import { insertPlainText, setInterim, textBeforeCaret } from '../editor';
-import { parseCorrections } from '../voice';
+import { parseCorrections, toBanglaVoice, banglaScript } from '../voice';
 import { useT } from '../i18n';
 import { load, save } from './prefs';
 
@@ -41,14 +41,22 @@ export function useLiveVoice(o: Opts) {
   }, [state]);
 
   /** The words being heard, grey at the caret (with a space before them when needed). */
-  const showInterim = (raw: string) => {
+  const showInterim = (raw0: string) => {
     const view = opts.current.editor.view;
+    // the grey words too: no Hindi or Chinese letters on the page, even for a moment
+    const raw = opts.current.bangla ? banglaScript(raw0).text : raw0;
     if (!raw.trim()) return setInterim(view, '');
     const before = textBeforeCaret(view);
     setInterim(view, (before && !/\s$/.test(before) ? ' ' : '') + raw.trim());
   };
 
+  // Bangla in Bengali letters only (decisions.md 82): one result after another, in the order heard
+  const queue = useRef(Promise.resolve());
   const put = (raw: string) => {
+    const { geminiKey, bangla } = opts.current;
+    queue.current = queue.current.then(async () => putNow(await toBanglaVoice(raw, bangla ? 'bn-BD' : 'en-US', geminiRescript(geminiKey))));
+  };
+  const putNow = (raw: string) => {
     const { editor, voice } = opts.current;
     const text = polishTranscript(raw, voice, parseCorrections);
     setInterim(editor.view, '');

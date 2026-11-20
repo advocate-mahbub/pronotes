@@ -11,7 +11,18 @@ export const APP_FONT_FAMILY = 'PN UI';
 export const DEFAULT_APP_BN = 'Kalpurush';
 /** Empty = the device's own interface font. */
 export const DEFAULT_APP_EN = '';
-export interface AppFonts { bn: string; en: string }
+/**
+ * bn/en: the fonts (decisions.md 80). bnScale/enScale: their letter size in % (size-adjust, so only the
+ * letters grow, not the layout). kb/kbScale: the keyboard keys' Bangla font ('' = the app's Bangla font)
+ * and its size (decisions.md 82).
+ */
+export interface AppFonts { bn: string; en: string; bnScale?: number; enScale?: number; kb?: string; kbScale?: number }
+export const KB_FONT_FAMILY = 'PN KB';
+export const SCALE_MIN = 70;
+export const SCALE_MAX = 150;
+const scaleOf = (n: number | undefined) => Math.max(SCALE_MIN, Math.min(SCALE_MAX, Math.round(n || 100)));
+/** The device's interface font cannot be named in local(); these stand in when only its size is changed. */
+const DEVICE_EN = ['Helvetica Neue', 'Segoe UI', 'Roboto', 'Arial'];
 
 /** Bangla letters, ।॥, ZWNJ/ZWJ and the dotted circle the keyboard shows under a kar. */
 export const BN_RANGE = 'U+0964-0965, U+0980-09FF, U+200C-200D, U+25CC';
@@ -27,11 +38,18 @@ export function fontSrc(name: string, ownUrl?: string): string {
   return `local(${q(name)})`;
 }
 
-/** The @font-face rules for "PN UI". A side left empty falls through to the next fonts in the CSS stack. */
+/** The @font-face rules for "PN UI" (menus) and "PN KB" (keyboard keys). An empty side falls through to the next fonts. */
 export function appFontCss(f: AppFonts, ownUrl: (name: string) => string | undefined): string {
-  const rule = (name: string, range: string) =>
-    `@font-face { font-family: ${q(APP_FONT_FAMILY)}; src: ${fontSrc(name, ownUrl(name))}; unicode-range: ${range}; font-display: swap; }`;
-  return [f.bn ? rule(f.bn, BN_RANGE) : '', f.en ? rule(f.en, EN_RANGE) : ''].filter(Boolean).join('\n');
+  const face = (family: string, src: string, range: string, scale: number) =>
+    `@font-face { font-family: ${q(family)}; src: ${src}; unicode-range: ${range}; font-display: swap;${scale !== 100 ? ` size-adjust: ${scale}%;` : ''} }`;
+  const enScale = scaleOf(f.enScale);
+  const enSrc = f.en ? fontSrc(f.en, ownUrl(f.en)) : enScale !== 100 ? DEVICE_EN.map((n) => `local(${q(n)})`).join(', ') : '';
+  const kb = f.kb || f.bn;
+  return [
+    f.bn ? face(APP_FONT_FAMILY, fontSrc(f.bn, ownUrl(f.bn)), BN_RANGE, scaleOf(f.bnScale)) : '',
+    enSrc ? face(APP_FONT_FAMILY, enSrc, EN_RANGE, enScale) : '',
+    kb ? face(KB_FONT_FAMILY, fontSrc(kb, ownUrl(kb)), BN_RANGE, scaleOf(f.kbScale)) : '',
+  ].filter(Boolean).join('\n');
 }
 
 /** Put the rules into the page (one <style>, replaced on each change). */
