@@ -1293,3 +1293,16 @@ body:has(.kb-strip.down) .mic, body:has(.kb-strip.down) .live-mic { bottom: calc
 .app:has(.kb-strip.down) { padding-bottom: 0; }
 /* the put-down strip lies over the page's foot: the page keeps room so its last line can scroll above it */
 .app:has(.kb-strip.down) .desk { padding-bottom: calc(64px + env(safe-area-inset-bottom, 0px)); }
+/* the floating recorder (decisions.md 86): the controls' pill and the red button on one line, centred on each other,
+   at the page's lower right; the page keeps room below its last line so they never sit on the text */
+.voice-float { position: absolute; right: 14px; bottom: 14px; z-index: 7; display: flex; align-items: center; gap: 10px; }
+.voice-float .voice-pill-wrap { position: static; padding: 6px; border-radius: 28px; }
+.voice-float .mic { position: static; flex: none; inset: auto; }
+.voice-float .voice-ctl.ai-voice-bar, .voice-float .voice-ctl.live-strip { background: transparent; color: inherit; padding: 0; box-shadow: none; border: 0; }
+@media (max-width: 640px) { .voice-float { right: 10px; bottom: 10px; gap: 8px; } }
+.deskwrap:has(> .voice-float) .desk { padding-bottom: 96px; }
+/* in the strips, while the recorder floats: only a red dot */
+.k.rec-dot { display: inline-flex; align-items: center; justify-content: center; pointer-events: none; }
+.k.rec-dot .vc-dot { width: 11px; height: 11px; border-radius: 50%; background: #d32f2f; animation: pn-rec 1s steps(1) infinite; }
+@media (prefers-reduced-motion: reduce) { .k.rec-dot .vc-dot { animation: none; } }
+.voice-ctl .vc-b svg { display: block; }

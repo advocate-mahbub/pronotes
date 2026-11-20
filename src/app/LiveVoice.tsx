@@ -5,9 +5,9 @@
  */
 import { useEffect, useRef, useState } from 'react';
 import type { Editor } from '@tiptap/react';
-import { BrowserLive, GeminiLive, liveEngineKind, polishTranscript, geminiRescript, type LiveEngine, type LiveState } from '../ai';
+import { BrowserLive, GeminiLive, liveEngineKind, geminiRescript, type LiveEngine, type LiveState } from '../ai';
 import { insertPlainText, setInterim, textBeforeCaret } from '../editor';
-import { parseCorrections, toBanglaVoice, banglaScript } from '../voice';
+import { liveVoiceText, toBanglaVoice, banglaScript } from '../voice';
 import { useT } from '../i18n';
 import { load, save } from './prefs';
 
@@ -16,7 +16,8 @@ interface Opts {
   geminiKey: string;
   bangla: boolean;
   say: (m: string) => void;
-  voice: { corrections: string; banglaDigits: boolean };
+  /** Settings → voice: the language ('auto' = the keyboard's), spoken punctuation, digits, corrections (decisions.md 86). */
+  voice: { lang: string; commands: boolean; corrections: string; banglaDigits: boolean };
   disabled?: boolean;
   /** The Live model (Settings → voice); empty = the default. */
   model?: string;
@@ -24,6 +25,8 @@ interface Opts {
 
 export function useLiveVoice(o: Opts) {
   const kind = liveEngineKind(Boolean(o.geminiKey));
+  // one language box for recorded and Live voice: a fixed choice wins over the keyboard's language
+  const langOf = (v: Opts) => (v.voice.lang && v.voice.lang !== 'auto' ? v.voice.lang : v.bangla ? 'bn-BD' : 'en-US');
   const [state, setState] = useState<LiveState>('stopped');
   const [consent, setConsent] = useState(false);
   const [secs, setSecs] = useState(0);
@@ -46,7 +49,7 @@ export function useLiveVoice(o: Opts) {
   const showInterim = (raw0: string) => {
     const view = opts.current.editor.view;
     // the grey words too: no Hindi or Chinese letters on the page, even for a moment
-    const raw = opts.current.bangla ? banglaScript(raw0).text : raw0;
+    const raw = langOf(opts.current).startsWith('bn') ? banglaScript(raw0).text : raw0;
     setHeard(raw.trim());
     if (!raw.trim()) return setInterim(view, '');
     const before = textBeforeCaret(view);
@@ -56,12 +59,13 @@ export function useLiveVoice(o: Opts) {
   // Bangla in Bengali letters only (decisions.md 82): one result after another, in the order heard
   const queue = useRef(Promise.resolve());
   const put = (raw: string) => {
-    const { geminiKey, bangla } = opts.current;
-    queue.current = queue.current.then(async () => putNow(await toBanglaVoice(raw, bangla ? 'bn-BD' : 'en-US', geminiRescript(geminiKey))));
+    const { geminiKey } = opts.current;
+    const lang = langOf(opts.current);
+    queue.current = queue.current.then(async () => putNow(await toBanglaVoice(raw, lang, geminiRescript(geminiKey)), lang));
   };
-  const putNow = (raw: string) => {
+  const putNow = (raw: string, lang: string) => {
     const { editor, voice } = opts.current;
-    const text = polishTranscript(raw, voice, parseCorrections);
+    const text = liveVoiceText(raw, lang, voice);
     setInterim(editor.view, '');
     if (!text) return;
     const before = textBeforeCaret(editor.view);
@@ -70,8 +74,8 @@ export function useLiveVoice(o: Opts) {
   };
 
   const begin = async () => {
-    const { geminiKey, bangla, say } = opts.current;
-    const lang = bangla ? 'bn-BD' : 'en-US';
+    const { geminiKey, say } = opts.current;
+    const lang = langOf(opts.current);
     const ev = {
       onInterim: showInterim,
       onFinal: put,

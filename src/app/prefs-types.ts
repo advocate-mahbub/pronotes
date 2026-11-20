@@ -4,6 +4,8 @@ export interface VoicePrefs {
   lang: string;
   commands: boolean;
   banglaDigits: boolean;
+  /** The recorder's controls float over the page, at its lower right, instead of sitting in the keyboard's strip (decisions.md 86). */
+  float?: boolean;
 }
 
 export const DEFAULT_VOICE_PREFS: VoicePrefs = { lang: 'auto', commands: true, banglaDigits: true };

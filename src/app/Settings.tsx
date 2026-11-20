@@ -562,9 +562,10 @@ export function Settings(p: Props) {
                   <option value="device">{t('ডিভাইসের ভয়েস')}</option>
                 </select>
               </label>} />
+            <Line info="রেকর্ড আর Live দুই ভয়েসেই এই ভাষা। অটো: কিবোর্ড বাংলায় থাকলে বাংলা, English-এ থাকলে English। নির্দিষ্ট ভাষা বাছলে কিবোর্ড যে ভাষাতেই থাকুক, ভয়েস সেই ভাষায় শুনবে আর লিখবে। বাংলা হলে লেখা সবসময় বাংলা অক্ষরে।">
             <label className="srow"><span>{t('ভাষা')}</span>
               <select data-testid="vlang" value={p.voice.lang} onChange={(e) => sv({ lang: e.target.value })}>
-                <option value="auto">{t('লেখার মোড অনুযায়ী (বাংলা / English)')}</option>
+                <option value="auto">{t('অটো (কিবোর্ডের ভাষা)')}</option>
                 <option value="bn-BD">{t('বাংলা (বাংলাদেশ)')}</option>
                 <option value="en-US">English</option>
                 {/* decisions.md 82: Bangladeshi Bangla and English first; the rest only when chosen */}
@@ -575,8 +576,10 @@ export function Settings(p: Props) {
                 </optgroup>
               </select>
             </label>
-            <Check testid="vcmd" checked={p.voice.commands} onChange={(v) => sv({ commands: v })} label={t('বলা যতিচিহ্ন বসাও')} info="বলা যতিচিহ্ন বসাও (দাঁড়ি, কমা, নতুন লাইন)" />
+            </Line>
+            <Check testid="vcmd" checked={p.voice.commands} onChange={(v) => sv({ commands: v })} label={t('বলা যতিচিহ্ন বসাও')} info="“দাঁড়ি”, “কমা”, “নতুন লাইন” বললে চিহ্ন বসে — রেকর্ড আর Live দুটোতেই। Live নিজেও চিহ্ন দিলে একই জায়গায় দুটো হয় না, একটা থাকে।" />
             <Check testid="vdig" checked={p.voice.banglaDigits} onChange={(v) => sv({ banglaDigits: v })} label={t('সংখ্যা বাংলা অঙ্কে')} />
+            <Check testid="vfloat" checked={Boolean(p.voice.float)} onChange={(v) => sv({ float: v })} label={t('ভাসমান রেকর্ডার')} info="চালু থাকলে রেকর্ডের বোতামগুলো (● সময়, বিরতি, থামুন) কিবোর্ডের ফিতার বদলে পাতার নিচে ডান দিকে ভেসে থাকে, কিবোর্ডের ঠিক উপরে। বন্ধ থাকলে (সাধারণ): iPhone-এ কিবোর্ডের পাশে, iPad split-এ পাশে।" />
             <details className="srow-more" open={!!p.corrections.trim() || undefined}>
               <summary data-testid="corr-open">{t('ভয়েসের ভুল সংশোধন')}</summary>
               <Line info="প্রতি লাইনে একটা: ভুল = ঠিক। যেমন: এক্তিয়ার = এখতিয়ার">
