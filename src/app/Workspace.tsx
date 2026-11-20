@@ -812,6 +812,19 @@ export function Workspace(p: Props) {
           const float = !phoneKb && kbMode === 'float';
           const split = phoneKb ? landscape && splitLand : kbMode === 'splitPhone';
           const compact = phoneKb || float || kbMode === 'splitPhone';
+          // iPad split/floating (decisions.md 83): the strip's middle is voice — a tap starts it (held: the second
+          // mode, as on 🎙); while it runs, its controls and the words being heard sit there instead of at 🎙
+          const voiceGap = compact && !phoneKb ? (
+            voicing ? (
+              <div className="kb-gap on" data-testid="kb-voice-gap" onPointerDown={(e) => e.preventDefault()}>
+                <VoiceControls live={live} ai={aiv} />
+                {live.heard && <span className="kb-heard" data-testid="kb-heard">{live.heard.length > 60 ? "…" + live.heard.slice(-60) : live.heard}</span>}
+              </div>
+            ) : tapAct ? (
+              <MicKey onTap={tapAct} onHold={holdAct} disabled={p.ansiTyping && !liveOk} className="kb-gap" testid="kb-voice-gap"
+                label={holdAct ? t('ভয়েস: চাপলে Live, চেপে ধরলে রেকর্ড করে লেখা') : t('ভয়েস টাইপিং')}><span aria-hidden="true" /></MicKey>
+            ) : null
+          ) : undefined;
           const items: KbMenuItem[] = phoneKb
             ? landscape
               ? [{ id: 'split', label: splitLand ? t('জোড়া কিবোর্ড') : t('Split কিবোর্ড'), act: () => setSplitLand(!splitLand) }]
@@ -828,7 +841,7 @@ export function Workspace(p: Props) {
           const kb = (
             <OnScreenKeyboard compact={compact} onHide={() => setKbDown(true)} editor={editor} map={p.map} bangla={p.bangla} getConfig={getConfig} onToggleLanguage={p.onToggleLanguage}
               onWordDone={(before) => { if (learnTail(p.bank, before)) p.onBankChanged(); }} flash={flash}
-              hand={phoneKb && !landscape ? hand : null} setHand={phoneKb ? setHand : undefined} split={split} menuItems={items} live={live.available ? { on: live.on, toggle: live.toggle } : undefined} mic={micSlot} voicing={voicing} />
+              hand={phoneKb && !landscape ? hand : null} setHand={phoneKb ? setHand : undefined} split={split} menuItems={items} live={live.available ? { on: live.on, toggle: live.toggle } : undefined} mic={voiceGap && voicing ? <span className="k" aria-hidden="true" /> : micSlot} voicing={voicing} gap={voiceGap} />
           );
           if (float) return <FloatingKeyboard onDock={() => setKbMode('dock')}>{kb}</FloatingKeyboard>;
           return <LiftableKeyboard landscape={landscape} phone={phoneKb} edgeToEdge={split && !phoneKb}>{kb}</LiftableKeyboard>;

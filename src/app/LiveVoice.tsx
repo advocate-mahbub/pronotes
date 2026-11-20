@@ -27,6 +27,8 @@ export function useLiveVoice(o: Opts) {
   const [state, setState] = useState<LiveState>('stopped');
   const [consent, setConsent] = useState(false);
   const [secs, setSecs] = useState(0);
+  // the words being heard now, also shown in the keyboard strip's gap (decisions.md 83)
+  const [heard, setHeard] = useState('');
   const clock = useRef<number | undefined>(undefined);
   const eng = useRef<LiveEngine | null>(null);
   const opts = useRef(o);
@@ -45,6 +47,7 @@ export function useLiveVoice(o: Opts) {
     const view = opts.current.editor.view;
     // the grey words too: no Hindi or Chinese letters on the page, even for a moment
     const raw = opts.current.bangla ? banglaScript(raw0).text : raw0;
+    setHeard(raw.trim());
     if (!raw.trim()) return setInterim(view, '');
     const before = textBeforeCaret(view);
     setInterim(view, (before && !/\s$/.test(before) ? ' ' : '') + raw.trim());
@@ -101,7 +104,7 @@ export function useLiveVoice(o: Opts) {
   const resume = () => void eng.current?.resume();
 
   const ui = <LiveConsent kind={kind} consent={consent} onConsent={(ok) => { setConsent(false); if (ok) { save('liveConsent', true); void begin(); } }} />;
-  return { available: Boolean(kind), on: state !== 'stopped', state, secs, toggle, pause, resume, stop: () => void stop(), ui };
+  return { available: Boolean(kind), on: state !== 'stopped', state, secs, heard: state === 'stopped' ? '' : heard, toggle, pause, resume, stop: () => void stop(), ui };
 }
 export type LiveVoice = ReturnType<typeof useLiveVoice>;
 
