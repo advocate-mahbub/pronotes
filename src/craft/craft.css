@@ -48,3 +48,6 @@
 .craft-running-card { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 10px 12px; border: 1px solid var(--gold); border-radius: 12px; background: var(--sheet); }
 .craft-running-card > span { flex: 1 1 200px; }
 .craft-card.running { border-color: var(--gold); }
+/* আমার অ্যাপ: the app above, ProNotes' keyboard under it while an app text box has focus (decisions.md 82) */
+.user-apps-wrap { flex: 1; min-height: 0; display: flex; flex-direction: column; gap: 4px; }
+.user-apps-dock { flex: 0 0 auto; }

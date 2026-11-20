@@ -9,6 +9,7 @@
  */
 import { UserApps } from './UserApps';
 import type { BridgeConfig } from '../../apps-site/protocol';
+import type { BornonaConfig } from '../editor';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useT } from '../i18n';
 import { saveFile } from '../storage/download';
@@ -64,7 +65,7 @@ interface Props {
   onViewChange?: (v: CraftView) => void;
   say: (m: string, v?: Record<string, string | number>) => void;
   /** ProNotes' typing settings for the user's own apps (আমার অ্যাপ), and the language switch. */
-  typing?: { cfg: BridgeConfig; onToggleLanguage: () => void };
+  typing?: { cfg: BridgeConfig; onToggleLanguage: () => void; keyboard?: { on: boolean; compact: boolean; getConfig: () => BornonaConfig } };
 }
 
 export function CraftWorkspace({ visible, initialApp, handoff, onShowDrafts, onViewChange, say, typing }: Props) {
@@ -300,7 +301,7 @@ export function CraftWorkspace({ visible, initialApp, handoff, onShowDrafts, onV
             <span className="craft-spacer" />
             <button type="button" className="craft-slim-btn" onClick={onShowDrafts}>✎ ProNotes</button>
           </header>
-          <UserApps cfg={typing.cfg} onToggleLanguage={typing.onToggleLanguage} />
+          <UserApps cfg={typing.cfg} onToggleLanguage={typing.onToggleLanguage} keyboard={typing.keyboard} />
         </div>
       )}
     </section>

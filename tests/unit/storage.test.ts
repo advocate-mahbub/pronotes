@@ -153,6 +153,21 @@ describe('M5 data: fonts, layouts, corrections', () => {
     expect(await loadLayouts()).toHaveLength(1);
     expect(await loadCorrections()).toBe('নাই = নেই\nএক্তিয়ার = এখতিয়ার');
   });
+  it('"ফন্টও রাখুন": the font files go into the backup and come back on a device without them (decisions.md 82)', async () => {
+    const bytes = new Uint8Array(70000).map((_, i) => (i * 7) % 256); // bigger than one String.fromCharCode piece
+    await putFont({ id: 'f1', family: 'SutonnyOMJ', fileName: 'SUTONNYOMJ.TTF', role: 'uni', data: bytes.buffer, addedAt: 5 });
+    const f = parseBackup(JSON.stringify(await exportAll({}, new Date(), undefined, true)));
+    expect(f.fonts?.map((x) => x.family)).toEqual(['SutonnyOMJ']);
+    globalThis.indexedDB = new IDBFactory();
+    resetDbForTests();
+    await putFont({ id: 'mine', family: 'Y', fileName: 'y.ttf', role: 'en', data: new ArrayBuffer(2), addedAt: 1 });
+    const r = await restoreAll(f);
+    expect(r.fonts).toBe(1);
+    const back = await listFonts();
+    expect(back.map((x) => x.id)).toEqual(['mine', 'f1']);
+    expect([...new Uint8Array(back[1].data)]).toEqual([...bytes]);
+    expect((await restoreAll(f)).fonts).toBe(0); // not twice
+  });
   it('mergeCorrections skips duplicates and blank lines', () => {
     expect(mergeCorrections('ক = খ\n', 'ক = খ\n\nগ = ঘ')).toBe('ক = খ\nগ = ঘ');
   });

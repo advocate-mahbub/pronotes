@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { toBijoy } from '../bijoy';
 import type { DocFormat } from '../docx-export/format';
-import { ENGLISH_FONTS, LOCAL_ANSI, LOCAL_UNI, WEB_FONTS, isFontAvailable, DEFAULT_APP_BN, type AppFonts } from '../fonts';
+import { ENGLISH_FONTS, LOCAL_ANSI, LOCAL_UNI, WEB_FONTS, isFontAvailable, DEFAULT_APP_BN, SCALE_MIN, SCALE_MAX, type AppFonts } from '../fonts';
 import { TOGGLE_KEYS, ANSI_KEYS, type Layout, type ToggleKey, type AnsiKey } from '../bornona-engine';
 import type { VoicePrefs } from './prefs-types';
 import { layoutAccept } from './layout-files';
@@ -62,7 +62,7 @@ interface Props {
   onExportWords: () => void;
   onImportWords: (f: File) => void;
   onResetWords: () => void;
-  onBackup: (withKey: boolean) => void;
+  onBackup: (withKey: boolean, withFonts: boolean) => void;
   onRestore: (f: File) => void;
   app: AppInfo;
   uiLang: UiLang;
@@ -423,6 +423,12 @@ export function Settings(p: Props) {
   const ansiChoices = [...new Set([...LOCAL_ANSI, ...ansiFonts.map((f) => f.family)])];
   const sv = (patch: Partial<VoicePrefs>) => p.setVoice({ ...p.voice, ...patch });
   const [withKey, setWithKey] = useState(false);
+  // ask before a font of the other kind rewrites letters (decisions.md 82); kept with the settings
+  const [convertAsk, setConvertAsk0] = useState<boolean>(() => load('fontConvertAsk', true));
+  const setConvertAsk = (v: boolean) => { setConvertAsk0(v); save('fontConvertAsk', v); };
+  // "ফন্টও রাখুন" (decisions.md 82): off by default, remembered on this device
+  const [withFonts, setWithFonts0] = useState<boolean>(() => load('device.backupFonts', false));
+  const setWithFonts = (v: boolean) => { setWithFonts0(v); save('device.backupFonts', v); };
   // families that have only italic or bold files: normal text would be drawn slanted or heavy
   // the app's own font: Unicode Bangla fonts here (own files first), English ones; never ANSI
   const appBn = [...new Set([p.appFonts.bn, DEFAULT_APP_BN, ...uniFonts.map((f) => f.family), ...WEB_FONTS, ...LOCAL_UNI.filter((n) => isFontAvailable(n))])].filter(Boolean);
@@ -492,7 +498,18 @@ export function Settings(p: Props) {
           </Group>
           <Group title={t('অন-স্ক্রিন কিবোর্ড')} info="ProNotes-এর নিজের কিবোর্ড খোলা থাকলে কার্সর নীল ও মোটা দেখায়; লেখায় চাপলে নিচে একটা ফোঁটা আসে, ধরে টানলে কার্সর সরে। Space চেপে টানলেও কার্সর সরে।">
             <Check testid="kb-loupe" checked={loupe} onChange={(v) => { setLoupe(v); save('kb.loupe', v); }} label={t('কার্সর সরানোর সময় বড় করে দেখান')}
-              info="ফোঁটা বা Space টেনে কার্সর সরানোর সময় কার্সরের দুপাশের লেখা একটা ছোট জানালায় বড় করে দেখায়, যাতে কোন অক্ষরের পাশে কার্সর বসছে বোঝা যায়।" />
+              info="ফোঁটা বা Space টেনে কার্সর সরানোর সময় কার্সরের দুপাশের লেখা একটা ছোট জানালায় বড় করে দেখায়, যাতে কোন অক্ষরের পাশে কার্সর বসছে বোঝা যায়।" />
+            {/* the keys' Bangla font and its size (decisions.md 82): any Unicode font here, own files included */}
+            <label className="srow"><span>{t('কী-এর বাংলা ফন্ট')}</span>
+              <select data-testid="kb-font" value={p.appFonts.kb ?? ''} onChange={(e) => p.setAppFonts({ ...p.appFonts, kb: e.target.value })}>
+                <option value="">{t('অ্যাপের বাংলা ফন্ট')} ({p.appFonts.bn || DEFAULT_APP_BN})</option>
+                {appBn.map((n) => <option key={n} value={n}>{n}</option>)}
+              </select>
+            </label>
+            <label className="srow"><span>{t('কী-এর অক্ষরের মাপ')} (%)</span>
+              <NumberField min={SCALE_MIN} max={SCALE_MAX} step={5} steppers testid="kb-font-size" value={p.appFonts.kbScale ?? 100} onChange={(n) => p.setAppFonts({ ...p.appFonts, kbScale: n })} />
+            </label>
+            <p className="kb-font-sample" data-testid="kb-font-sample" aria-hidden="true">{en ? 'Aa' : 'ক খ গ ঘ ি ু ্'}</p>
           </Group>
           <Group title={t('শর্টকাট key')} info="iPad-এ Ctrl+Space অনেক সময় iPad নিজেই ভাষা বদলাতে নিয়ে নেয়; তখন F12 বা Ctrl+M বেছে নিন। ফিজিক্যাল কিবোর্ডেই কাজ করে; অন-স্ক্রিন কিবোর্ডে EN/বাং বাটন আছে।">
             <label className="srow"><span>{t('বাংলা ⇄ English বদল')}</span>
@@ -549,10 +566,13 @@ export function Settings(p: Props) {
               <select data-testid="vlang" value={p.voice.lang} onChange={(e) => sv({ lang: e.target.value })}>
                 <option value="auto">{t('লেখার মোড অনুযায়ী (বাংলা / English)')}</option>
                 <option value="bn-BD">{t('বাংলা (বাংলাদেশ)')}</option>
-                <option value="bn-IN">{t('বাংলা (ভারত)')}</option>
-                <option value="en-US">English (US)</option>
-                <option value="en-GB">English (UK)</option>
-                <option value="en-IN">English (India)</option>
+                <option value="en-US">English</option>
+                {/* decisions.md 82: Bangladeshi Bangla and English first; the rest only when chosen */}
+                <optgroup label={t('অন্য ভাষা')}>
+                  <option value="bn-IN">{t('বাংলা (ভারত)')}</option>
+                  <option value="en-GB">English (UK)</option>
+                  <option value="en-IN">English (India)</option>
+                </optgroup>
               </select>
             </label>
             <Check testid="vcmd" checked={p.voice.commands} onChange={(v) => sv({ commands: v })} label={t('বলা যতিচিহ্ন বসাও')} info="বলা যতিচিহ্ন বসাও (দাঁড়ি, কমা, নতুন লাইন)" />
@@ -614,6 +634,8 @@ export function Settings(p: Props) {
               </select>
             </label>
             <Check testid="auto-bijoy" checked={p.autoBijoy} onChange={p.setAutoBijoy} label={t('পেস্ট করা বিজয় লেখা ইউনিকোডে')} info="বিজয় লেখা পেস্ট করলে নিজে থেকে ইউনিকোডে বদলাও" />
+            <Check testid="font-convert-ask" checked={convertAsk} onChange={setConvertAsk} label={t('ফন্ট বদলালে লেখা বদলানোর আগে জিজ্ঞেস করো')}
+              info="নির্বাচিত ইউনিকোড লেখায় বিজয় (ANSI) ফন্ট দিলে, বা উল্টোটা, অক্ষরগুলোই বদলে যায়। চালু থাকলে আগে জিজ্ঞেস করে (কতটা লেখা বদলাবে, পুরো ডকুমেন্ট কি না)। বন্ধ থাকলে সঙ্গে সঙ্গে বদলায়; ↶ দিয়ে ফেরানো যায়।" />
           </Group>
           <Group title={t('নিজের ফন্ট ফাইল')} info="যে ফন্ট এই ডিভাইসে নেই (যেমন iPad-এ SutonnyOMJ), তার ফাইল (.ttf, .otf, .woff, .woff2, .ttc, .eot; একসাথে কয়েকটা) যোগ করুন, তাহলে পর্দায় সেই ফন্টেই দেখাবে। Google Drive চালু থাকলে ফাইলটা আপনার Drive-এর “ProNotes Fonts” ফোল্ডারেও রাখা হয়, অন্য ডিভাইসে Drive চালু করলে নিজে থেকে নেমে আসে। GitHub বা অন্য কোথাও যায় না।">
             <div className="row">
@@ -682,6 +704,12 @@ export function Settings(p: Props) {
                 {appEn.map((n) => <option key={n} value={n}>{n}</option>)}
               </select>
             </label>
+            <label className="srow"><span>{t('বাংলার মাপ')} (%)</span>
+              <NumberField min={SCALE_MIN} max={SCALE_MAX} step={5} steppers testid="app-font-bn-size" value={p.appFonts.bnScale ?? 100} onChange={(n) => p.setAppFonts({ ...p.appFonts, bnScale: n })} />
+            </label>
+            <label className="srow"><span>{t('English-এর মাপ')} (%)</span>
+              <NumberField min={SCALE_MIN} max={SCALE_MAX} step={5} steppers testid="app-font-en-size" value={p.appFonts.enScale ?? 100} onChange={(n) => p.setAppFonts({ ...p.appFonts, enScale: n })} />
+            </label>
             <p className="app-font-sample" data-testid="app-font-sample">{en ? 'Aa Bb 123' : 'আমার সোনার বাংলা · ক্ষ ক্ত ন্ত্র · Aa Bb 123'}</p>
             <p className="note">{t('তালিকায় নেই? ফন্ট ফাইল যোগ করুন')} — <button type="button" className="linkbtn" data-testid="app-font-add" onClick={() => setTab('font')}>{t('ফন্ট ও বিজয়')}</button></p>
           </Group>
@@ -698,11 +726,12 @@ export function Settings(p: Props) {
               )}
             </p>
             <div className="row backup-two">
-              <button type="button" className="btn primary" data-testid="backup" onClick={() => p.onBackup(withKey)}>⤓ {t('এই ডিভাইসে')}</button>
+              <button type="button" className="btn primary" data-testid="backup" onClick={() => p.onBackup(withKey, withFonts)}>⤓ {t('এই ডিভাইসে')}</button>
               {p.drive.enabled && (p.drive.connected
                 ? <button type="button" className="btn primary" data-testid="drive-backup" disabled={p.drive.busy} onClick={p.drive.onBackup}>{p.drive.busy ? t('কাজ চলছে…') : '☁ ' + t('Google Drive-এ')}</button>
                 : <button type="button" className="btn" data-testid="drive-connect" onClick={p.drive.onConnect}>☁ {t('Google দিয়ে যুক্ত করুন')}</button>)}
             </div>
+            <Check testid="backup-fonts" checked={withFonts} onChange={setWithFonts} label={t('ফন্টও রাখুন')} info="নিজের যোগ করা ফন্ট ফাইলগুলোও এই ডিভাইসের ব্যাকআপ ফাইলে যায়, তাই Google Drive ছাড়াও নতুন ডিভাইসে ফন্টসহ সব ফেরত আসে। ফাইল বড় হয় (প্রতিটা ফন্ট ০.৫–২ MB)। ফাইলটা কাউকে দিলে ফন্টও তার কাছে যায় — SutonnyOMJ-এর মতো লাইসেন্সের ফন্ট থাকলে খেয়াল রাখবেন। Drive-এর ব্যাকআপে ফন্ট যায় না, কারণ ফন্ট আলাদা “ProNotes Fonts” ফোল্ডারে থাকে।" />
             {p.ai.key && (
               <Check testid="backup-key" checked={withKey} onChange={setWithKey} label={t('Gemini key-ও ব্যাকআপে')} info="শুধু এই ডিভাইসের ফাইলে Gemini key-ও রাখুন (ফাইলটা তখন পাসওয়ার্ডের মতো গোপনে রাখবেন)। Drive-এ key যায় না।" />
             )}

@@ -12,8 +12,26 @@ const ZW: Record<string, string> = { [String.fromCharCode(0x200c)]: 'ZWNJ', [Str
 const MARKS = 'ািীুূৃেৈোৌ্ঁংঃৗৄৢৣ';
 const show = (c: string) => ZW[c] ?? (c && MARKS.includes(c[0]) ? '◌' + c : c);
 
+/**
+ * Somewhere else to type into (decisions.md 82): a text box of the user's own app (▦ → আমার অ্যাপ),
+ * reached through its bridge. With a target the keyboard never touches the editor.
+ */
+export interface RemoteTarget {
+  /** One letter or sign as the key gives it; the target applies ProNotes' typing rules (vowel forming, hasanta…). */
+  type: (text: string) => void;
+  back: () => void;
+  enter: () => void;
+  tab: () => void;
+  /** The text before the caret (as last reported by the target). */
+  before: () => string;
+  /** The caret by characters (dx) or lines (dy); select = extend the selection. */
+  move: (dx: number, dy: number, select: boolean) => void;
+}
+
 interface Props {
-  editor: Editor;
+  /** The draft's editor; null when the keyboard types into `target`. */
+  editor: Editor | null;
+  target?: RemoteTarget;
   map: LayoutMap;
   bangla: boolean;
   getConfig: () => BornonaConfig;
@@ -92,7 +110,7 @@ interface Touch {
  * left = the word; two spaces = "। "; slide from #+= to a mark and lift = that mark, back to letters;
  * ⇧ twice = Shift lock; long-press the language key = one-handed (phones) or floating (iPad).
  */
-export function OnScreenKeyboard({ editor, map, bangla, getConfig, onToggleLanguage, onWordDone, flash, onHide, compact, hand, setHand, split, menuItems, live, mic, voicing }: Props) {
+export function OnScreenKeyboard({ editor: ed, target, map, bangla, getConfig, onToggleLanguage, onWordDone, flash, onHide, compact, hand, setHand, split, menuItems, live, mic, voicing }: Props) {
   const { t } = useT();
   const [shift, setShift] = useState(0); // 0 off, 1 next key, 2 locked
   const [alt, setAlt] = useState(false);
@@ -145,7 +163,9 @@ export function OnScreenKeyboard({ editor, map, bangla, getConfig, onToggleLangu
   };
 
   // ---------- typing (the box with focus, else the editor) ----------
-  const view = editor.view;
+  // with a remote target there is no editor; every path below that reaches the editor checks `target` first
+  const editor = ed as Editor;
+  const view = ed?.view as Editor['view'];
   const cfgNow = () => getConfig();
   const rulesOn = () => {
     const cfg = cfgNow();
@@ -153,20 +173,23 @@ export function OnScreenKeyboard({ editor, map, bangla, getConfig, onToggleLangu
   };
   const rulesKey = (k: { code: string; shift: boolean; alt: boolean }) => {
     const kb = rulesOn();
-    if (!kb) return false;
+    if (!kb || target) return false; // Keyman rules keyboards are not carried into apps
     const box = activeBornonaBox();
     return box ? typeKeyIntoBox(box, k, cfgNow()) : typeRulesKey(view, kb, k, cfgNow().ansi);
   };
   const back = () => {
+    if (target) return target.back();
     const box = activeBornonaBox();
     if (box) return rulesKey({ code: 'Backspace', shift: false, alt: false }) || backspaceBox(box);
     deleteBackward(view, () => editor.commands.joinBackward(), cfgNow());
   };
   const type = (s: string) => {
+    if (target) return target.type(s);
     const box = activeBornonaBox();
     return box ? typeIntoBox(box, s, cfgNow()) : typeText(view, s, cfgNow());
   };
   const before = () => {
+    if (target) return target.before();
     const box = activeBornonaBox();
     return box ? box.value.slice(0, box.selectionStart ?? box.value.length) : textBeforeCaret(view);
   };
@@ -189,7 +212,7 @@ export function OnScreenKeyboard({ editor, map, bangla, getConfig, onToggleLangu
   };
   const typeKey = (code: string, shiftOn = sh) => {
     if (code.startsWith('Np') || code.startsWith('Txt:') || code.startsWith('Anna:')) { type(charOf(code)); return; }
-    if (rulesOn()) rulesKey({ code: baseOf(code), shift: shiftOn, alt: code.startsWith('Alt+') || al });
+    if (rulesOn() && !target) rulesKey({ code: baseOf(code), shift: shiftOn, alt: code.startsWith('Alt+') || al });
     else {
       const out = charOf(code, shiftOn);
       if (out) type(out);
@@ -212,6 +235,7 @@ export function OnScreenKeyboard({ editor, map, bangla, getConfig, onToggleLangu
   };
   const enter = () => {
     setSym(false);
+    if (target) return target.enter();
     const box = activeBornonaBox();
     if (box) {
       box.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
@@ -223,6 +247,7 @@ export function OnScreenKeyboard({ editor, map, bangla, getConfig, onToggleLangu
 
   const enterItem = (id: (typeof ENTER_ITEMS)[number]) => {
     setSym(false);
+    if (target) return id === 'tab' ? target.tab() : target.enter();
     if (activeBornonaBox()) return id === 'tab' ? type('\t') : enter();
     if (id === 'br') return editor.chain().setHardBreak().scrollIntoView().run();
     if (id === 'page') return editor.chain().setPageBreak().scrollIntoView().run();
@@ -237,7 +262,7 @@ export function OnScreenKeyboard({ editor, map, bangla, getConfig, onToggleLangu
     if (!f) return;
     const box = activeBornonaBox();
     const english = pad === 'numEn' || !bangla;
-    if (box || english) {
+    if (box || english || target) {
       for (let i = 0; i < f.length; i++) back();
       return type(plainFraction(f));
     }
@@ -254,6 +279,7 @@ export function OnScreenKeyboard({ editor, map, bangla, getConfig, onToggleLangu
 
   // ---------- space trackpad: move the caret (or the end of a selection) ----------
   const caretStep = (dx: number, dy: number, select: boolean, anchor: number | undefined) => {
+    if (target) return target.move(dx, dy, select);
     const box = activeBornonaBox();
     if (box) {
       const v = box.value;
@@ -291,7 +317,7 @@ export function OnScreenKeyboard({ editor, map, bangla, getConfig, onToggleLangu
     g.ax = 0; g.ay = 0;
     const box = activeBornonaBox();
     g.select = sh;
-    g.anchor = box ? (box.selectionDirection === 'backward' ? box.selectionEnd ?? 0 : box.selectionStart ?? 0) : view.state.selection.anchor;
+    g.anchor = target ? 0 : box ? (box.selectionDirection === 'backward' ? box.selectionEnd ?? 0 : box.selectionStart ?? 0) : view.state.selection.anchor;
     setTracking(true);
   };
 
@@ -364,7 +390,7 @@ export function OnScreenKeyboard({ editor, map, bangla, getConfig, onToggleLangu
       if (g0.mode === 'track') {
         g0.select = !g0.select;
         const box = activeBornonaBox();
-        g0.anchor = box ? (box.selectionDirection === 'backward' ? box.selectionStart ?? 0 : box.selectionEnd ?? 0) : view.state.selection.head;
+        g0.anchor = target ? 0 : box ? (box.selectionDirection === 'backward' ? box.selectionStart ?? 0 : box.selectionEnd ?? 0) : view.state.selection.head;
         return;
       }
       finish(g0); // fast typing: the next key lands before the last one lifted

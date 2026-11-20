@@ -113,7 +113,7 @@ button:focus-visible, select:focus-visible { outline: 2px solid var(--gold); out
 
 .kb { background: var(--key-2); border: 1px solid var(--line); border-radius: 12px; padding: 4px; display: flex; flex-direction: column; gap: 4px; user-select: none; -webkit-user-select: none; touch-action: manipulation; }
 .kb-row { display: flex; gap: 5px; }
-.k { flex: 1 1 0; min-width: 0; position: relative; height: 52px; border: 0; border-radius: 8px; background: var(--key); box-shadow: 0 1.5px 0 var(--key-shadow); cursor: pointer; padding: 0; font-family: "PN UI", var(--f-display); -webkit-tap-highlight-color: transparent; }
+.k { flex: 1 1 0; min-width: 0; position: relative; height: 52px; border: 0; border-radius: 8px; background: var(--key); box-shadow: 0 1.5px 0 var(--key-shadow); cursor: pointer; padding: 0; font-family: "PN KB", "PN UI", var(--f-display); -webkit-tap-highlight-color: transparent; }
 .k .m { font-size: 22px; font-weight: 600; line-height: 1; }
 .k .m.tiny { font: 600 11px var(--f-mono); }
 .k .s { position: absolute; top: 4px; right: 6px; font-size: 12px; color: var(--muted); line-height: 1; }
@@ -929,7 +929,7 @@ input.cf[data-testid$="-type"] { flex: 0 1 112px; width: 112px; }
 .kb.track .k[data-code="#Space"] { background: var(--accent-soft); }
 /* long-press choices */
 .kb-pop { position: absolute; z-index: 30; display: flex; background: var(--sheet); border: 1px solid var(--line); border-radius: 10px; box-shadow: 0 6px 20px rgba(0,0,0,.22); overflow: hidden; }
-.kb-pop span { height: 48px; display: flex; align-items: center; justify-content: center; font: 600 22px var(--f-display); }
+.kb-pop span { height: 48px; display: flex; align-items: center; justify-content: center; font: 600 22px "PN KB", var(--f-display); }
 .kb-pop span.on { background: var(--accent); color: var(--accent-fg); }
 /* long-press the language key */
 .kb-menu { position: absolute; z-index: 30; left: 6px; bottom: 56px; display: flex; gap: 6px; padding: 6px; background: var(--sheet); border: 1px solid var(--line); border-radius: 12px; box-shadow: 0 6px 20px rgba(0,0,0,.22); }
@@ -1231,3 +1231,27 @@ body:has(.kb-strip.down) .mic, body:has(.kb-strip.down) .live-mic { bottom: calc
 /* Settings → অ্যাপ → অ্যাপের ফন্ট (decisions.md 80) */
 .app-font-sample { margin: 6px 0 2px; padding: 8px 10px; border: 1px dashed var(--line); border-radius: 8px; font: 20px var(--f-sans); }
 .linkbtn { border: 0; background: none; padding: 0; color: var(--accent); font: inherit; text-decoration: underline; cursor: pointer; }
+/* one 🎙 on the page (decisions.md 82): where the old ones stood, the record (✦) one no longer stacked above */
+.mic.one-mic, .mic.ai-voice { right: 14px; bottom: 14px; width: 56px; height: 56px; }
+.mic.one-mic.live { background: #c62828; color: #fff; }
+.mic.one-mic svg { width: 26px; height: 26px; }
+@media (max-width: 640px) { .mic.one-mic, .mic.ai-voice { width: 48px; height: 48px; right: 10px; bottom: 10px; } }
+/* Settings: the keys' font as the keys draw it (decisions.md 82) */
+.kb-font-sample { margin: 4px 0; padding: 6px 10px; border: 1px dashed var(--line); border-radius: 8px; font: 400 24px "PN KB", "PN UI", var(--f-display); letter-spacing: 6px; }
+/* the zoom bar rests out of sight (decisions.md 82): back with the next zoom, scroll or touch */
+.zoom-bar.idle { opacity: 0; pointer-events: none; transition: opacity .6s; }
+@media (prefers-reduced-motion: reduce) { .zoom-bar, .zoom-bar.idle { transition: none; } }
+/* ☰ pinned at the start of the scrolling tab row (decisions.md 82) */
+.ribbon-tabs .tab-start { position: sticky; left: 0; z-index: 2; display: inline-flex; align-items: center; padding-right: 4px; background: var(--sheet); box-shadow: 6px 0 6px -6px rgba(0, 0, 0, .25); }
+/* the top bar folded away: a thin strip with ⌄ */
+.top-mini { position: relative; display: flex; justify-content: center; align-items: center; height: 18px; }
+.top-mini .status { position: absolute; left: 4px; }
+.top-unfold { height: 18px; min-width: 64px; padding: 0 14px; border: 1px solid var(--line); border-top: 0; border-radius: 0 0 10px 10px; background: var(--sheet); color: var(--muted); font: 600 14px/1 var(--f-sans); cursor: pointer; }
+.top-unfold:hover { color: var(--fg); }
+.top-fold { font-size: 15px; }
+/* before a font of the other kind rewrites letters (decisions.md 82) */
+.convert-ask { width: min(420px, 100%); padding: 18px; border-radius: 16px; background: var(--sheet); color: var(--fg); border: 1px solid var(--line); box-shadow: 0 12px 40px rgba(0, 0, 0, .25); }
+.convert-ask h3 { margin: 0 0 8px; font-size: 18px; }
+.convert-ask p { margin: 0 0 12px; line-height: 1.6; color: var(--muted); }
+.convert-ask .ca-check { display: flex; gap: 8px; align-items: center; font-size: 14px; margin-bottom: 14px; }
+.convert-ask .ca-row { display: flex; justify-content: flex-end; gap: 8px; }

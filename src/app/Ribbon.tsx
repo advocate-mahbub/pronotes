@@ -622,7 +622,8 @@ export function Ribbon(p: Props) {
   return (
     <nav ref={navRef} className={'ribbon glass' + (collapsed ? ' collapsed' : '') + (narrow ? ' narrow' : '')} aria-label={t('লেখার সরঞ্জাম')}>
       <div className="ribbon-tabs" role="tablist">
-        {p.start}
+        {/* ☰ stays put while the tab row scrolls sideways (decisions.md 82) */}
+        {p.start && <span className="tab-start" data-testid="tab-start">{p.start}</span>}
         {tabs.map(([id, label]) => (
           <button key={id} type="button" role="tab" aria-selected={tab === id} className={'rtab' + (id === 'table' || id === 'tdesign' ? ' ctx' : '')} data-testid={'tab-' + id}
             onPointerDown={(e) => e.preventDefault()}

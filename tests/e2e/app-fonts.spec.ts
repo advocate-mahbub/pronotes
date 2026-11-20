@@ -35,7 +35,7 @@ test('the app’s Bangla font is Kalpurush out of the box, also on the keyboard 
   await page.getByTestId('kb-toggle').click();
   const k = page.locator('[data-code="KeyK"]').first();
   await expect(k).toBeVisible();
-  expect(await k.evaluate((el) => getComputedStyle(el).fontFamily)).toMatch(/^"PN UI"/);
+  expect(await k.evaluate((el) => getComputedStyle(el).fontFamily)).toMatch(/^"PN KB", "PN UI"/); // the keys' own font (decisions.md 82), else the app's
   // the document's own font is untouched
   expect(await editor(page).evaluate((el) => getComputedStyle(el).fontFamily)).not.toMatch(/PN UI/);
 });
@@ -79,4 +79,25 @@ test('font files: several at once, a .ttc split into its fonts, an own font chos
   await section(page, 'app');
   await page.getByTestId('app-font-bn').selectOption('DejaVu Serif');
   await expect.poll(() => page.locator('#pn-app-font').textContent()).toContain('url("blob:');
+});
+
+test('sizes for the app’s Bangla and English, and the keys’ own font and size (decisions.md 82)', async ({ page }) => {
+  await page.goto('./');
+  await section(page, 'app');
+  const css = () => page.locator('#pn-app-font').textContent();
+  await page.getByTestId('app-font-bn-size').fill('120');
+  await page.getByTestId('app-font-bn-size').press('Tab');
+  await page.getByTestId('app-font-en-size').fill('90');
+  await page.getByTestId('app-font-en-size').press('Tab');
+  await expect.poll(css).toMatch(/"PN UI"[^}]*U\+0980[^}]*size-adjust: 120%/);
+  expect(await css()).toMatch(/"PN UI"[^}]*U\+0000[^}]*size-adjust: 90%/);
+  await section(page, 'type');
+  await page.getByTestId('kb-font').selectOption('Noto Serif Bengali');
+  await page.getByTestId('kb-font-size').fill('130');
+  await page.getByTestId('kb-font-size').press('Tab');
+  await expect.poll(css).toMatch(/"PN KB"[^}]*Noto Serif Bengali[^}]*size-adjust: 130%/);
+  // the menus keep their own font
+  expect(await css()).toMatch(/"PN UI"[^}]*kalpurush/);
+  await page.reload();
+  await expect.poll(css).toMatch(/"PN KB"[^}]*size-adjust: 130%/);
 });

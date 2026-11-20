@@ -10,8 +10,12 @@ import { closeHistory } from '@tiptap/pm/history';
 import { isBijoyFont, toBijoy } from '../bijoy';
 import { toBijoyIn, toUnicodeIn } from '../editor';
 import { cssFamily, fontMatches } from '../fonts';
-import { useT } from '../i18n';
+import { num, useT } from '../i18n';
 import { Popover } from './ui';
+import { createPortal } from 'react-dom';
+import { TextSelection } from '@tiptap/pm/state';
+import { load, save } from './prefs';
+
 
 export interface FontItem {
   name: string;
@@ -47,7 +51,7 @@ interface Props {
 }
 
 export function FontPicker({ ed, lists, defaultFont, ansiTyping, ansiFont, enFont, onToggleAnsi, say }: Props) {
-  const { t } = useT();
+  const { t, lang } = useT();
   const cur = clean(ed.getAttributes('textStyle').fontFamily);
   const inBijoy = isBijoyFont(cur, ansiFont);
   const ansiContext = ansiTyping || inBijoy;
@@ -63,10 +67,42 @@ export function FontPicker({ ed, lists, defaultFont, ansiTyping, ansiFont, enFon
 
   const label = cur || (ansiTyping ? ansiFont : defaultFont);
 
+  // decisions.md 82: before a font of the other kind rewrites letters (Unicode ⇄ Bijoy), ask — unless turned off
+  const [pending, setPending] = useState<{ f: FontItem | null; from: number; to: number; n: number; whole: boolean; toAnsi: boolean } | null>(null);
+  const [noAsk, setNoAsk] = useState(false);
+  /** How many letters a choice would rewrite (a dry run on a throwaway transaction). */
+  const wouldConvert = (f: FontItem | null, from: number, to: number) => {
+    const { state } = ed.view;
+    const tr = state.tr;
+    if (!f) return toUnicodeIn(tr, state, { bijoyFont: ansiFont, englishFont: enFont }, { from, to });
+    const cfg = { bijoyFont: f.ansi ? f.name : ansiFont, englishFont: enFont };
+    return f.ansi ? toBijoyIn(tr, state, cfg, { from, to }) : toUnicodeIn(tr, state, cfg, { from, to }, f.name);
+  };
   const choose = (f: FontItem | null, close: () => void) => {
     close();
     setQ('');
     setTab(null);
+    const { from, to, empty } = ed.view.state.selection;
+    if (!empty && (!f || f.available) && load('fontConvertAsk', true)) {
+      const n = wouldConvert(f, from, to);
+      if (n) {
+        const size = ed.view.state.doc.content.size;
+        setNoAsk(false);
+        return setPending({ f, from, to, n, whole: from <= 2 && to >= size - 2, toAnsi: !!f?.ansi });
+      }
+    }
+    apply(f);
+  };
+  const confirmPending = () => {
+    const pd = pending!;
+    setPending(null);
+    if (noAsk) save('fontConvertAsk', false);
+    const doc = ed.view.state.doc;
+    // the selection as it was when the font was picked
+    if (pd.to <= doc.content.size) ed.view.dispatch(ed.view.state.tr.setSelection(TextSelection.create(doc, pd.from, pd.to)));
+    apply(pd.f);
+  };
+  const apply = (f: FontItem | null) => {
     const { state } = ed.view;
     const { from, to, empty } = state.selection;
     if (!f) {
@@ -127,7 +163,24 @@ export function FontPicker({ ed, lists, defaultFont, ansiTyping, ansiFont, enFon
     if (n) say(f.ansi ? 'নির্বাচিত লেখা বিজয়ে বদলে {f} বসানো হলো' : 'নির্বাচিত বিজয় লেখা ইউনিকোডে বদলে {f} বসানো হলো', { f: f.name });
   };
 
+  const ask = pending && createPortal(
+    <div className="modal" data-testid="convert-ask" onPointerDown={(e) => { if (e.target === e.currentTarget) setPending(null); }}>
+      <div className="convert-ask" role="alertdialog" aria-modal="true" aria-labelledby="convert-ask-h">
+        <h3 id="convert-ask-h">{pending.toAnsi ? t('লেখা বিজয় (ANSI)-তে বদলাবে?') : t('লেখা ইউনিকোডে বদলাবে?')}</h3>
+        <p>{pending.whole ? t('পুরো ডকুমেন্টের') : t('নির্বাচিত অংশের')} {num(String(pending.n), lang)} {t('জায়গার অক্ষর বদলে যাবে, শুধু ফন্ট নয়।')} {t('পরে ↶ (Undo) চাপলে আগের মতো ফিরবে।')}</p>
+        <label className="ca-check"><input type="checkbox" data-testid="convert-noask" checked={noAsk} onChange={(e) => setNoAsk(e.target.checked)} /> {t('আর জিজ্ঞেস করবেন না')}</label>
+        <div className="ca-row">
+          <button type="button" className="btn" data-testid="convert-cancel" onClick={() => { setPending(null); ed.commands.focus(); }}>{t('বাতিল')}</button>
+          <button type="button" className="btn primary" data-testid="convert-ok" onClick={confirmPending}>{t('লেখা বদলান')}</button>
+        </div>
+      </div>
+    </div>,
+    document.body,
+  );
+
   return (
+    <>
+    {ask}
     <Popover label={<span className="fp-label" title={label}>{label}</span>} title={t('ফন্ট')} testid="font" className="fp-btn">
       {(close) => (
         <div className="menu font-picker" data-testid="font-picker">
@@ -160,5 +213,6 @@ export function FontPicker({ ed, lists, defaultFont, ansiTyping, ansiFont, enFon
         </div>
       )}
     </Popover>
+    </>
   );
 }

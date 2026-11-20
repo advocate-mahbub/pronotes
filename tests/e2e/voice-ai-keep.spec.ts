@@ -24,6 +24,8 @@ const setup = async (page: Page, answer: { fail: boolean }) => {
 };
 
 test('pause and continue in one recording; a failed send is kept and goes out when the internet is back', async ({ page, context }) => {
+  // Live off: this test is about the other voice mode (one 🎙 starts Live first; decisions.md 82)
+  await page.addInitScript(() => localStorage.setItem('pronotes.voice.modes', JSON.stringify({ live: false })));
   await context.grantPermissions(['microphone']);
   const answer = { fail: true };
   const sent = await setup(page, answer);
@@ -33,6 +35,8 @@ test('pause and continue in one recording; a failed send is kept and goes out wh
   await page.waitForTimeout(1200);
   await page.getByTestId('aiv-pause').click();
   await expect(bar).toHaveClass(/paused/);
+  // a second's tick already on its way when ⏸ was pressed may still land: read the clock after it
+  await page.waitForTimeout(300);
   const t1 = await bar.innerText();
   await page.waitForTimeout(1200);
   expect(await bar.innerText()).toBe(t1); // the clock stands still while paused
@@ -57,6 +61,8 @@ test('pause and continue in one recording; a failed send is kept and goes out wh
 });
 
 test('a recording cut off by a closed app is offered again; 🗑 asks once more, then throws it away', async ({ page, context }) => {
+  // Live off: this test is about the other voice mode (one 🎙 starts Live first; decisions.md 82)
+  await page.addInitScript(() => localStorage.setItem('pronotes.voice.modes', JSON.stringify({ live: false })));
   await context.grantPermissions(['microphone']);
   const answer = { fail: false };
   await setup(page, answer);

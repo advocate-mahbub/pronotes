@@ -62,6 +62,7 @@ test('numbered list styles: (ক), the start number, and the same labels in Word
 test('the zoom bar: − % + at the foot of the page, steps, and 100%', async ({ page }) => {
   await start(page);
   await page.getByTestId('pstyle').selectOption('numbered'); // paper view
+  await editor(page).click(); // a touch of the page brings the bar (it fades when left alone)
   const bar = page.getByTestId('zoom-bar');
   await expect(bar).toBeVisible();
   await page.getByTestId('zb-pct').click();
@@ -91,4 +92,16 @@ test('in a legal draft, (ক) on a numbered paragraph takes the place of ১। 
   await page.getByTestId('ol-style-bn-alpha-paren').click();
   await expect(editor(page).locator('ol li')).toHaveCount(1);
   await expect(page.getByTestId('pstyle')).not.toHaveValue('numbered');
+});
+
+test('the zoom bar fades out when left alone and comes back with a touch or a zoom (decisions.md 82)', async ({ page }) => {
+  await start(page);
+  const bar = page.getByTestId('zoom-bar');
+  await expect(bar).not.toHaveAttribute('data-idle', 'yes');
+  await expect(bar).toHaveAttribute('data-idle', 'yes', { timeout: 6000 });
+  expect(await bar.evaluate((el) => getComputedStyle(el).pointerEvents)).toBe('none'); // a faded bar never takes a tap
+  await editor(page).click();
+  await expect(bar).not.toHaveAttribute('data-idle', 'yes');
+  await page.getByTestId('zb-in').click();
+  await expect(bar).not.toHaveAttribute('data-idle', 'yes');
 });

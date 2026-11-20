@@ -36,6 +36,8 @@ const MOCK_SR = () => {
 };
 
 test('live voice (mocked engine): interim text, spoken punctuation, new paragraph, stop', async ({ page }) => {
+  // Live off: this test is about the other voice mode (one 🎙 starts Live first; decisions.md 82)
+  await page.addInitScript(() => localStorage.setItem('pronotes.voice.modes', JSON.stringify({ live: false })));
   await page.addInitScript(MOCK_SR);
   await start(page);
   await page.getByTestId('mic').click();
@@ -217,6 +219,8 @@ test('word bank: learn this draft, export (v8 format), reset needs two taps, imp
 });
 
 test('voice settings and corrections are applied to the next result', async ({ page }) => {
+  // Live off: this test is about the other voice mode (one 🎙 starts Live first; decisions.md 82)
+  await page.addInitScript(() => localStorage.setItem('pronotes.voice.modes', JSON.stringify({ live: false })));
   await page.addInitScript(MOCK_SR);
   await page.addInitScript(() => localStorage.setItem('pronotes.voiceConsent', 'true'));
   await start(page);

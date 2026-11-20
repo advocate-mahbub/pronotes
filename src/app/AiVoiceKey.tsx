@@ -13,6 +13,7 @@ import { useEffect, useRef, useState, type ReactNode } from 'react';
 import type { Editor } from '@tiptap/react';
 import { AiError, aiErrorMessage, addHeld, beginHeld, clearHeld, errText, loadHeld, PcmRecorder, polishTranscript, VOICE_ERROR_TEXT, VOICE_MAX_SECONDS, VoiceError, transcribe } from '../ai';
 import { insertPlainText, setInterim, textBeforeCaret } from '../editor';
+import { banglaScript } from '../voice';
 import { parseCorrections } from '../voice';
 import { useT } from '../i18n';
 import { load, save } from './prefs';
@@ -138,7 +139,9 @@ export function useAiVoice({ editor, gemini, say, onOpenSettings, disabled, voic
     try {
       abort.current = new AbortController();
       const raw = await transcribe(samples, { key: gemini.key, model: gemini.model, signal: abort.current.signal, onModelChange: gemini.setModel });
-      const text = voice ? polishTranscript(raw, voice, parseCorrections) : raw;
+      // no Hindi, Chinese or other letters in Bangla (decisions.md 82); English stays English
+      const raw1 = banglaScript(raw).text;
+      const text = voice ? polishTranscript(raw1, voice, parseCorrections) : raw1;
       held.current = null;
       void clearHeld();
       setState('idle');

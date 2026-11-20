@@ -34,6 +34,9 @@ test('Bijoy fonts: own ANSI list with search, converting a selection, keeping th
   // the sample of a Bijoy font is Bijoy-encoded, so it reads as Bangla in that font
   await expect(page.getByTestId('fp-DejaVu Serif').locator('.fp-sample')).toHaveText(toBijoy('আমার সোনার বাংলা'));
   await page.getByTestId('fp-DejaVu Serif').click();
+  // the letters themselves change, so it asks first (decisions.md 82): the whole document, one place
+  await expect(page.getByTestId('convert-ask')).toContainText('পুরো ডকুমেন্টের');
+  await page.getByTestId('convert-ok').click();
 
   // the selected Unicode text became Bijoy in that font, one undo step
   await expect(editor(page).locator('p').first()).toHaveText(toBijoy('দলিল'));
@@ -66,6 +69,7 @@ test('Bijoy fonts: own ANSI list with search, converting a selection, keeping th
   await expect(page.getByTestId('fp-tab-ansi')).toHaveAttribute('aria-pressed', 'true'); // the caret is in Bijoy text
   await page.getByTestId('fp-tab-uni').click();
   await page.getByTestId('fp-default').click();
+  await page.getByTestId('convert-ok').click();
   await expect(editor(page).locator('p').first()).toHaveText('দলিল');
   // one undo brings the Bijoy text back
   await page.getByTestId('undo').click();
