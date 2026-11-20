@@ -124,6 +124,8 @@ button:focus-visible, select:focus-visible { outline: 2px solid var(--gold); out
 .k.on { background: var(--accent); } .k.on .m { color: var(--accent-fg); }
 .k.hit, .k:active { transform: translateY(1px); box-shadow: 0 .5px 0 var(--key-shadow); background: var(--accent-soft); }
 .kb.shift .k .m { color: var(--accent); }
+/* …but not on the lit ⇧ itself: gold on gold hid it (decisions.md 85) */
+.kb.shift .k.on .m { color: var(--accent-fg); }
 
 @media (max-width: 700px) {
   .dock { gap: 3px; padding-bottom: 3px; }
@@ -846,8 +848,16 @@ button, select, .chip, .key, summary { touch-action: manipulation; }
 html, body { overflow: hidden; }
 .app { position: fixed; top: var(--app-top, 0px); left: 0; right: 0; box-sizing: border-box; }
 /* pinching a note or the phone view sizes its text (the paper view zooms the page instead) */
-.page.note .page-body { font-size: calc(13pt * var(--tz, 1) * var(--ptz, 1)); }
-.page.phone .page-body { font-size: calc(max(var(--doc-size, 14pt), 18px) * var(--tz, 1) * var(--ptz, 1)); }
+/* text zoom without the paper view (phone, notes): zoom the whole text, not the base size — paragraphs carry
+   their own pt size, so scaling the base only spread the lines apart (decisions.md 85). Width stays auto, so it rewraps. */
+.page.note .page-body { font-size: 13pt; zoom: calc(var(--tz, 1) * var(--ptz, 1)); }
+.page.phone .page-body { font-size: max(var(--doc-size, 14pt), 18px); zoom: calc(var(--tz, 1) * var(--ptz, 1)); }
+/* a selection you can see: firm blue on the light page, gold on the dark one (decisions.md 85) */
+:root { --sel: rgba(37, 99, 235, .30); }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --sel: rgba(200, 164, 93, .50); } }
+:root[data-theme="dark"] { --sel: rgba(200, 164, 93, .50); }
+.page-body ::selection, .page-body::selection { background: var(--sel); }
+.page-body ::-moz-selection { background: var(--sel); }
 
 /* ---------- Title chart page: steps on the left, the drawing on the right ---------- */
 .chart-ws { flex: 1; min-height: 0; display: flex; flex-direction: column; gap: 8px; }
@@ -1175,6 +1185,7 @@ body:has(.kb-strip.down) .mic, body:has(.kb-strip.down) .live-mic { bottom: calc
   .kb.compact .k.hit::before, .kb.compact .k:active::before { background: var(--ios-hit); }
   .kb.compact .k.on::before { background: var(--ios-fg); }
   .kb.compact .k.on .m { color: var(--ios-key); }
+  .kb.compact.shift .k.on .m { color: var(--ios-key); }
   /* the A row (nine keys) set in by half a key on each side, like iOS */
   .kb.compact:not(.num):not(.pad-anna):not(.split) .kb-row:nth-child(3):not(:last-child) { padding-inline: 5%; }
   /* ⇧ and ⌫: 44pt drawn, 14pt from the letters */
@@ -1242,7 +1253,14 @@ body:has(.kb-strip.down) .mic, body:has(.kb-strip.down) .live-mic { bottom: calc
 .zoom-bar.idle { opacity: 0; pointer-events: none; transition: opacity .6s; }
 @media (prefers-reduced-motion: reduce) { .zoom-bar, .zoom-bar.idle { transition: none; } }
 /* ☰ pinned at the start of the scrolling tab row (decisions.md 82) */
-.ribbon-tabs .tab-start { position: sticky; left: 0; z-index: 2; display: inline-flex; align-items: center; padding-right: 4px; background: var(--sheet); box-shadow: 6px 0 6px -6px rgba(0, 0, 0, .25); }
+.ribbon-tabbar { display: flex; align-items: center; min-width: 0; border-bottom: 1px solid var(--line); }
+.ribbon.collapsed .ribbon-tabbar, .ribbon.glass .ribbon-tabbar { border-bottom: 0; }
+.ribbon-tabbar .ribbon-tabs { flex: 1 1 auto; min-width: 0; border-bottom: 0; }
+/* ☰: just the three lines, spaced like the Home / Insert tabs — no box, no shade (decisions.md 85) */
+.ribbon-tabbar .tab-start { flex: none; display: inline-flex; align-items: center; padding: 6px 0 2px 8px; }
+.ribbon-tabbar .tab-start .tb { min-width: 0; min-height: 36px; padding: 0 12px; border: 0; border-radius: 999px; background: none; box-shadow: none; color: var(--muted); font: 600 18px/1 var(--f-sans); }
+.ribbon-tabbar .tab-start .tb:hover { color: var(--fg); background: none; }
+.ribbon-tabbar .tab-start .tb.on { color: var(--gold); background: none; }
 /* the top bar folded away: a thin strip with ⌄ */
 .top-mini { position: relative; display: flex; justify-content: center; align-items: center; height: 18px; }
 .top-mini .status { position: absolute; left: 4px; }

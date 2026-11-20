@@ -15,6 +15,7 @@ export const EN: Record<string, string> = {
   "এই ফাইলটা ফন্ট হিসেবে খোলা গেল না": "This file could not be opened as a font",
   "ফন্ট এবার কাজ করবে, কিন্তু ডিভাইসে সেভ করা গেল না": "The font works for now, but it could not be saved on this device",
   "{name} যোগ হয়েছে": "{name} added",
+  "{name} আগে থেকেই আছে": "{name} is already there",
   "ফন্ট মুছে ফেলা হয়েছে": "Font deleted",
   "সংশোধনের তালিকা সেভ করা যায়নি": "Could not save the corrections list",
   "{n}টা শব্দ শেখা হলো": "Learned {n} words",
