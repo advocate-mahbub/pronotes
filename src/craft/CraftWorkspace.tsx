@@ -61,6 +61,8 @@ interface Props {
   handoff?: CraftHandoff | null;
   /** Back to the drafts; the running app keeps running. */
   onShowDrafts: () => void;
+  /** ▦ → ডিকশনারি (decisions.md 92). */
+  onOpenDictionary?: () => void;
   /** Tells ProNotes whether an app fills the screen (its header then steps aside). */
   onViewChange?: (v: CraftView) => void;
   say: (m: string, v?: Record<string, string | number>) => void;
@@ -68,7 +70,7 @@ interface Props {
   typing?: { cfg: BridgeConfig; onToggleLanguage: () => void; keyboard?: { on: boolean; compact: boolean; getConfig: () => BornonaConfig } };
 }
 
-export function CraftWorkspace({ visible, initialApp, handoff, onShowDrafts, onViewChange, say, typing }: Props) {
+export function CraftWorkspace({ visible, initialApp, handoff, onShowDrafts, onOpenDictionary, onViewChange, say, typing }: Props) {
   const { t } = useT();
   // the running app (its iframe stays alive) and what is on screen
   const [app, setApp] = useState<CraftApp | null>(() => craftApp(initialApp) ?? null);
@@ -234,6 +236,7 @@ export function CraftWorkspace({ visible, initialApp, handoff, onShowDrafts, onV
               <AppIcon key={a.id} testid={'craft-app-' + a.id} name={a.name} img={CRAFT_ICONS[a.id]} running={app?.id === a.id}
                 about={t(a.label) + ' · v' + a.version + (app?.id === a.id ? ' · ' + t('চলছে') : '')} onOpen={() => start(a)} />
             ))}
+            {onOpenDictionary && <AppIcon testid="craft-dictionary" name={t('ডিকশনারি')} glyph={DICT_GLYPH} about={t('আইনের শব্দ English ↔ বাংলা, আর Oxford 3000/5000 — এই ডিভাইসে, ইন্টারনেট ছাড়াও')} onOpen={onOpenDictionary} />}
             {typing && (
               <AppIcon testid="craft-mine" name={t('আমার অ্যাপ')} glyph={MINE_GLYPH} running={mineOn}
                 about={t('নিজের ওয়েব অ্যাপ (.zip) যোগ করুন ও চালান; লেখার ঘরে ProNotes-এর কিবোর্ড লেআউট') + ' · ' + (mineOn ? t('চলছে') : 'apps.mahbuburrahman.bd')}
@@ -303,6 +306,15 @@ export function CraftWorkspace({ visible, initialApp, handoff, onShowDrafts, onV
 const CRAFT_ICONS: Record<string, string> = Object.fromEntries(
   Object.entries(import.meta.glob('../assets/craft-icons/*.webp', { eager: true, query: '?url', import: 'default' }) as Record<string, string>)
     .map(([path, url]) => [path.replace(/^.*\/|\.webp$/g, ''), url]),
+);
+const DICT_GLYPH = (
+  <svg viewBox="0 0 48 48" width="100%" height="100%" aria-hidden="true">
+    <rect width="48" height="48" rx="11" fill="#0d1829" />
+    <path d="M13 12.5h15a6 6 0 0 1 6 6V36H19a6 6 0 0 1-6-6z" fill="#f1e6cf" />
+    <path d="M19 36a6 6 0 0 1-6-6" fill="none" stroke="#c8a45d" strokeWidth="2" />
+    <path d="M24 16v14M18.5 19h11M19.5 19l-2.5 5.5h5zM28.5 19l-2.5 5.5h5z" fill="none" stroke="#0d1829" strokeWidth="1.6" strokeLinejoin="round" strokeLinecap="round" />
+    <path d="M21 30h6" stroke="#0d1829" strokeWidth="1.6" strokeLinecap="round" />
+  </svg>
 );
 const MINE_GLYPH = (
   <svg viewBox="0 0 48 48" width="100%" height="100%" aria-hidden="true">

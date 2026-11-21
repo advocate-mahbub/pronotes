@@ -1,132 +1,442 @@
-import { useEffect, useMemo, useState } from 'react';
-import { useT } from '../i18n';
-import { addDictionaryEquivalent, addDictionarySense, updateDictionarySense, deleteDictionarySense, addDictionaryTranslation, setDictionaryEquivalentReviewStatus, updateDictionaryEquivalent, deleteDictionaryEquivalent, findDictionaryDuplicateGroups, createBanglaDictionaryEntry, getDictionaryLinkedEntries, linkDictionaryEquivalent, searchBanglaDictionary, countDictionaryEntries, getDictionaryEquivalents, getDictionarySenses, importOxfordDictionaryJsonl, searchDictionary, type DictionaryEntry, type DictionaryEquivalent, type DictionarySense } from '../storage';
+/**
+ * ডিকশনারি (decisions.md 92): one search box (Bangla letters search the Bangla terms, the rest the English
+ * ones), a clean card for the chosen word, and everything else — import, new term, duplicate check, editing —
+ * out of the way until asked for. Copies of one headword show as one word with numbered meanings. A second
+ * tab holds the learner word lists (Oxford 3000 / 5000), kept apart from the law data.
+ * This screen keeps its own two-language labels: Bangla menu in Bangla, English menu fully English.
+ */
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { num, useT } from '../i18n';
+import './dictionary.css';
+import { readZip } from '../../apps-site/zip';
+import { geminiGenerate } from '../ai/gemini';
+import {
+  addDictionaryEquivalent, addDictionarySense, updateDictionarySense, deleteDictionarySense, addDictionaryTranslation, setDictionaryEquivalentReviewStatus,
+  updateDictionaryEquivalent, deleteDictionaryEquivalent, findDictionaryDuplicateGroups, createBanglaDictionaryEntry, getDictionaryLinkedEntries,
+  linkDictionaryEquivalent, searchBanglaDictionary, countDictionaryEntries, getDictionaryEquivalents, getDictionarySenses, importOxfordDictionaryJsonl,
+  searchDictionary, importWordList, countWordList, searchWordList,
+  type DictionaryEntry, type DictionaryEquivalent, type DictionarySense, type WordListItem,
+} from '../storage';
 
-export function LawDictionary({ onClose }: { onClose: () => void }) {
-  // this screen keeps its own two-language labels: Bangla menu as before, English menu fully English
+/** A line-broken PDF paragraph made one paragraph again ("con-\ntract" stays "con-tract"). */
+export function reflow(s: string): string {
+  return s.replace(/-\n(?=\S)/g, '-').replace(/\s*\n\s*/g, ' ').replace(/ {2,}/g, ' ').trim();
+}
+/** Search results: copies of one headword (same spelling, same language) become one word. */
+export function groupEntries(list: DictionaryEntry[]): DictionaryEntry[][] {
+  const by = new Map<string, DictionaryEntry[]>();
+  for (const e of list) {
+    const k = e.language + ':' + e.normalizedTitle;
+    by.set(k, [...(by.get(k) ?? []), e]);
+  }
+  return [...by.values()];
+}
+const isBangla = (s: string) => /[\u0980-\u09ff]/.test(s);
+/** The book starts each entry with its headword and part of speech; the card already shows them. */
+export function withoutHead(def: string, title: string): string {
+  const t = title.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  return def.replace(new RegExp('^' + t + '\\s+(?:(?:n|v|vb|adj|adv|pl|abbrev|prep)\\.\\s*)?', 'i'), '') || def;
+}
+/** "*deed" in the book marks a word that has its own entry: shown as a link to it. */
+function Marked({ text, onWord }: { text: string; onWord: (w: string) => void }) {
+  const parts = text.split(/\*([A-Za-z][A-Za-z'-]*)/g);
+  return <>{parts.map((p, i) => (i % 2 ? <button key={i} type="button" className="ld-ref" onClick={() => onWord(p)}>{p}</button> : p))}</>;
+}
+
+/** The three files of the extraction, from a ZIP or picked one by one. */
+async function datasetFiles(files: File[]): Promise<{ main?: File; senses?: File; cross?: File }> {
+  const all: File[] = [];
+  for (const f of files) {
+    if (/\.zip$/i.test(f.name)) {
+      for (const e of await readZip(await f.arrayBuffer(), { files: 200, bytes: 400 * 1024 * 1024 })) {
+        if (/\.jsonl$/i.test(e.path)) all.push(new File([e.data as BlobPart], e.path.split('/').pop()!, { type: 'application/jsonl' }));
+      }
+    } else all.push(f);
+  }
+  return {
+    main: all.find((f) => f.name.includes('pronotes_import_v4')) ?? all.find((f) => f.name.includes('pronotes_import')),
+    senses: all.find((f) => f.name.includes('dictionary_senses')),
+    cross: all.find((f) => f.name.includes('cross_references_resolved')),
+  };
+}
+
+interface Props {
+  onClose: () => void;
+  /** Puts text into the draft at the caret (the dictionary closes). */
+  onInsert?: (text: string) => void;
+  /** For a draft Bangla meaning. */
+  gemini?: { key: string; model?: string };
+}
+
+export function LawDictionary({ onClose, onInsert, gemini }: Props) {
   const { lang } = useT();
   const L = (bn: string, en: string) => (lang === 'en' ? en : bn);
+  const [tab, setTab] = useState<'law' | 'words'>('law');
   const [query, setQuery] = useState('');
-  const [direction, setDirection] = useState<'en' | 'bn'>('en');
-  const [newHeadword, setNewHeadword] = useState('');
-  const [newDefinition, setNewDefinition] = useState('');
-  const [linked, setLinked] = useState<DictionaryEntry[]>([]);
-  const [entries, setEntries] = useState<DictionaryEntry[]>([]);
-  const [selected, setSelected] = useState<DictionaryEntry | null>(null);
+  const [groups, setGroups] = useState<DictionaryEntry[][]>([]);
+  const [sel, setSel] = useState<DictionaryEntry[] | null>(null);
   const [senses, setSenses] = useState<DictionarySense[]>([]);
   const [equivalents, setEquivalents] = useState<DictionaryEquivalent[]>([]);
-  const [translation, setTranslation] = useState('');
-  const [translationSenseId, setTranslationSenseId] = useState('');
-  const [note, setNote] = useState('');
-  const [busy, setBusy] = useState(false);
+  const [linked, setLinked] = useState<DictionaryEntry[]>([]);
+  const [count, setCount] = useState({ en: 0, bn: 0, words: 0 });
   const [message, setMessage] = useState('');
-  const [count, setCount] = useState(0);
-  const [banglaCount, setBanglaCount] = useState(0);
-  const [linkQuery, setLinkQuery] = useState('');
-  const [linkResults, setLinkResults] = useState<DictionaryEntry[]>([]);
-  const [importProgress, setImportProgress] = useState<{ processed: number; total: number; imported: number; skipped: number } | null>(null);
-  const [senseText, setSenseText] = useState('');
-  const [senseSubject, setSenseSubject] = useState('');
-  const [editingSense, setEditingSense] = useState<string | null>(null);
-  const [editSenseText, setEditSenseText] = useState('');
-  const [editSenseSubject, setEditSenseSubject] = useState('');
-  const [duplicateGroups, setDuplicateGroups] = useState<DictionaryEntry[][]>([]);
-  const [editingEquivalent, setEditingEquivalent] = useState<string | null>(null);
-  const [editText, setEditText] = useState('');
-  const [relationType, setRelationType] = useState<'related' | 'see' | 'see_also' | 'compare'>('related');
+  const [busy, setBusy] = useState(false);
+  const [progress, setProgress] = useState<{ processed: number; total: number } | null>(null);
+  const [menu, setMenu] = useState(false);
+  const [newTerm, setNewTerm] = useState(false);
+  const [editing, setEditing] = useState(false);
+  const [drafting, setDrafting] = useState(false);
+  const [dups, setDups] = useState<DictionaryEntry[][] | null>(null);
+  const lawFile = useRef<HTMLInputElement>(null);
+  const wordFile = useRef<HTMLInputElement>(null);
+  const abort = useRef<AbortController | null>(null);
+  const entry = sel?.[0] ?? null;
 
-  const refreshCount = async () => { const [en, bn] = await Promise.all([countDictionaryEntries('en'), countDictionaryEntries('bn')]); setCount(en); setBanglaCount(bn); };
+  const refreshCount = async () => {
+    const [en, bn, words] = await Promise.all([countDictionaryEntries('en'), countDictionaryEntries('bn'), countWordList().catch(() => 0)]);
+    setCount({ en, bn, words });
+  };
   useEffect(() => { void refreshCount(); }, []);
+
+  // search: Bangla letters look in the Bangla terms, anything else in the English ones
   useEffect(() => {
     let live = true;
-    const run = async () => { if (!query.trim()) { setEntries([]); return; } try { const result = await (direction === 'en' ? searchDictionary(query, 'en') : searchBanglaDictionary(query)); if (live) setEntries(result); } catch (error) { if (live) { setEntries([]); setMessage(error instanceof Error ? L(`Search ব্যর্থ: ${error.message}`, `Search failed: ${error.message}`) : L('Search ব্যর্থ হয়েছে।', 'Search failed.')); } } };
-    void run(); return () => { live = false; };
-  }, [query, count, direction]);
-  useEffect(() => {
-    let live = true;
-    if (!selected) { setSenses([]); setEquivalents([]); setLinked([]); return; }
-    void Promise.all([getDictionarySenses(selected.id), getDictionaryEquivalents(selected.id), getDictionaryLinkedEntries(selected.id)]).then(([s, e, l]) => { if (live) { setSenses(s); setEquivalents(e); setLinked(l); } }).catch((error) => { if (live) setMessage(error instanceof Error ? L(`Entry load ব্যর্থ: ${error.message}`, `Entry load failed: ${error.message}`) : L('Entry load ব্যর্থ হয়েছে।', 'Entry load failed.')); });
+    const q = query.trim();
+    if (tab !== 'law' || !q) { setGroups([]); return; }
+    void (isBangla(q) ? searchBanglaDictionary(q) : searchDictionary(q, 'en'))
+      .then((r) => { if (live) setGroups(groupEntries(r)); })
+      .catch(() => { if (live) setGroups([]); });
     return () => { live = false; };
-  }, [selected]);
-  useEffect(() => { let live = true; const run = async () => { if (!selected || !linkQuery.trim()) { setLinkResults([]); return; } const results = selected.language === 'en' ? await searchDictionary(linkQuery, 'bn', 20) : await searchDictionary(linkQuery, 'en', 20); if (live) setLinkResults(results.filter((item) => item.id !== selected.id)); }; void run(); return () => { live = false; }; }, [selected, linkQuery]);
-  const bnTranslations = useMemo(() => equivalents.filter((item) => item.language === (selected?.language === 'bn' ? 'en' : 'bn')), [equivalents, selected]);
+  }, [query, tab, count]);
 
-  const importFile = async (files?: FileList | null) => {
-    if (!files?.length) return;
-    const selectedFiles = Array.from(files);
-    const main = selectedFiles.find((f) => f.name.includes('pronotes_import_v4')) ?? selectedFiles.find((f) => f.name.includes('pronotes_import')) ?? selectedFiles.find((f) => !/sense|cross.?reference/i.test(f.name));
-    if (!main) { setMessage(L('মূল pronotes_import_v4.jsonl ফাইলটি নির্বাচন করুন।', 'Select the main pronotes_import_v4.jsonl file.')); return; }
-    const sensesFile = selectedFiles.find((f) => f.name.includes('dictionary_senses_v3'));
-    const crossReferencesFile = selectedFiles.find((f) => f.name.includes('cross_references_resolved_v4'));
-    const missing = [!sensesFile && 'dictionary_senses_v3.jsonl', !crossReferencesFile && 'cross_references_resolved_v4.jsonl'].filter(Boolean);
-    if (missing.length) { setMessage(L(`অসম্পূর্ণ dataset নির্বাচন: ${missing.join(' এবং ')} ফাইলও নির্বাচন করুন। কোনো import শুরু হয়নি।`, `Incomplete dataset: also select ${missing.join(' and ')}. No import was started.`)); return; }
-    if (new Set(selectedFiles.map((file) => file.name)).size !== selectedFiles.length) { setMessage(L('একই নামের একাধিক ফাইল নির্বাচন করা হয়েছে। সঠিক তিনটি JSONL ফাইল নির্বাচন করুন।', 'Several files have the same name. Select the right three JSONL files.')); return; }
-    setImportProgress(null);
-    setBusy(true); setMessage(L('Oxford entries, পৃথক senses ও cross-references import হচ্ছে…', 'Importing Oxford entries, separate senses and cross-references…'));
-    try { const controller = new AbortController(); (window as Window & { __lawDictionaryImportAbort?: AbortController }).__lawDictionaryImportAbort = controller; const result = await importOxfordDictionaryJsonl(main, { sensesFile, crossReferencesFile, signal: controller.signal, onProgress: setImportProgress }); setMessage(L(`${result.imported}টি নতুন entry, ${result.sensesImported}টি sense এবং ${result.relationsImported}টি verified-match cross-reference import হয়েছে; ${result.skipped}টি entry বাদ; ${result.unresolvedRelations}টি unresolved/ambiguous reference link করা হয়নি${result.cancelled ? '; import বাতিল করা হয়েছে' : ''}।`, `${result.imported} new entries, ${result.sensesImported} senses and ${result.relationsImported} verified-match cross-references imported; ${result.skipped} entries skipped; ${result.unresolvedRelations} unresolved/ambiguous references not linked${result.cancelled ? '; import cancelled' : ''}.`)); await refreshCount(); }
-    catch (error) { setMessage(error instanceof Error ? error.message : L('Import ব্যর্থ হয়েছে।', 'Import failed.')); }
-    finally { setBusy(false); }
+  const loadEntry = async (g: DictionaryEntry[]) => {
+    const [s, e, l] = await Promise.all([
+      Promise.all(g.map((x) => getDictionarySenses(x.id))).then((a) => a.flat()),
+      Promise.all(g.map((x) => getDictionaryEquivalents(x.id))).then((a) => a.flat()),
+      Promise.all(g.map((x) => getDictionaryLinkedEntries(x.id))).then((a) => a.flat()),
+    ]);
+    // the copies' meanings one after another, each copy's in its own order
+    const order = new Map(g.map((x, i) => [x.id, i]));
+    s.sort((a, b) => (order.get(a.entryId)! - order.get(b.entryId)!) || (a.senseNumber ?? 0) - (b.senseNumber ?? 0));
+    setSenses(s); setEquivalents(e);
+    setLinked([...new Map(l.filter((x) => !g.some((y) => y.id === x.id)).map((x) => [x.id, x])).values()]);
   };
-  const saveLink = async (target: DictionaryEntry) => { if (!selected) return; try { await linkDictionaryEquivalent(selected.id, target.id, relationType); setLinked(await getDictionaryLinkedEntries(selected.id)); setLinkQuery(''); setMessage(L('শব্দের সম্পর্ক সংরক্ষিত হয়েছে।', 'Relationship saved.')); } catch (error) { setMessage(error instanceof Error ? error.message : L('সম্পর্ক যোগ করা যায়নি।', 'Could not add the relationship.')); } };
+  useEffect(() => { if (sel) void loadEntry(sel); else { setSenses([]); setEquivalents([]); setLinked([]); } setEditing(false); }, [sel]);
+  const reload = () => sel && loadEntry(sel);
 
-  const saveTranslation = async () => {
-    if (!selected || !translation.trim()) return;
+  const meanings = useMemo(() => equivalents.filter((x) => x.language === (entry?.language === 'bn' ? 'en' : 'bn')), [equivalents, entry]);
+  const statusName = (s?: string) => (s === 'verified' ? L('যাচাইকৃত', 'verified') : s === 'reviewed' ? L('দেখা হয়েছে', 'reviewed') : L('খসড়া', 'draft'));
+  const cardText = () => {
+    if (!entry) return '';
+    const m = meanings.map((x) => x.text).join(', ');
+    return [entry.title + (entry.partOfSpeech ? ' (' + entry.partOfSpeech + ')' : ''), m, ...senses.map((s, i) => (senses.length > 1 ? i + 1 + '. ' : '') + reflow(s.definition))].filter(Boolean).join('\n');
+  };
+  const copy = async () => { try { await navigator.clipboard.writeText(cardText()); setMessage(L('কপি হয়েছে', 'Copied')); } catch { setMessage(L('কপি করা গেল না', 'Could not copy')); } };
+  // into the draft: "Bangla (English)" — the usual way to give a term in a legal draft
+  const insert = () => {
+    if (!entry || !onInsert) return;
+    const bn = entry.language === 'en' ? meanings[0]?.text : entry.title;
+    const en = entry.language === 'en' ? entry.title : meanings[0]?.text;
+    onInsert(bn && en ? `${bn} (${en})` : entry.title);
+  };
+
+  // a draft Bangla meaning from Gemini, marked "draft" until you check it
+  const draftMeaning = async () => {
+    if (!entry || !gemini?.key) return;
+    setDrafting(true);
     try {
-      if (selected.language === 'en') await addDictionaryTranslation(selected.id, translation, note, translationSenseId || undefined);
-      else await addDictionaryEquivalent(selected.id, translation, 'en', note);
-      setTranslation(''); setNote(''); setTranslationSenseId(''); setEquivalents(await getDictionaryEquivalents(selected.id)); setMessage(L('অনুবাদ সংরক্ষিত হয়েছে।', 'Translation saved.'));
-    } catch (error) { setMessage(error instanceof Error ? error.message : L('অনুবাদ সংরক্ষণ করা যায়নি।', 'Could not save the translation.')); }
-  };
-  const changeReviewStatus = async (id: string, status: 'draft' | 'reviewed' | 'verified') => {
-    let evidence: { note: string; reviewer: string; authority: string } | undefined;
-    if (status === 'verified') {
-      const reviewer = window.prompt(L('যাচাইকারীর নাম/পরিচয় লিখুন:', 'Name/identity of the reviewer:')); if (!reviewer?.trim()) return;
-      const authority = window.prompt(L('যে আইন, রায়, সরকারি উৎস বা নির্ভরযোগ্য reference দেখে যাচাই করেছেন তা লিখুন:', 'The law, judgment, official source or reliable reference you checked against:')); if (!authority?.trim()) return;
-      const note = window.prompt(L('যাচাইয়ের সংক্ষিপ্ত কারণ/নোট লিখুন:', 'Short reason/note for the verification:')); if (!note?.trim()) return;
-      evidence = { reviewer, authority, note };
-    }
-    try { await setDictionaryEquivalentReviewStatus(id, status, evidence); setEquivalents(await getDictionaryEquivalents(selected!.id)); setMessage(L('অনুবাদের review status আপডেট হয়েছে।', 'Review status updated.')); }
-    catch (error) { setMessage(error instanceof Error ? error.message : L('Review status আপডেট করা যায়নি।', 'Could not update the review status.')); }
+      const prompt = [
+        'নিচের ইংরেজি আইনি শব্দটার জন্য বাংলাদেশের আদালত ও দলিলে প্রচলিত বাংলা পরিভাষা দিন।',
+        'শুধু ১ থেকে ৩টা বাংলা শব্দ বা শব্দগুচ্ছ, কমা দিয়ে আলাদা; কোনো ব্যাখ্যা, উদ্ধৃতিচিহ্ন বা ইংরেজি নয়। জানা না থাকলে কিছুই লিখবেন না।',
+        '', 'শব্দ: ' + entry.title, 'সংজ্ঞা: ' + reflow(senses[0]?.definition ?? '').slice(0, 600),
+      ].join('\n');
+      const out = (await geminiGenerate(prompt, { key: gemini.key, model: gemini.model, temperature: 0 })).trim().replace(/^["“']|["”']$/g, '');
+      if (!isBangla(out)) { setMessage(L('Gemini কোনো বাংলা অর্থ দিল না', 'Gemini gave no Bangla meaning')); return; }
+      await addDictionaryTranslation(entry.id, out.split('\n')[0].slice(0, 120), L('Gemini-র খসড়া — যাচাই করুন', 'Gemini draft — check it'));
+      await reload();
+      setMessage(L('খসড়া অর্থ যোগ হয়েছে — যাচাই করে "দেখা হয়েছে" করুন', 'Draft meaning added — check it and mark it reviewed'));
+    } catch (e) { setMessage(L('Gemini থেকে অর্থ আনা গেল না', 'Could not get a meaning from Gemini') + (e instanceof Error ? ': ' + e.message : '')); }
+    finally { setDrafting(false); }
   };
 
-  const saveSense = async () => { if (!selected || !senseText.trim()) return; await addDictionarySense(selected.id, senseText, senseSubject); setSenseText(''); setSenseSubject(''); setSenses(await getDictionarySenses(selected.id)); setMessage(L('নতুন sense সংরক্ষিত হয়েছে।', 'New sense saved.')); };
-  const saveSenseEdit = async (id: string) => { await updateDictionarySense(id, editSenseText, editSenseSubject); setEditingSense(null); setSenses(await getDictionarySenses(selected!.id)); setMessage(L('Sense সংশোধন হয়েছে।', 'Sense updated.')); };
-  const removeSense = async (id: string) => { if (!window.confirm(L('এই sense এবং এর সঙ্গে যুক্ত sense-specific অনুবাদ মুছে ফেলবেন? সাধারণ অনুবাদ অক্ষত থাকবে।', 'Delete this sense and the sense-specific translations linked to it? General translations stay.'))) return; await deleteDictionarySense(id); setSenses(await getDictionarySenses(selected!.id)); setEquivalents(await getDictionaryEquivalents(selected!.id)); setMessage(L('Sense এবং সংশ্লিষ্ট অনুবাদ মুছে ফেলা হয়েছে।', 'Sense and its translations deleted.')); };
-  const inspectDuplicates = async () => { const groups = await findDictionaryDuplicateGroups(); setDuplicateGroups(groups); setMessage(L(`${groups.length}টি সম্ভাব্য duplicate headword group পাওয়া গেছে। কোনো record merge বা delete করা হয়নি।`, `${groups.length} possible duplicate headword groups found. No record was merged or deleted.`)); };
-  const saveEquivalentEdit = async (id: string) => { await updateDictionaryEquivalent(id, editText); setEditingEquivalent(null); setEquivalents(await getDictionaryEquivalents(selected!.id)); setMessage(L('অনুবাদ সংশোধন হয়েছে।', 'Translation updated.')); };
-  const removeEquivalent = async (id: string) => { if (!window.confirm(L('এই অনুবাদটি মুছে ফেলবেন?', 'Delete this translation?'))) return; await deleteDictionaryEquivalent(id); setEquivalents(await getDictionaryEquivalents(selected!.id)); setMessage(L('অনুবাদ মুছে ফেলা হয়েছে।', 'Translation deleted.')); };
-
-  const createHeadword = async () => {
-    try { const entry = await createBanglaDictionaryEntry(newHeadword, newDefinition); setDirection('bn'); setQuery(entry.title); setSelected(entry); setNewHeadword(''); setNewDefinition(''); setMessage(L('বাংলা headword যোগ হয়েছে।', 'Bangla headword added.')); await refreshCount(); }
-    catch (error) { setMessage(error instanceof Error ? error.message : L('Headword যোগ করা যায়নি', 'Could not add the headword')); }
+  const importLaw = async (list: File[]) => {
+    setMenu(false);
+    if (!list.length) return;
+    setBusy(true); setMessage(L('ফাইল পড়া হচ্ছে…', 'Reading the file…'));
+    try {
+      const f = await datasetFiles(list);
+      if (!f.main) { setMessage(L('এতে pronotes_import_v4.jsonl নেই — Extraction v4 ZIP দিন', 'No pronotes_import_v4.jsonl in it — give the Extraction v4 ZIP')); return; }
+      abort.current = new AbortController();
+      const r = await importOxfordDictionaryJsonl(f.main, { sensesFile: f.senses, crossReferencesFile: f.cross, signal: abort.current.signal, onProgress: (p) => setProgress({ processed: p.processed, total: p.total }) });
+      setMessage(L(`${r.imported}টা নতুন শব্দ, ${r.sensesImported}টা অর্থ, ${r.relationsImported}টা সম্পর্ক এসেছে; ${r.skipped}টা আগে থেকেই ছিল বা বাদ${r.cancelled ? ' — মাঝপথে থামানো হয়েছে' : ''}।`,
+        `${r.imported} new words, ${r.sensesImported} meanings, ${r.relationsImported} links added; ${r.skipped} already there or skipped${r.cancelled ? ' — stopped part way' : ''}.`));
+      await refreshCount();
+    } catch (e) { setMessage(L('ইমপোর্ট হলো না', 'Import failed') + (e instanceof Error ? ': ' + e.message : '')); }
+    finally { setBusy(false); setProgress(null); }
   };
+  const importWords = async (file?: File) => {
+    setMenu(false);
+    if (!file) return;
+    try {
+      const n = await importWordList(await file.text());
+      setMessage(L(`Oxford শব্দতালিকা: ${num(n, 'bn')}টা শব্দ এসেছে`, `Oxford word list: ${n} words added`));
+      await refreshCount(); setTab('words');
+    } catch { setMessage(L('এটা ProNotes-এর Oxford শব্দতালিকার ফাইল নয় (oxford-3000-5000.json)', 'This is not the ProNotes Oxford word-list file (oxford-3000-5000.json)')); }
+  };
+  const audit = async () => { setMenu(false); setDups(await findDictionaryDuplicateGroups()); };
 
-  return <main className="lawdict" data-testid="law-dictionary">
-    <div className="lawdict-head"><div><p className="lawdict-kicker">PRONOTES KNOWLEDGE</p><h1>ProNotes Law Dictionary</h1><p>{L("English ↔ বাংলা · Offline legal terminology", "English ↔ Bangla · Offline legal terminology")}</p></div><button className="btn" onClick={onClose}>{L("ডকুমেন্টে ফিরুন", "Back to documents")}</button></div>
-    <div className="lawdict-toolbar"><label htmlFor="lawdict-direction">Search language</label><select id="lawdict-direction" aria-label="Dictionary search language" value={direction} onChange={(e) => { setDirection(e.target.value as 'en' | 'bn'); setSelected(null); setEntries([]); }}><option value="en">{L("English → বাংলা", "English → Bangla")}</option><option value="bn">{L("বাংলা → English", "Bangla → English")}</option></select><label className="lawdict-search"><span>⌕</span><input aria-label="Search legal term" placeholder={direction === 'en' ? 'Search an English legal term…' : L('বাংলা আইনগত শব্দ খুঁজুন…', 'Search a Bangla legal term…')} value={query} onChange={(e) => { setQuery(e.target.value); setSelected(null); }}/></label><span className="lawdict-count">{(direction === 'en' ? count : banglaCount).toLocaleString()} headwords</span></div>
-    {message && <p className="lawdict-message" role="status">{message}</p>}
-    <div className="lawdict-layout">
-      <section className="lawdict-results" aria-label="Search results">
-        {!query.trim() && <div className="lawdict-empty"><strong>{L("আইনগত শব্দ খুঁজুন", "Search legal terms")}</strong><p>{L("English বা বাংলা headword লিখুন। প্রতিটি শব্দের সংজ্ঞা ও বাংলা অনুবাদ এখানে দেখা যাবে।", "Type an English or Bangla headword. Each term's definition and Bangla translation show here.")}</p></div>}
-        {query.trim() && entries.length === 0 && <div className="lawdict-empty">{L("কোনো matching entry পাওয়া যায়নি। প্রথমে Oxford JSONL dataset import করুন।", "No matching entry. Import the Oxford JSONL dataset first.")}</div>}
-        {entries.map((entry) => <button key={entry.id} className={'lawdict-result' + (selected?.id === entry.id ? ' active' : '')} onClick={() => setSelected(entry)}><strong>{entry.title}</strong><small>{entry.partOfSpeech || 'Legal term'} · PDF p. {entry.sourcePages?.join('–') || '—'}</small></button>)}
-      </section>
-      <section className="lawdict-detail">
-        {!selected ? <div className="lawdict-empty">{L("একটি headword নির্বাচন করলে তার definition ও বাংলা অর্থ এখানে দেখাবে।", "Select a headword to see its definition and Bangla meaning here.")}</div> : <>
-          <div className="lawdict-term"><div><small>{selected.language === 'en' ? 'ENGLISH HEADWORD' : L('বাংলা HEADWORD', 'BANGLA HEADWORD')}</small><h2>{selected.title}</h2><span>{selected.partOfSpeech || 'Part of speech not confirmed'} · {selected.jurisdiction || 'Source jurisdiction not specified'}</span></div><span className="lawdict-status">{selected.verificationStatus === 'machine_unverified' ? 'Machine extracted · Unverified' : 'User-authored · Not legally verified'}</span></div>
-          <h3>{selected.language === 'bn' ? L('বাংলা ব্যাখ্যা', 'Bangla explanation') : 'English definition'}</h3>
-          {senses.map((sense) => <article className="lawdict-definition" key={sense.id}>{editingSense === sense.id ? <div className="lawdict-add"><textarea aria-label="Edit sense definition" value={editSenseText} onChange={(e) => setEditSenseText(e.target.value)} /><input aria-label="Edit sense subject" value={editSenseSubject} onChange={(e) => setEditSenseSubject(e.target.value)} placeholder="Subject / legal context"/><button className="btn primary" onClick={() => void saveSenseEdit(sense.id)}>Save sense</button><button className="btn" onClick={() => setEditingSense(null)}>Cancel</button></div> : <>{sense.definition}<small>{sense.subject || 'Subject not classified'} · Source PDF page(s): {(sense.sourcePages?.length ? sense.sourcePages.join('–') : sense.sourcePage) ?? 'not recorded'} · {sense.verificationStatus === 'machine_unverified' ? 'Machine extracted · Unverified' : 'User-added · Not legally verified'}</small><div className="lawdict-actions"><button className="btn" onClick={() => { setEditingSense(sense.id); setEditSenseText(sense.definition); setEditSenseSubject(sense.subject || ''); }}>Edit sense</button><button className="btn" onClick={() => void removeSense(sense.id)}>Delete sense</button></div></>}</article>)}
-          <h3>{selected.language === 'bn' ? 'English equivalents' : L('বাংলা অর্থ / অনুবাদ', 'Bangla meaning / translation')}</h3>
-          {bnTranslations.length ? bnTranslations.map((item) => { const sense = senses.find((candidate) => candidate.id === item.senseId); return <div className="lawdict-translation" key={item.id}><strong>{item.text}</strong><small>{sense ? `Sense ${sense.senseNumber ?? ''}: ${sense.subject || sense.definition.slice(0, 110)}` : L('সাধারণ / নির্দিষ্ট sense-এ সীমাবদ্ধ নয়', 'General / not limited to a sense')} · Review: {item.reviewStatus || 'legacy / not set'}</small>{item.note && <p>{item.note}</p>}{item.verificationEvidence && <small>Verified by {item.verificationEvidence.reviewer} · Authority: {item.verificationEvidence.authority} · {item.verificationEvidence.note}</small>}{editingEquivalent === item.id ? <div className="lawdict-add"><input aria-label="Edit translation" value={editText} onChange={(e) => setEditText(e.target.value)}/><button className="btn primary" onClick={() => void saveEquivalentEdit(item.id)}>Save</button><button className="btn" onClick={() => setEditingEquivalent(null)}>Cancel</button></div> : <div className="lawdict-actions"><button className="btn" onClick={() => { setEditingEquivalent(item.id); setEditText(item.text); }}>Edit</button><button className="btn" onClick={() => void changeReviewStatus(item.id, item.reviewStatus === 'reviewed' ? 'draft' : 'reviewed')}>{item.reviewStatus === 'reviewed' ? L('Draft করুন', 'Mark as draft') : L('Reviewed চিহ্নিত করুন', 'Mark as reviewed')}</button><button className="btn" onClick={() => void changeReviewStatus(item.id, 'verified')}>{L("Verified চিহ্নিত করুন", "Mark as verified")}</button><button className="btn" onClick={() => void removeEquivalent(item.id)}>Delete</button></div>}</div>; }) : <p className="lawdict-muted">{L("এখনো অনুবাদ যোগ করা হয়নি।", "No translation added yet.")}</p>}
-          <div className="lawdict-add">{selected.language === 'en' && <select aria-label="Translation sense" value={translationSenseId} onChange={(e) => setTranslationSenseId(e.target.value)}><option value="">{L("সাধারণ অনুবাদ (সব sense)", "General translation (all senses)")}</option>{senses.map((sense) => <option key={sense.id} value={sense.id}>Sense {sense.senseNumber ?? ''} · {(sense.subject || sense.definition).slice(0, 90)}</option>)}</select>}<input value={translation} onChange={(e) => setTranslation(e.target.value)} placeholder={selected.language === 'bn' ? 'English equivalent' : L('বাংলা অর্থ লিখুন', 'Bangla meaning')} aria-label="Translation equivalent"/><input value={note} onChange={(e) => setNote(e.target.value)} placeholder={L("প্রাসঙ্গিকতা / আইনি context (ঐচ্ছিক)", "Relevance / legal context (optional)")} aria-label="Translation context"/><button className="btn primary" disabled={!translation.trim()} onClick={() => void saveTranslation()}>{L("অনুবাদ যোগ করুন", "Add translation")}</button></div>
-          <h3>{L("নতুন legal sense যোগ করুন", "Add a new legal sense")}</h3><div className="lawdict-add"><input aria-label="New legal sense" value={senseText} onChange={(e) => setSenseText(e.target.value)} placeholder={L("অতিরিক্ত অর্থ বা legal context", "Extra meaning or legal context")}/><input aria-label="Sense subject" value={senseSubject} onChange={(e) => setSenseSubject(e.target.value)} placeholder="Subject: Contract / Property / Criminal…"/><button className="btn" disabled={!senseText.trim()} onClick={() => void saveSense()}>{L("Sense যোগ করুন", "Add sense")}</button></div>
-          <h3>{L("সম্পর্কিত / Cross-reference শব্দ", "Related / cross-reference terms")}</h3><div className="lawdict-add lawdict-linker"><select aria-label="Relationship type" value={relationType} onChange={(e) => setRelationType(e.target.value as typeof relationType)}><option value="related">Related term</option><option value="see">See</option><option value="see_also">See also</option><option value="compare">Compare</option></select><input aria-label="Find existing dictionary entry to link" value={linkQuery} onChange={(e) => setLinkQuery(e.target.value)} placeholder={selected.language === 'en' ? L('বাংলা headword খুঁজুন', 'Find a Bangla headword') : L('English headword খুঁজুন', 'Find an English headword')}/></div>{linkResults.map((item) => <button key={item.id} className="lawdict-result" onClick={() => void saveLink(item)}>{item.title} <small>{L("এই শব্দের সঙ্গে link করুন", "Link to this term")}</small></button>)}{linked.length > 0 && <div className="lawdict-linked">{linked.map((item) => <button key={item.id} className="lawdict-result" onClick={() => { setSelected(item); setDirection(item.language); setQuery(item.title); setLinkQuery(''); }}>{item.title} <small>Open linked entry</small></button>)}</div>}
-          <p className="lawdict-source">{selected.sourceId ? L('Source: A Dictionary of Law, Oxford University Press. UK-oriented source context-কে বাংলাদেশের আইন হিসেবে ধরে নেওয়া যাবে না।', 'Source: A Dictionary of Law, Oxford University Press. UK-oriented source context must not be taken as Bangladesh law.') : L('User-authored entry. কোনো আইনগত যাচাই সম্পন্ন হয়নি।', 'User-authored entry. No legal verification has been done.')}</p>
-        </>}
-      </section>
+  const back = () => (sel ? setSel(null) : onClose());
+  return (
+    <main className={'lawdict' + (sel ? ' has-sel' : '')} data-testid="law-dictionary">
+      <header className="ld-bar">
+        <button type="button" className="ld-back" data-testid="dict-back" onClick={back} aria-label={L('ফিরুন', 'Back')}>‹</button>
+        <strong className="ld-title">{L('ডিকশনারি', 'Dictionary')}</strong>
+        <div className="ld-tabs" role="tablist">
+          <button type="button" role="tab" aria-selected={tab === 'law'} data-testid="dict-tab-law" onClick={() => { setTab('law'); setSel(null); }}>{L('আইন', 'Law')}</button>
+          <button type="button" role="tab" aria-selected={tab === 'words'} data-testid="dict-tab-words" onClick={() => { setTab('words'); setSel(null); }}>Oxford 5000</button>
+        </div>
+        <span className="ld-sp" />
+        <button type="button" className="ld-more" data-testid="dict-menu" aria-expanded={menu} aria-label={L('আরও', 'More')} onClick={() => setMenu((m) => !m)}>⋯</button>
+        <button type="button" className="btn small" data-testid="dict-close" onClick={onClose}>{L('ড্রাফটে ফিরুন', 'Back to drafts')}</button>
+        {menu && (
+          <div className="ld-menu" role="menu" data-testid="dict-menu-list">
+            <button type="button" role="menuitem" data-testid="dict-import" onClick={() => lawFile.current?.click()}>{L('আইনের ডেটা ইমপোর্ট (ZIP)', 'Import law data (ZIP)')}</button>
+            <button type="button" role="menuitem" data-testid="dict-import-words" onClick={() => wordFile.current?.click()}>{L('Oxford 3000/5000 ইমপোর্ট', 'Import Oxford 3000/5000')}</button>
+            <button type="button" role="menuitem" data-testid="dict-new-term" onClick={() => { setMenu(false); setNewTerm(true); setTab('law'); setSel(null); }}>{L('নতুন বাংলা শব্দ', 'New Bangla term')}</button>
+            <button type="button" role="menuitem" data-testid="dict-audit" onClick={() => void audit()}>{L('একই শব্দ একাধিকবার আছে কি না', 'Words that appear more than once')}</button>
+          </div>
+        )}
+        <input ref={lawFile} type="file" hidden multiple accept=".zip,.jsonl,application/zip" data-testid="dict-import-file" onChange={(e) => { void importLaw([...(e.target.files ?? [])]); e.currentTarget.value = ''; }} />
+        <input ref={wordFile} type="file" hidden accept=".json,application/json" data-testid="dict-import-words-file" onChange={(e) => { void importWords(e.target.files?.[0]); e.currentTarget.value = ''; }} />
+      </header>
+
+      {message && <p className="ld-msg" role="status" data-testid="dict-msg" onClick={() => setMessage('')}>{message}</p>}
+      {busy && (
+        <div className="ld-progress">
+          <progress max={progress?.total ?? 1} value={progress?.processed ?? 0} />
+          <button type="button" className="btn small" onClick={() => abort.current?.abort()}>{L('থামান', 'Stop')}</button>
+        </div>
+      )}
+      {newTerm && <NewTerm L={L} onDone={async (e) => { setNewTerm(false); if (e) { setQuery(e.title); setSel([e]); await refreshCount(); } }} />}
+      {dups && (
+        <div className="ld-dups" data-testid="dict-dups">
+          <strong>{L(`${num(dups.length, 'bn')}টা শব্দ একাধিকবার আছে`, `${dups.length} words appear more than once`)}</strong>
+          <p>{L('সার্চে এগুলো একটাই শব্দ হিসেবে দেখায়, ভেতরে অর্থ ১, ২ করে। কিছু মোছা হয়নি।', 'In search each shows as one word, with meanings 1, 2… Nothing was deleted.')}</p>
+          <button type="button" className="btn small" onClick={() => setDups(null)}>{L('ঠিক আছে', 'OK')}</button>
+        </div>
+      )}
+
+      {tab === 'words' ? <WordLists L={L} count={count.words} onImport={() => wordFile.current?.click()} /> : (
+        <div className="ld-body">
+          <section className="ld-list">
+            <label className="ld-search">
+              <span aria-hidden="true">⌕</span>
+              <input data-testid="dict-search" value={query} onChange={(e) => { setQuery(e.target.value); setSel(null); }} autoComplete="off" autoCorrect="off" autoCapitalize="off" spellCheck={false}
+                placeholder={L('শব্দ লিখুন — English বা বাংলা', 'Type a word — English or Bangla')} aria-label={L('শব্দ খুঁজুন', 'Search a word')} />
+            </label>
+            <small className="ld-count">{L(`${count.en.toLocaleString('bn-BD')}টা English · ${count.bn.toLocaleString('bn-BD')}টা বাংলা শব্দ`, `${count.en.toLocaleString()} English · ${count.bn.toLocaleString()} Bangla words`)}</small>
+            {!count.en && !count.bn ? (
+              <div className="ld-empty" data-testid="dict-empty">
+                <strong>{L('ডিকশনারি এখনো খালি', 'The dictionary is empty')}</strong>
+                <p>{L('আপনার Drive-এ রাখা Extraction v4 ZIP ফাইলটা দিন। ডেটা শুধু এই ডিভাইসে থাকে।', 'Give the Extraction v4 ZIP from your Drive. The data stays on this device only.')}</p>
+                <button type="button" className="btn primary" onClick={() => lawFile.current?.click()}>{L('ZIP ফাইল বাছুন', 'Choose the ZIP file')}</button>
+              </div>
+            ) : (
+              <ul className="ld-results" data-testid="dict-results">
+                {groups.map((g) => (
+                  <li key={g[0].id}>
+                    <button type="button" className={sel?.[0].id === g[0].id ? 'on' : ''} data-testid={'dict-hit-' + g[0].normalizedTitle} onClick={() => setSel(g)}>
+                      <strong>{g[0].title}</strong>
+                      <small>{[g[0].partOfSpeech, g.length > 1 ? L(`${num(g.length, 'bn')}টা অর্থের দল`, `${g.length} groups of meanings`) : ''].filter(Boolean).join(' · ')}</small>
+                    </button>
+                  </li>
+                ))}
+                {query.trim() && !groups.length && <li className="ld-none">{L('এই শব্দ পাওয়া গেল না', 'No such word')}</li>}
+              </ul>
+            )}
+          </section>
+
+          <section className="ld-card" data-testid="dict-card">
+            {!entry ? <p className="ld-hint">{L('বাঁয়ে একটা শব্দ বাছুন।', 'Pick a word on the left.')}</p> : (
+              <>
+                <h2 data-testid="dict-word">{entry.title}{entry.partOfSpeech && <small> {entry.partOfSpeech}</small>}</h2>
+                <div className="ld-meanings" data-testid="dict-meanings">
+                  {meanings.map((m) => <span key={m.id} className={'ld-chip ' + (m.reviewStatus ?? 'draft')} title={statusName(m.reviewStatus)}>{m.text}<small>{statusName(m.reviewStatus)}</small></span>)}
+                  {!meanings.length && <span className="ld-muted">{entry.language === 'en' ? L('বাংলা অর্থ এখনো নেই', 'No Bangla meaning yet') : L('English প্রতিশব্দ এখনো নেই', 'No English equivalent yet')}</span>}
+                </div>
+                <div className="ld-actions">
+                  <button type="button" className="btn small" data-testid="dict-copy" onClick={() => void copy()}>{L('কপি', 'Copy')}</button>
+                  {onInsert && <button type="button" className="btn small" data-testid="dict-insert" onClick={insert}>{L('ড্রাফটে বসান', 'Put in the draft')}</button>}
+                  {entry.language === 'en' && gemini?.key && <button type="button" className="btn small" data-testid="dict-draft" disabled={drafting} onClick={() => void draftMeaning()}>{drafting ? L('আনছে…', 'Getting…') : L('বাংলা অর্থের খসড়া', 'Draft Bangla meaning')}</button>}
+                  <button type="button" className={'btn small' + (editing ? ' primary' : '')} data-testid="dict-edit" aria-pressed={editing} onClick={() => setEditing((v) => !v)}>✎ {L('এডিট', 'Edit')}</button>
+                </div>
+                <ol className="ld-senses" data-testid="dict-senses">
+                  {senses.map((s) => <li key={s.id}><Marked text={withoutHead(reflow(s.definition), entry.title)} onWord={(w) => { setQuery(w); setSel(null); }} />{s.subject && <small> · {s.subject}</small>}</li>)}
+                </ol>
+                {linked.length > 0 && (
+                  <div className="ld-related">
+                    <small>{L('সম্পর্কিত', 'Related')}</small>
+                    {linked.map((x) => <button key={x.id} type="button" className="ld-chip link" onClick={() => { setQuery(x.title); setSel([x]); }}>{x.title}</button>)}
+                  </div>
+                )}
+                {editing && <EditPanel L={L} entry={entry} senses={senses} meanings={meanings} onChanged={() => void reload()} onLinked={(x) => { setQuery(x.title); setSel([x]); }} say={setMessage} />}
+                <p className="ld-source">{entry.sourceId
+                  ? L('উৎস: A Dictionary of Law (Oxford University Press, ৫ম সংস্করণ, ২০০২), যুক্তরাজ্যের আইনভিত্তিক — বাংলাদেশের আইন হিসেবে ধরে নেবেন না।', 'Source: A Dictionary of Law (Oxford University Press, 5th ed., 2002), based on UK law — do not take it as Bangladesh law.')
+                  : L('আপনার নিজের যোগ করা শব্দ।', 'A word you added yourself.')}</p>
+              </>
+            )}
+          </section>
+        </div>
+      )}
+    </main>
+  );
+}
+
+type Lx = (bn: string, en: string) => string;
+
+function NewTerm({ L, onDone }: { L: Lx; onDone: (e?: DictionaryEntry) => void }) {
+  const [w, setW] = useState('');
+  const [d, setD] = useState('');
+  const [err, setErr] = useState('');
+  const save = async () => { try { onDone(await createBanglaDictionaryEntry(w, d)); } catch (e) { setErr(e instanceof Error ? e.message : L('যোগ করা গেল না', 'Could not add it')); } };
+  return (
+    <div className="ld-form" data-testid="dict-new-form">
+      <input data-testid="dict-new-word" value={w} onChange={(e) => setW(e.target.value)} placeholder={L('বাংলা শব্দ', 'Bangla term')} aria-label={L('বাংলা শব্দ', 'Bangla term')} />
+      <textarea data-testid="dict-new-def" value={d} onChange={(e) => setD(e.target.value)} placeholder={L('ব্যাখ্যা (ইচ্ছা হলে)', 'Explanation (optional)')} aria-label={L('ব্যাখ্যা', 'Explanation')} />
+      {err && <p className="ld-err">{err}</p>}
+      <div className="ld-actions">
+        <button type="button" className="btn small primary" data-testid="dict-new-save" disabled={!w.trim()} onClick={() => void save()}>{L('যোগ করুন', 'Add')}</button>
+        <button type="button" className="btn small" onClick={() => onDone()}>{L('বাতিল', 'Cancel')}</button>
+      </div>
     </div>
-    <section className="lawdict-import"><div><strong>{L("নতুন বাংলা headword", "New Bangla headword")}</strong><p>{L("নিজস্ব বাংলা আইনগত শব্দ ও তার ব্যাখ্যা যোগ করুন। ইংরেজি equivalent পরে সংযুক্ত করা যাবে।", "Add your own Bangla legal term and its explanation. The English equivalent can be linked later.")}</p></div><div className="lawdict-add"><input aria-label="New Bangla headword" value={newHeadword} onChange={(e) => setNewHeadword(e.target.value)} placeholder={L("বাংলা শব্দ", "Bangla term")}/><input aria-label="Bangla definition" value={newDefinition} onChange={(e) => setNewDefinition(e.target.value)} placeholder={L("বাংলা ব্যাখ্যা (ঐচ্ছিক)", "Bangla explanation (optional)")}/><button className="btn" disabled={!newHeadword.trim()} onClick={() => void createHeadword()}>{L("শব্দ যোগ করুন", "Add term")}</button></div></section>
-    <section className="lawdict-import"><div><strong>Duplicate headword audit</strong><p>{L("একই ভাষায় একই normalized spelling-এর সম্ভাব্য duplicate খুঁজুন। এই audit কোনো শব্দ merge বা delete করে না।", "Find possible duplicates with the same normalized spelling in one language. This audit merges or deletes nothing.")}</p></div><button className="btn" onClick={() => void inspectDuplicates()}>{L("Duplicate audit চালান", "Run duplicate audit")}</button>{duplicateGroups.length > 0 && <div className="lawdict-duplicate-list">{duplicateGroups.map((group) => <p key={group[0].id}><strong>{group[0].title}</strong> — {L(`${group.length}টি record`, `${group.length} records`)} ({group[0].language})</p>)}</div>}</section>
-    <section className="lawdict-import"><div><strong>Oxford dataset import</strong><p>{L("Extraction v4 ZIP থেকে একসঙ্গে এই ৩টি ফাইল নির্বাচন করুন: ", "Select these 3 files together from the Extraction v4 ZIP: ")}<code>pronotes_import_v4.jsonl</code>, <code>dictionary_senses_v3.jsonl</code>{L(" এবং ", " and ")}<code>cross_references_resolved_v4.jsonl</code>{L("। পৃথক senses ও uniquely matched cross-references যুক্ত হবে; ambiguous link স্বয়ংক্রিয়ভাবে তৈরি হবে না।", ". Separate senses and uniquely matched cross-references are added; ambiguous links are not created automatically.")}</p></div><div><label className="btn">{L("৩টি JSONL ফাইল নির্বাচন", "Select 3 JSONL files")}<input type="file" multiple accept=".jsonl,.txt,application/jsonl" disabled={busy} hidden onChange={(e) => { void importFile(e.target.files); e.currentTarget.value = ''; }}/></label>{busy && <button className="btn" onClick={() => (window as Window & { __lawDictionaryImportAbort?: AbortController }).__lawDictionaryImportAbort?.abort()}>Cancel import</button>}</div>{importProgress && <div className="lawdict-progress"><progress max={importProgress.total} value={importProgress.processed}/><small>{importProgress.processed.toLocaleString()} / {importProgress.total.toLocaleString()} · {importProgress.imported.toLocaleString()} imported · {importProgress.skipped.toLocaleString()} skipped</small></div>}</section>
-  </main>;
+  );
+}
+
+/** ✎: meanings, review marks, extra senses and links — shown only while editing. */
+function EditPanel({ L, entry, senses, meanings, onChanged, onLinked, say }: { L: Lx; entry: DictionaryEntry; senses: DictionarySense[]; meanings: DictionaryEquivalent[]; onChanged: () => void; onLinked: (e: DictionaryEntry) => void; say: (s: string) => void }) {
+  const [text, setText] = useState('');
+  const [note, setNote] = useState('');
+  const [senseId, setSenseId] = useState('');
+  const [newSense, setNewSense] = useState('');
+  const [editSense, setEditSense] = useState<{ id: string; text: string } | null>(null);
+  const [editMean, setEditMean] = useState<{ id: string; text: string } | null>(null);
+  const [linkQ, setLinkQ] = useState('');
+  const [linkHits, setLinkHits] = useState<DictionaryEntry[]>([]);
+  const [rel, setRel] = useState<'related' | 'see' | 'see_also' | 'compare'>('related');
+  const other = entry.language === 'en' ? 'bn' : 'en';
+  useEffect(() => {
+    let live = true;
+    if (!linkQ.trim()) { setLinkHits([]); return; }
+    void searchDictionary(linkQ, other, 20).then((r) => { if (live) setLinkHits(r.filter((x) => x.id !== entry.id)); });
+    return () => { live = false; };
+  }, [linkQ, entry.id, other]);
+  const run = async (f: () => Promise<unknown>, ok: string) => { try { await f(); onChanged(); say(ok); } catch (e) { say(e instanceof Error ? e.message : L('হলো না', 'Did not work')); } };
+  const verify = async (id: string) => {
+    const reviewer = window.prompt(L('কে যাচাই করলেন?', 'Who checked it?')); if (!reviewer?.trim()) return;
+    const authority = window.prompt(L('কোন আইন, রায় বা নির্ভরযোগ্য উৎস দেখে?', 'Against which law, judgment or reliable source?')); if (!authority?.trim()) return;
+    const n = window.prompt(L('সংক্ষেপে কারণ:', 'Short reason:')); if (!n?.trim()) return;
+    await run(() => setDictionaryEquivalentReviewStatus(id, 'verified', { reviewer, authority, note: n }), L('যাচাইকৃত চিহ্ন দেওয়া হলো', 'Marked verified'));
+  };
+  return (
+    <div className="ld-edit" data-testid="dict-edit-panel">
+      <h3>{entry.language === 'en' ? L('বাংলা অর্থ', 'Bangla meanings') : L('English প্রতিশব্দ', 'English equivalents')}</h3>
+      {meanings.map((m) => (
+        <div key={m.id} className="ld-row">
+          {editMean?.id === m.id ? (
+            <>
+              <input value={editMean.text} onChange={(e) => setEditMean({ id: m.id, text: e.target.value })} aria-label={L('অর্থ', 'Meaning')} />
+              <button type="button" className="btn small primary" onClick={() => void run(async () => { await updateDictionaryEquivalent(m.id, editMean.text); setEditMean(null); }, L('বদলানো হলো', 'Changed'))}>{L('রাখুন', 'Save')}</button>
+            </>
+          ) : (
+            <>
+              <span className="ld-row-text">{m.text}{m.note && <small> · {m.note}</small>}</span>
+              <button type="button" className="btn small" onClick={() => setEditMean({ id: m.id, text: m.text })}>✎</button>
+              <button type="button" className="btn small" onClick={() => void run(() => setDictionaryEquivalentReviewStatus(m.id, m.reviewStatus === 'reviewed' ? 'draft' : 'reviewed'), L('চিহ্ন বদলানো হলো', 'Mark changed'))}>{m.reviewStatus === 'reviewed' ? L('খসড়া করুন', 'Make draft') : L('দেখা হয়েছে', 'Reviewed')}</button>
+              <button type="button" className="btn small" onClick={() => void verify(m.id)}>{L('যাচাইকৃত', 'Verified')}</button>
+              <button type="button" className="btn small" onClick={() => { if (window.confirm(L('এই অর্থ মুছবেন?', 'Delete this meaning?'))) void run(() => deleteDictionaryEquivalent(m.id), L('মোছা হলো', 'Deleted')); }}>{L('মুছুন', 'Delete')}</button>
+            </>
+          )}
+        </div>
+      ))}
+      <div className="ld-row">
+        {entry.language === 'en' && senses.length > 1 && (
+          <select value={senseId} onChange={(e) => setSenseId(e.target.value)} aria-label={L('কোন অর্থের জন্য', 'For which meaning')}>
+            <option value="">{L('সব অর্থের জন্য', 'For all meanings')}</option>
+            {senses.map((s, i) => <option key={s.id} value={s.id}>{i + 1}. {reflow(s.definition).slice(0, 60)}</option>)}
+          </select>
+        )}
+        <input data-testid="dict-add-meaning" value={text} onChange={(e) => setText(e.target.value)} placeholder={entry.language === 'en' ? L('বাংলা অর্থ', 'Bangla meaning') : L('English প্রতিশব্দ', 'English equivalent')} aria-label={L('নতুন অর্থ', 'New meaning')} />
+        <input value={note} onChange={(e) => setNote(e.target.value)} placeholder={L('প্রসঙ্গ (ইচ্ছা হলে)', 'Context (optional)')} aria-label={L('প্রসঙ্গ', 'Context')} />
+        <button type="button" className="btn small primary" data-testid="dict-add-meaning-save" disabled={!text.trim()} onClick={() => void run(async () => {
+          if (entry.language === 'en') await addDictionaryTranslation(entry.id, text, note, senseId || undefined); else await addDictionaryEquivalent(entry.id, text, 'en', note);
+          setText(''); setNote(''); setSenseId('');
+        }, L('অর্থ যোগ হলো', 'Meaning added'))}>{L('যোগ', 'Add')}</button>
+      </div>
+
+      <h3>{L('অর্থ / সংজ্ঞা', 'Senses')}</h3>
+      {senses.map((s, i) => (
+        <div key={s.id} className="ld-row">
+          {editSense?.id === s.id ? (
+            <>
+              <textarea value={editSense.text} onChange={(e) => setEditSense({ id: s.id, text: e.target.value })} aria-label={L('সংজ্ঞা', 'Sense')} />
+              <button type="button" className="btn small primary" onClick={() => void run(async () => { await updateDictionarySense(s.id, editSense.text, s.subject); setEditSense(null); }, L('বদলানো হলো', 'Changed'))}>{L('রাখুন', 'Save')}</button>
+            </>
+          ) : (
+            <>
+              <span className="ld-row-text">{i + 1}. {reflow(s.definition).slice(0, 140)}{reflow(s.definition).length > 140 ? '…' : ''}</span>
+              <button type="button" className="btn small" onClick={() => setEditSense({ id: s.id, text: reflow(s.definition) })}>✎</button>
+              <button type="button" className="btn small" onClick={() => { if (window.confirm(L('এই অর্থ আর এর সাথে যুক্ত বাংলা অর্থ মুছবেন?', 'Delete this sense and the meanings tied to it?'))) void run(() => deleteDictionarySense(s.id), L('মোছা হলো', 'Deleted')); }}>{L('মুছুন', 'Delete')}</button>
+            </>
+          )}
+        </div>
+      ))}
+      <div className="ld-row">
+        <input value={newSense} onChange={(e) => setNewSense(e.target.value)} placeholder={L('নতুন অর্থ বা আইনি প্রসঙ্গ', 'New sense or legal context')} aria-label={L('নতুন অর্থ', 'New sense')} />
+        <button type="button" className="btn small" disabled={!newSense.trim()} onClick={() => void run(async () => { await addDictionarySense(entry.id, newSense); setNewSense(''); }, L('যোগ হলো', 'Added'))}>{L('যোগ', 'Add')}</button>
+      </div>
+
+      <h3>{L('সম্পর্কিত শব্দ জুড়ুন', 'Link a related word')}</h3>
+      <div className="ld-row">
+        <select value={rel} onChange={(e) => setRel(e.target.value as typeof rel)} aria-label={L('সম্পর্ক', 'Relation')}>
+          <option value="related">{L('সম্পর্কিত', 'Related')}</option><option value="see">{L('দেখুন', 'See')}</option><option value="see_also">{L('আরও দেখুন', 'See also')}</option><option value="compare">{L('তুলনা করুন', 'Compare')}</option>
+        </select>
+        <input value={linkQ} onChange={(e) => setLinkQ(e.target.value)} placeholder={other === 'bn' ? L('বাংলা শব্দ খুঁজুন', 'Find a Bangla word') : L('English শব্দ খুঁজুন', 'Find an English word')} aria-label={L('শব্দ খুঁজুন', 'Find a word')} />
+      </div>
+      {linkHits.map((x) => <button key={x.id} type="button" className="ld-chip link" onClick={() => void run(async () => { await linkDictionaryEquivalent(entry.id, x.id, rel); setLinkQ(''); }, L('জোড়া হলো', 'Linked')).then(() => onLinked(entry))}>{x.title} +</button>)}
+    </div>
+  );
+}
+
+const LEVELS = ['A1', 'A2', 'B1', 'B2', 'C1'];
+/** The Oxford 3000 / 5000 learner lists: search, a level at a time. Separate from the law data. */
+function WordLists({ L, count, onImport }: { L: Lx; count: number; onImport: () => void }) {
+  const [q, setQ] = useState('');
+  const [lvl, setLvl] = useState('');
+  const [hits, setHits] = useState<WordListItem[]>([]);
+  useEffect(() => {
+    let live = true;
+    void searchWordList(q, lvl).then((r) => { if (live) setHits(r); }).catch(() => setHits([]));
+    return () => { live = false; };
+  }, [q, lvl, count]);
+  if (!count) return (
+    <div className="ld-empty" data-testid="words-empty">
+      <strong>{L('Oxford 3000 / 5000 এখনো আনা হয়নি', 'Oxford 3000 / 5000 not added yet')}</strong>
+      <p>{L('আপনার Drive-এ রাখা oxford-3000-5000.json ফাইলটা দিন। এটা আইনের ডিকশনারি থেকে আলাদা থাকে।', 'Give the oxford-3000-5000.json file from your Drive. It stays apart from the law dictionary.')}</p>
+      <button type="button" className="btn primary" onClick={onImport}>{L('ফাইল বাছুন', 'Choose the file')}</button>
+    </div>
+  );
+  return (
+    <div className="ld-words" data-testid="words">
+      <label className="ld-search"><span aria-hidden="true">⌕</span>
+        <input data-testid="words-search" value={q} onChange={(e) => setQ(e.target.value)} placeholder={L('ইংরেজি শব্দ লিখুন', 'Type an English word')} aria-label={L('শব্দ খুঁজুন', 'Search a word')} autoCapitalize="off" autoCorrect="off" spellCheck={false} />
+      </label>
+      <div className="ld-levels" role="radiogroup">
+        {['', ...LEVELS].map((x) => <button key={x || 'all'} type="button" role="radio" aria-checked={lvl === x} data-testid={'words-lvl-' + (x || 'all')} onClick={() => setLvl(x)}>{x || L('সব', 'All')}</button>)}
+      </div>
+      <ul className="ld-wordlist" data-testid="words-list">
+        {hits.map((w) => <li key={w.id}><strong>{w.w}</strong><span>{w.pos}</span><b className={'lvl ' + w.lvl}>{w.lvl}</b><small>{w.list === '3000' ? 'Oxford 3000' : 'Oxford 5000'}</small></li>)}
+        {!hits.length && <li className="ld-none">{L('কিছু পাওয়া গেল না', 'Nothing found')}</li>}
+      </ul>
+    </div>
+  );
 }

@@ -431,6 +431,9 @@ export function Settings(p: Props) {
   // "ফন্টও রাখুন" (decisions.md 82): off by default, remembered on this device
   const [withFonts, setWithFonts0] = useState<boolean>(() => load('device.backupFonts', false));
   const setWithFonts = (v: boolean) => { setWithFonts0(v); save('device.backupFonts', v); };
+  // the imported Oxford law data in backups: off by default, on this device (decisions.md 92)
+  const [withOxford, setWithOxford0] = useState<boolean>(() => load('device.backupOxford', false));
+  const setWithOxford = (v: boolean) => { setWithOxford0(v); save('device.backupOxford', v); };
   // families that have only italic or bold files: normal text would be drawn slanted or heavy
   // the app's own font: Unicode Bangla fonts here (own files first), English ones; never ANSI
   const appBn = [...new Set([p.appFonts.bn, DEFAULT_APP_BN, ...uniFonts.map((f) => f.family), ...WEB_FONTS, ...LOCAL_UNI.filter((n) => isFontAvailable(n))])].filter(Boolean);
@@ -762,6 +765,7 @@ export function Settings(p: Props) {
                 : <button type="button" className="btn" data-testid="drive-connect" onClick={p.drive.onConnect}>☁ {t('Google দিয়ে যুক্ত করুন')}</button>)}
             </div>
             <Check testid="backup-fonts" checked={withFonts} onChange={setWithFonts} label={t('ফন্টও রাখুন')} info="নিজের যোগ করা ফন্ট ফাইলগুলোও এই ডিভাইসের ব্যাকআপ ফাইলে যায়, তাই Google Drive ছাড়াও নতুন ডিভাইসে ফন্টসহ সব ফেরত আসে। ফাইল বড় হয় (প্রতিটা ফন্ট ০.৫–২ MB)। ফাইলটা কাউকে দিলে ফন্টও তার কাছে যায় — SutonnyOMJ-এর মতো লাইসেন্সের ফন্ট থাকলে খেয়াল রাখবেন। Drive-এর ব্যাকআপে ফন্ট যায় না, কারণ ফন্ট আলাদা “ProNotes Fonts” ফোল্ডারে থাকে।" />
+            <Check testid="backup-oxford" checked={withOxford} onChange={setWithOxford} label={t('Oxford ডিকশনারির ডেটাও রাখুন')} info="আমদানি করা Oxford আইনের ডেটা বড়, আর অন্যকে দেওয়ার জিনিস নয় — তাই ডিফল্টে ব্যাকআপে যায় না; দরকার হলে Drive-এ রাখা ZIP থেকে আবার আনা যায়। আপনার নিজের শব্দ, বাংলা অর্থ আর সম্পর্ক সবসময় ব্যাকআপে যায়। Drive-এর ব্যাকআপেও একই নিয়ম।" />
             {p.ai.key && (
               <Check testid="backup-key" checked={withKey} onChange={setWithKey} label={t('Gemini key-ও ব্যাকআপে')} info="শুধু এই ডিভাইসের ফাইলে Gemini key-ও রাখুন (ফাইলটা তখন পাসওয়ার্ডের মতো গোপনে রাখবেন)। Drive-এ key যায় না।" />
             )}

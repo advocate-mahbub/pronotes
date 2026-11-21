@@ -77,7 +77,7 @@ test('Tools: the law dictionary button opens the dictionary', async ({ page }) =
   await openLegal(page);
   await page.getByTestId('tab-tools').click();
   await page.getByTestId('tools-dictionary').click();
-  await expect(page.getByTestId('law-dictionary-toggle')).toHaveClass(/\bon\b/);
+  await expect(page.getByTestId('law-dictionary')).toBeVisible();
 });
 
 test('the ribbon is translucent glass, the page stays solid', async ({ page }) => {

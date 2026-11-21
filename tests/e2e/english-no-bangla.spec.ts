@@ -63,12 +63,14 @@ test('English menu: not one Bangla letter or digit in Settings (every tab, every
   await page.keyboard.press('Escape');
   await page.getByTestId('share').click({ trial: true }).catch(() => {});
   // the law dictionary and the Apps list
-  await page.getByTestId('law-dictionary-toggle').click();
-  await look('law dictionary');
-  await page.getByTestId('law-dictionary-toggle').click();
   await page.getByTestId('craft-toggle').click();
   await look('apps');
-  await page.getByTestId('craft-toggle').click();
+  await page.getByTestId('craft-dictionary').click();
+  await look('law dictionary');
+  await page.getByTestId('dict-menu').click();
+  await look('dictionary menu');
+  await page.getByTestId('dict-menu').click();
+  await page.getByTestId('dict-close').click();
   // a title chart with one step of each kind (the chart itself is the user's Bangla text)
   await page.getByTestId('new-doc').click();
   await page.getByTestId('new-chart').click();

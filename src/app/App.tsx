@@ -127,6 +127,13 @@ export function App() {
   const [kbPhone, setKbPhone] = useState(() => load('kbPhone', false));
   const [sideOpen, setSideOpen] = useState(() => load('side', true));
   const [lawDictionaryOpen, setLawDictionaryOpen] = useState(false);
+  // where the caret was when the dictionary opened, and a word to put there when it closes (decisions.md 92)
+  const pendingInsert = useRef<{ text?: string; at?: number } | null>(null);
+  const openDictionary = () => {
+    const ed = editorRef.current;
+    pendingInsert.current = { at: ed && !ed.isDestroyed ? ed.state.selection.from : undefined };
+    setLawDictionaryOpen(true);
+  };
   // Craft apps workspace; ?app=wordcraft (the /word/ address) opens straight into that app
   const [craftStart] = useState(() => (typeof location === 'undefined' ? null : new URLSearchParams(location.search).get('app')));
   const [craftOpen, setCraftOpen] = useState(() => !!craftApp(craftStart));
@@ -555,7 +562,7 @@ export function App() {
 
   const backup = async (withKey = false, withFonts = false) => {
     try {
-      const f = await exportAll(prefs(), new Date(), withKey && geminiKey ? geminiKey : undefined, withFonts);
+      const f = await exportAll(prefs(), new Date(), withKey && geminiKey ? geminiKey : undefined, withFonts, load('device.backupOxford', false));
       const ok = await saveFile(backupFileName(), new Blob([JSON.stringify(f)], { type: 'application/json' }));
       if (ok) { markBackup('device'); say(f.fonts?.length ? '{n}টা ড্রাফট, শব্দভান্ডার আর {f}টা ফন্টের ব্যাকআপ তৈরি হয়েছে' : '{n}টা ড্রাফট আর শব্দভান্ডারের ব্যাকআপ তৈরি হয়েছে', { n: f.docs.length, f: f.fonts?.length ?? 0 }); }
     } catch {
@@ -607,7 +614,7 @@ export function App() {
     setDriveBusy(true);
     try {
       await flushAll();
-      const f = await exportAll(prefs(), new Date());
+      const f = await exportAll(prefs(), new Date(), undefined, false, load('device.backupOxford', false));
       await uploadBackup(tk, driveBackupName(), JSON.stringify(f), undefined, thisDevice);
       // only after the new one is safely in Drive: the oldest beyond the chosen number go to the Trash
       const gone = await pruneBackups(tk, driveKeep).catch(() => 0);
@@ -1035,7 +1042,6 @@ export function App() {
           title={t(bangla ? 'টাইপ: বাংলা — চাপলে English' : 'টাইপ: English — চাপলে বাংলা')}
           aria-label={t(bangla ? 'টাইপ: বাংলা — চাপলে English' : 'টাইপ: English — চাপলে বাংলা')}
           onPointerDown={(e) => e.preventDefault()} onClick={() => setBangla((b) => !b)}>{uiLang === 'en' ? (bangla ? 'BN' : 'EN') : bangla ? 'বা' : 'e'}</button>
-        <button type="button" className={'tb' + (lawDictionaryOpen ? ' on' : '')} title="ProNotes Law Dictionary" aria-label="ProNotes Law Dictionary" data-testid="law-dictionary-toggle" onClick={() => { setCraftOpen(false); setLawDictionaryOpen((v) => !v); }}>⚖</button>
         <button type="button" className={'tb' + (craftOpen ? ' on' : '')} title={t('অ্যাপস: Word, PDF, Sheet, Slides')} aria-label={t('অ্যাপস: Word, PDF, Sheet, Slides')} data-testid="craft-toggle" onClick={() => { setLawDictionaryOpen(false); setCraftOpen((v) => !v); }}>▦</button>
         <button type="button" className="tb theme" data-testid="theme" data-theme-mode={theme} title={t(themeLabel[theme])} aria-label={t(themeLabel[theme])}
           onClick={() => setTheme(themeNext[theme])}>{THEME_ICON[theme]}</button>
@@ -1056,8 +1062,10 @@ export function App() {
       <div className="body">
         {!lawDictionaryOpen && !craftOpen && showSide && (wide ? sidebar : <div className="drawer" onClick={(e) => e.target === e.currentTarget && setSideOpen(false)}>{sidebar}</div>)}
         <div className="work">
-          {craftMounted && <CraftWorkspace visible={craftOpen} initialApp={craftStart} handoff={craftHandoff} onShowDrafts={() => setCraftOpen(false)} onViewChange={setCraftView} say={say} typing={appTyping} />}
-          {craftOpen ? null : lawDictionaryOpen ? <LawDictionary onClose={() => setLawDictionaryOpen(false)} /> : current && kindOf(current) === 'chart' ? (
+          {craftMounted && <CraftWorkspace visible={craftOpen} initialApp={craftStart} handoff={craftHandoff} onShowDrafts={() => setCraftOpen(false)} onViewChange={setCraftView} say={say} typing={appTyping}
+            onOpenDictionary={() => { openDictionary(); setCraftOpen(false); }} />}
+          {craftOpen ? null : lawDictionaryOpen ? <LawDictionary onClose={() => setLawDictionaryOpen(false)} gemini={{ key: geminiKey, model: geminiModel }}
+            onInsert={(text) => { pendingInsert.current = { text, at: pendingInsert.current?.at }; setLawDictionaryOpen(false); }} /> : current && kindOf(current) === 'chart' ? (
             <ChartWorkspace key={current.id + ':' + reloadKey} doc={current} cfg={getSideConfig} toggle={toggleBangla} say={say} onRename={renameAny}
               toolbarExtra={<button type="button" className={'tb' + (showSide ? ' on' : '')} title={t('ডকুমেন্টের তালিকা')} aria-label={t('ডকুমেন্টের তালিকা')}
                 data-testid="side-toggle" onPointerDown={(e) => e.preventDefault()} onClick={() => setSideOpen((v) => !v)}>☰</button>} />
@@ -1075,8 +1083,21 @@ export function App() {
               ansiTyping={ansiTyping} ansiKey={ansiKey} onToggleAnsi={() => setAnsiTyping(!ansiTypingRef.current)}
               output={output} setOutput={setOutput}
               voice={voice} corrections={corrections} autoBijoy={autoBijoy} ansiFont={ansiFont} enFont={enFont}
-              onEditor={(e) => { editorRef.current = e; }}
-              onLawDictionary={() => setLawDictionaryOpen(true)}
+              onEditor={(e) => {
+                editorRef.current = e;
+                // a word chosen in the dictionary goes in where the caret was (decisions.md 92)
+                const pi = pendingInsert.current;
+                const text = pi?.text;
+                if (e && text) {
+                  pendingInsert.current = null;
+                  window.setTimeout(() => {
+                    const size = e.state.doc.content.size;
+                    const at = Math.max(1, Math.min(pi?.at ?? size, size));
+                    e.chain().focus().setTextSelection(at).insertContent(text).run();
+                  }, 0);
+                }
+              }}
+              onLawDictionary={openDictionary}
               onOpenWordCraft={(name, bytes) => { setLawDictionaryOpen(false); setCraftHandoff({ app: 'wordcraft', file: { name, bytes }, n: Date.now() }); setCraftMounted(true); setCraftOpen(true); }}
               toolbarExtra={
                 <>

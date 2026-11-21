@@ -44,19 +44,23 @@ export function fromBase64(b64: string): ArrayBuffer {
   return u.buffer;
 }
 
-export async function exportAll(prefs: Record<string, unknown>, now = new Date(), aiKey?: string, withFonts = false): Promise<BackupFile> {
+export async function exportAll(prefs: Record<string, unknown>, now = new Date(), aiKey?: string, withFonts = false, withOxford = false): Promise<BackupFile> {
   const docs = await (await db()).getAll('docs');
   const wordBank = (await getMeta<WordBank>('wordBank')) ?? emptyBank();
   const layouts = (await getMeta<Layout[]>('layouts')) ?? [];
   const corrections = (await getMeta<string>('corrections')) ?? '';
   const folders = (await getMeta<Folder[]>('folders')) ?? [];
   const database = await db();
+  // the imported Oxford data only when asked (it is big, and it is not yours to pass on); your own terms,
+  // meanings and links always (decisions.md 92)
+  const entries = (await database.getAll('dictionaryEntries')).filter((e) => withOxford || !e.sourceId);
+  const keep = new Set(entries.map((e) => e.id));
   const dictionary = {
-    sources: await database.getAll('dictionarySources'),
-    entries: await database.getAll('dictionaryEntries'),
-    senses: await database.getAll('dictionarySenses'),
+    sources: withOxford ? await database.getAll('dictionarySources') : [],
+    entries,
+    senses: (await database.getAll('dictionarySenses')).filter((x) => keep.has(x.entryId) || x.verificationStatus === 'user_reviewed'),
     equivalents: await database.getAll('dictionaryEquivalents'),
-    relations: await database.getAll('dictionaryRelations'),
+    relations: (await database.getAll('dictionaryRelations')).filter((x) => withOxford || (keep.has(x.fromEntryId) || keep.has(x.toEntryId))),
   };
   const fonts = withFonts ? (await listFonts()).map((f) => ({ id: f.id, family: f.family, fileName: f.fileName, role: f.role, addedAt: f.addedAt, data: toBase64(f.data) })) : [];
   return { app: 'pronotes', version: 1, exportedAt: now.toISOString(), docs, wordBank, prefs, layouts, corrections, folders, dictionary, ...(aiKey ? { aiKey } : {}), ...(fonts.length ? { fonts } : {}) };
