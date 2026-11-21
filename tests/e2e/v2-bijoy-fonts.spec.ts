@@ -1,6 +1,7 @@
 import { test, expect, type Page } from '@playwright/test';
 import fs from 'node:fs';
 import { toBijoy } from '../../src/bijoy';
+import { quoteFor } from '../../src/app/font-quotes';
 import { section } from './settings-tab';
 
 // any real font file will do as a stand-in "Bijoy" font: the app treats it as ANSI because it was added as ANSI
@@ -31,8 +32,9 @@ test('Bijoy fonts: own ANSI list with search, converting a selection, keeping th
   await expect(page.getByTestId('fp-SutonnyMJ')).toBeVisible();
   await expect(page.getByTestId('fp-JamunaMJ')).toHaveCount(0);
   await page.getByTestId('font-search').fill('deja');
-  // the sample of a Bijoy font is Bijoy-encoded, so it reads as Bangla in that font
-  await expect(page.getByTestId('fp-DejaVu Serif').locator('.fp-sample')).toHaveText(toBijoy('আমার সোনার বাংলা'));
+  // the sample of a Bijoy font is its quote, Bijoy-encoded, so it reads as Bangla in that font (decisions.md 90)
+  const q = quoteFor('DejaVu Serif', { mode: 'rotate', list: null });
+  await expect(page.getByTestId('fp-DejaVu Serif').locator('.fp-sample .fs-line')).toHaveText(toBijoy(q.bn));
   await page.getByTestId('fp-DejaVu Serif').click();
   // the letters themselves change, so it asks first (decisions.md 82): the whole document, one place
   await expect(page.getByTestId('convert-ask')).toContainText('পুরো ডকুমেন্টের');

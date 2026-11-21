@@ -1,5 +1,4 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
-import { toBijoy } from '../bijoy';
 import type { DocFormat } from '../docx-export/format';
 import { ENGLISH_FONTS, LOCAL_ANSI, LOCAL_UNI, WEB_FONTS, isFontAvailable, DEFAULT_APP_BN, SCALE_MIN, SCALE_MAX, type AppFonts } from '../fonts';
 import { TOGGLE_KEYS, ANSI_KEYS, type Layout, type ToggleKey, type AnsiKey } from '../bornona-engine';
@@ -13,6 +12,8 @@ import { KEEP_CHOICES, type DriveBackup } from '../storage/gdrive';
 import type { BackupLast } from './backup-status';
 import type { VoiceModes } from './voice-modes';
 import { NumberField } from './NumberField';
+import { FontSample } from './FontSample';
+import { loadQuotePrefs, saveQuotePrefs, quoteList, type Quote, type QuotePrefs } from './font-quotes';
 import { PALETTES, KB_THEMES, KB_H_MIN, KB_H_MAX, applyPalette, loadPalette, loadKbLook, saveKbLook, colorsOf, contrast, textOn, loadKbHeight, saveKbHeight, type Palette, type KbLook, type KbColors } from './look';
 import { WORD_SHORTCUTS, showKeys } from '../editor/word-shortcuts';
 
@@ -510,7 +511,7 @@ export function Settings(p: Props) {
             <label className="srow"><span>{t('কী-এর অক্ষরের মাপ')} (%)</span>
               <NumberField min={SCALE_MIN} max={SCALE_MAX} step={5} steppers testid="kb-font-size" value={p.appFonts.kbScale ?? 100} onChange={(n) => p.setAppFonts({ ...p.appFonts, kbScale: n })} />
             </label>
-            <p className="kb-font-sample" data-testid="kb-font-sample" aria-hidden="true">{en ? 'Aa' : 'ক খ গ ঘ ি ু ্'}</p>
+            <FontSample font={p.appFonts.kb || p.appFonts.bn || DEFAULT_APP_BN} kind="uni" className="kb-font-sample" testid="kb-font-sample" />
             {/* the keys' English font and size, under the Bangla ones (decisions.md 88); own English font files included */}
             <label className="srow"><span>{t('কী-এর English ফন্ট')}</span>
               <select data-testid="kb-font-en" value={p.appFonts.kbEn ?? ''} onChange={(e) => p.setAppFonts({ ...p.appFonts, kbEn: e.target.value })}>
@@ -521,7 +522,7 @@ export function Settings(p: Props) {
             <label className="srow"><span>{t('কী-এর English অক্ষরের মাপ')} (%)</span>
               <NumberField min={SCALE_MIN} max={SCALE_MAX} step={5} steppers testid="kb-font-en-size" value={p.appFonts.kbEnScale ?? 100} onChange={(n) => p.setAppFonts({ ...p.appFonts, kbEnScale: n })} />
             </label>
-            <p className="kb-font-sample" data-testid="kb-font-en-sample" aria-hidden="true">Aa Bb Cc 123</p>
+            <FontSample font={p.appFonts.kbEn || p.appFonts.en || 'device'} kind="en" className="kb-font-sample" testid="kb-font-en-sample" />
             <KbLookFields />
           </Group>
           <Group title={t('শর্টকাট key')} info="iPad-এ Ctrl+Space অনেক সময় iPad নিজেই ভাষা বদলাতে নিয়ে নেয়; তখন F12 বা Ctrl+M বেছে নিন। ফিজিক্যাল কিবোর্ডেই কাজ করে; অন-স্ক্রিন কিবোর্ডে EN/বাং বাটন আছে।">
@@ -620,11 +621,14 @@ export function Settings(p: Props) {
                 {pageFonts.map((f) => <option key={f} value={f}>{fontLabel(f) + (here(f) ? '' : ' ' + t('(এই ডিভাইসে নেই)'))}</option>)}
               </select>
             </label>
+            {/* iOS menus cannot show each font, so the chosen one's sample sits under the box (decisions.md 90) */}
+            <FontSample font={p.format.font} kind="uni" className="sel-sample" testid="fmt-font-sample" style={{ fontFamily: `"${p.format.font}", var(--f-doc-display)` }} />
             <label className="srow"><span>{t('English ড্রাফট')}</span>
               <select data-testid="fmt-font-en" value={p.format.fontEn} onChange={(e) => p.setFormat({ ...p.format, fontEn: e.target.value })}>
                 {[...new Set([p.format.fontEn, ...ENGLISH_FONTS, ...p.fonts.filter((f) => f.role === 'en').map((f) => f.family)])].map((f) => <option key={f} value={f}>{f}</option>)}
               </select>
             </label>
+            <FontSample font={p.format.fontEn} kind="en" className="sel-sample" testid="fmt-font-en-sample" style={{ fontFamily: `"${p.format.fontEn}", serif` }} />
             <label className="srow"><span>{t('মূল লেখা (pt)')}</span>
               <NumberField min={8} max={40} step={0.5} steppers testid="fmt-size" value={p.format.size} onChange={(n) => p.setFormat({ ...p.format, size: n })} />
             </label>
@@ -637,6 +641,9 @@ export function Settings(p: Props) {
               </select>
             </label>
           </Group>
+          <Group title={t('ফন্টের নমুনা লেখা')} fold={{ id: 'font-quotes' }} info="ফন্টের তালিকায় প্রতিটা ফন্ট একটা ছোট আয়াত বা হাদিস দিয়ে দেখায়: বাংলা ফন্টে বাংলা, বিজয় ফন্টে বিজয়ে, English ফন্টে English। একই ফন্ট সবসময় একই উদ্ধৃতি। এখানে উদ্ধৃতি বদলানো, যোগ করা বা মোছা যায়; চেপে ধরলে পুরো লেখা আর উৎস দেখায়। সেটিংসের সাথে ব্যাকআপে যায়।">
+            <QuoteEditor />
+          </Group>
           <Group title={t('বিজয় (ANSI)')} info="Word থেকে কপি করলে শুধু SutonnyMJ-জাতীয় ফন্টের অংশ বদলায়, ইংরেজি অংশ যেমন আছে থাকে। টুলস ট্যাবের Converter-এ দুই দিকের রূপান্তর আছে।">
             <label className="srow"><span>{t('বিজয় লেখা দেখার ফন্ট')}</span>
               <select data-testid="ansi-font" value={p.ansiFont} onChange={(e) => p.setAnsiFont(e.target.value)}>
@@ -644,6 +651,7 @@ export function Settings(p: Props) {
                 {ansiChoices.map((n) => <option key={n} value={n}>{n + (here(n, true) ? '' : ' ' + t('(এই ডিভাইসে নেই)'))}</option>)}
               </select>
             </label>
+            {p.ansiFont && here(p.ansiFont, true) && <FontSample font={p.ansiFont} kind="ansi" className="sel-sample" testid="ansi-font-sample" style={{ fontFamily: `"${p.ansiFont}", serif` }} />}
             <label className="srow"><span>{t('Word-এ বিজয় লেখার ইংরেজি অংশ')}</span>
               <select data-testid="en-font" value={p.enFont} onChange={(e) => p.setEnFont(e.target.value)}>
                 {ENGLISH_FONTS.map((n) => <option key={n}>{n}</option>)}
@@ -669,7 +677,7 @@ export function Settings(p: Props) {
                   <li key={f.id}>
                     {/* the name in the app's font; the sample in the font itself (Bijoy-encoded for ANSI, so it reads as Bangla); in an English menu the sample is the name */}
                     <span className="fl-name">{f.family} <small>{styleName(f)}</small></span>
-                    <span className="fl-sample" style={{ fontFamily: `"${f.family}", var(--f-sans)`, fontStyle: f.italic ? 'italic' : 'normal', fontWeight: f.weight ?? 400 }}>{en || f.role === 'en' ? 'Aa Bb 123' : f.role === 'ansi' ? SAMPLE_BIJOY : 'আমার সোনার বাংলা'}</span>
+                    <FontSample font={f.family} kind={f.role} className="fl-sample" testid={'font-sample-' + f.id} style={{ fontFamily: `"${f.family}", var(--f-sans)`, fontStyle: f.italic ? 'italic' : 'normal', fontWeight: f.weight ?? 400 }} />
                     <small>{f.role === 'ansi' ? 'ANSI' : f.role === 'en' ? 'English' : t('ইউনিকোড')}</small>
                     <ArmedButton label={t('মুছুন')} armedLabel={t('নিশ্চিত?')} testid={'font-del-' + f.id} onConfirm={() => p.onDeleteFont(f.id)} />
                   </li>
@@ -729,7 +737,10 @@ export function Settings(p: Props) {
             <label className="srow"><span>{t('English-এর মাপ')} (%)</span>
               <NumberField min={SCALE_MIN} max={SCALE_MAX} step={5} steppers testid="app-font-en-size" value={p.appFonts.enScale ?? 100} onChange={(n) => p.setAppFonts({ ...p.appFonts, enScale: n })} />
             </label>
-            <p className="app-font-sample" data-testid="app-font-sample">{en ? 'Aa Bb 123' : 'আমার সোনার বাংলা · ক্ষ ক্ত ন্ত্র · Aa Bb 123'}</p>
+            <div className="app-font-sample" data-testid="app-font-sample">
+              <FontSample font={p.appFonts.bn || DEFAULT_APP_BN} kind="uni" />
+              <FontSample font={p.appFonts.en || 'device'} kind="en" />
+            </div>
             <p className="note">{t('তালিকায় নেই? ফন্ট ফাইল যোগ করুন')} — <button type="button" className="linkbtn" data-testid="app-font-add" onClick={() => { save('device.fold.own-fonts', true); setTab('font'); }}>{t('ফন্ট ও বিজয়')}</button></p>
           </Group>
           <Group title={t('ব্যাকআপ')} info="সব ড্রাফট (ট্র্যাশসহ), শেখা শব্দ, নিজের লেআউট, ভয়েসের সংশোধন আর সেটিংস একটা ফাইলে (ফন্ট ফাইল বাদে)। দুই জায়গায় রাখা যায়: এই ডিভাইসে (iPad-এ Files বা iCloud Drive) আর আপনার নিজের Google Drive-এর “ProNotes Backups” ফোল্ডারে। Drive-এ Gemini key কখনো যায় না। ফেরত আনলে একই ড্রাফট আলাদা কপি হয় না: যেটা পরে বদলানো হয়েছে সেটা থাকে, অন্যটা ড্রাফটের ভার্সন-ইতিহাসে রাখা হয়, তাই কিছু হারায় না।" fold={{ id: 'backup', summary: !p.backupInfo.last.drive && !p.backupInfo.last.device ? t('এখনো কোনো ব্যাকআপ নেওয়া হয়নি')
@@ -948,7 +959,6 @@ function SavedLine() {
   );
 }
 
-const SAMPLE_BIJOY = toBijoy('আমার সোনার বাংলা');
 /** "Regular", "Bold", "Italic", "Bold Italic" (as fonts name their styles). */
 function styleName(f: { italic?: boolean; weight?: number }): string {
   const bold = (f.weight ?? 400) >= 600;
@@ -1009,5 +1019,41 @@ function PaletteField() {
         {PALETTES.map((x) => <option key={x.id} value={x.id}>{t(x.label)}</option>)}
       </select>
     </label>
+  );
+}
+
+/** Settings → ফন্ট ও বিজয় → ফন্টের নমুনা লেখা: the quotes the font samples show, and how (decisions.md 90). */
+function QuoteEditor() {
+  const { t, lang } = useT();
+  const [qp, setQp] = useState<QuotePrefs>(loadQuotePrefs);
+  const put = (n: QuotePrefs) => { setQp(n); saveQuotePrefs(n); };
+  const list = quoteList(qp);
+  const setList = (l: Quote[]) => put({ ...qp, list: l.length ? l : null });
+  const edit = (i: number, k: keyof Quote, v: string) => setList(list.map((q, j) => (j === i ? { ...q, [k]: v } : q)));
+  const FIELDS: [keyof Quote, string][] = [['bn', 'বাংলা'], ['en', 'English'], ['src', 'উৎস (বাংলা)'], ['srcEn', 'উৎস (English)']];
+  return (
+    <>
+      <div className="seg small" role="radiogroup">
+        <button type="button" role="radio" aria-checked={qp.mode === 'rotate'} aria-pressed={qp.mode === 'rotate'} data-testid="quote-mode-rotate" onClick={() => put({ ...qp, mode: 'rotate' })}>{t('প্রতিটা ফন্টে আলাদা')}</button>
+        <button type="button" role="radio" aria-checked={qp.mode === 'one'} aria-pressed={qp.mode === 'one'} data-testid="quote-mode-one" onClick={() => put({ ...qp, mode: 'one' })}>{t('সব ফন্টে প্রথমটা')}</button>
+      </div>
+      <ol className="quote-list" data-testid="quote-list">
+        {list.map((q, i) => (
+          <li key={i}>
+            <b>{num(i, lang)}</b>
+            {FIELDS.map(([k, label]) => (
+              <input key={k} data-testid={'quote-' + k + '-' + i} value={q[k]} placeholder={t(label)} aria-label={t(label)} lang={k === 'bn' || k === 'src' ? 'bn' : 'en'}
+                onChange={(e) => edit(i, k, e.target.value)} />
+            ))}
+            {list.length > 1 && <ArmedButton label={t('মুছুন')} armedLabel={t('নিশ্চিত?')} testid={'quote-del-' + i} onConfirm={() => setList(list.filter((_, j) => j !== i))} />}
+          </li>
+        ))}
+      </ol>
+      <div className="row">
+        <button type="button" className="btn small" data-testid="quote-add" onClick={() => setList([...list, { bn: '', en: '', src: '', srcEn: '' }])}>+ {t('নতুন উদ্ধৃতি')}</button>
+        {qp.list && <ArmedButton label={t('আগের তালিকায় ফিরুন')} armedLabel={t('নিশ্চিত?')} testid="quote-reset" onConfirm={() => put({ ...qp, list: null })} />}
+      </div>
+      <p className="note">{t('খালি English ঘরে “Aa Bb 123” দেখাবে; খালি বাংলা ঘরে ০ নম্বর উদ্ধৃতি।')} {t('মোট {n}টা উদ্ধৃতি', { n: list.length })}</p>
+    </>
   );
 }

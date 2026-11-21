@@ -4,10 +4,11 @@
  * Bangla: Bijoy fonts get Bijoy-encoded text, so nothing looks broken. Names are always in the app's own
  * font. Choosing a font of the other kind converts the selected text (one undo step).
  */
+import { FontSample } from './FontSample';
 import { useMemo, useState } from 'react';
 import type { Editor } from '@tiptap/react';
 import { closeHistory } from '@tiptap/pm/history';
-import { isBijoyFont, toBijoy } from '../bijoy';
+import { isBijoyFont } from '../bijoy';
 import { toBijoyIn, toUnicodeIn } from '../editor';
 import { cssFamily, fontMatches } from '../fonts';
 import { num, useT } from '../i18n';
@@ -33,9 +34,6 @@ export interface FontLists {
   en: FontItem[];
 }
 
-const SAMPLE = 'আমার সোনার বাংলা';
-const SAMPLE_BIJOY = toBijoy(SAMPLE);
-const SAMPLE_EN = 'The quick brown fox';
 const clean = (f: unknown) => String(f ?? '').replace(/["']/g, '').split(',')[0].trim();
 
 interface Props {
@@ -197,14 +195,14 @@ export function FontPicker({ ed, lists, defaultFont, ansiTyping, ansiFont, enFon
             {kind === 'uni' && !q && (
               <button type="button" role="option" aria-selected={!cur} className="fp-row" data-testid="fp-default" onClick={() => choose(null, close)}>
                 <span className="fp-name">{defaultFont} <small>({t('ডিফল্ট')})</small></span>
-                <span className="fp-sample" style={{ fontFamily: cssFamily(defaultFont) }}>{SAMPLE}</span>
+                <FontSample font={defaultFont} kind="uni" className="fp-sample" style={{ fontFamily: cssFamily(defaultFont) }} />
               </button>
             )}
             {shown.map((f) => (
               <button key={f.name} type="button" role="option" aria-selected={f.name === cur} aria-disabled={!f.available}
                 className={'fp-row' + (f.available ? '' : ' off')} data-testid={'fp-' + f.name} onClick={() => choose(f, close)}>
                 <span className="fp-name">{f.name}{f.own && <small> · {t('আপনার যোগ করা')}</small>}{!f.available && <small> · {t('এই ডিভাইসে নেই')}</small>}</span>
-                {f.available && <span className="fp-sample" style={{ fontFamily: cssFamily(f.name) + ', serif' }}>{f.ansi ? SAMPLE_BIJOY : kind === 'en' ? SAMPLE_EN : SAMPLE}</span>}
+                {f.available && <FontSample font={f.name} kind={f.ansi ? 'ansi' : kind === 'en' ? 'en' : 'uni'} className="fp-sample" style={{ fontFamily: cssFamily(f.name) + ', serif' }} />}
               </button>
             ))}
             {!shown.length && <p className="note">{t('এই নামে কোনো ফন্ট পাওয়া গেল না')}</p>}

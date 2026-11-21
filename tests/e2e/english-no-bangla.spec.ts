@@ -7,7 +7,7 @@ const BN = /[ঀ-৿]+/g;
 async function banglaOnScreen(page: Page): Promise<string[]> {
   return page.evaluate((src) => {
     const re = new RegExp(src, 'g');
-    const skip = (el: Element | null) => !!el?.closest('.page-body, .osk, [data-testid="osk"], [data-testid="title"], .kb, .chart-preview');
+    const skip = (el: Element | null) => !!el?.closest('.page-body, .osk, [data-testid="osk"], [data-testid="title"], .kb, .chart-preview, .font-sample, .quote-list');
     const found: string[] = [];
     const walk = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
     for (let n = walk.nextNode(); n; n = walk.nextNode()) {
