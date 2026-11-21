@@ -31,6 +31,8 @@ interface Props {
   /** The device the settings are open on: only its layout list is shown. */
   platform: 'desktop' | 'mobile';
   keyboardLayouts: Layout[];
+  /** The layout box (the one beside the title on a computer), here on every device (decisions.md 97). */
+  layoutPicker?: ReactNode;
   /** Layouts hidden from the layout box on computers / on touch devices (phone, iPad). */
   hiddenDesktop: string[];
   setHiddenDesktop: (v: string[]) => void;
@@ -414,6 +416,7 @@ function ArmedButton(p: { label: string; armedLabel: string; testid: string; onC
 const FONT_ACCEPT = '.ttf,.otf,.woff,.woff2,.ttc,.otc,.eot,.fon,.pfb,.pfa,font/*,application/font-sfnt,application/x-font-ttf,application/x-font-otf,application/x-font-truetype,application/vnd.ms-fontobject,application/font-woff,application/octet-stream';
 
 export function Settings(p: Props) {
+  const [splitAnna, setSplitAnna] = useState<boolean>(() => load('kb.splitAnna', false));
   const [loupe, setLoupe] = useState<boolean>(() => load('kb.loupe', true));
   const { t } = useT();
   // the Drive backup list is folded away until asked for
@@ -472,6 +475,7 @@ export function Settings(p: Props) {
           <Group title={t('কিবোর্ড লেআউট')} info={p.platform === 'mobile'
             ? 'এই ডিভাইসের (Mobile/iPad) লেআউট বাক্সে কোনগুলো থাকবে বেছে নিন। কম্পিউটারের তালিকা কম্পিউটার থেকে বদলান।'
             : 'এই কম্পিউটারের লেআউট বাক্সে কোনগুলো থাকবে বেছে নিন। iPad/ফোনের তালিকা সেখান থেকে বদলান।'}>
+            {p.layoutPicker && <label className="srow" data-testid="settings-layout"><span>{t('এখন যে লেআউটে লিখছেন')}</span>{p.layoutPicker}</label>}
             <div data-testid="enabled-layouts">
               {[p.platform].map((platform) => {
                 const hidden = hiddenOf(platform);
@@ -526,6 +530,8 @@ export function Settings(p: Props) {
               <NumberField min={SCALE_MIN} max={SCALE_MAX} step={5} steppers testid="kb-font-en-size" value={p.appFonts.kbEnScale ?? 100} onChange={(n) => p.setAppFonts({ ...p.appFonts, kbEnScale: n })} />
             </label>
             <FontSample font={p.appFonts.kbEn || p.appFonts.en || 'device'} kind="en" className="kb-font-sample" testid="kb-font-en-sample" />
+            <Check testid="kb-split-anna" checked={splitAnna} onChange={(v) => { setSplitAnna(v); save('kb.splitAnna', v); }} label={t('স্প্লিট কিবোর্ডের মাঝে আনা-গণ্ডা')}
+              info="কিবোর্ড দুই ভাগ (Split) করলে মাঝের ফাঁকা জায়গায় আনা-গণ্ডার চিহ্ন (৴ ৵ ৶ … ১৲, ৻, ৹) থাকবে, ১২৩ না খুলেই লেখা যাবে।" />
             <KbLookFields />
           </Group>
           <Group title={t('শর্টকাট key')} info="iPad-এ Ctrl+Space অনেক সময় iPad নিজেই ভাষা বদলাতে নিয়ে নেয়; তখন F12 বা Ctrl+M বেছে নিন। ফিজিক্যাল কিবোর্ডেই কাজ করে; অন-স্ক্রিন কিবোর্ডে EN/বাং বাটন আছে।">

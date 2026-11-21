@@ -1028,8 +1028,8 @@ export function App() {
   const themeLabel: Record<Theme, string> = { auto: 'রং: ডিভাইস অনুযায়ী', light: 'রং: আলো', dark: 'রং: অন্ধকার' };
 
   const showSide = sideOpen;
-  const layoutSelect = (
-    <select className="layout" aria-label={t('কিবোর্ড লেআউট')} title={t('কিবোর্ড লেআউট')} data-testid="layout" value={layoutId} onChange={(e) => setLayoutId(e.target.value)}>
+  const layoutBox = (testid: string) => (
+    <select className="layout" aria-label={t('কিবোর্ড লেআউট')} title={t('কিবোর্ড লেআউট')} data-testid={testid} value={layoutId} onChange={(e) => setLayoutId(e.target.value)}>
       <optgroup label={t('সাথে দেওয়া')}>{enabledKeyboardLayouts.filter((l) => !customLayouts.some((c) => c.id === l.id)).map((l) => <option key={l.id} value={l.id}>{l.name}</option>)}</optgroup>
       {/* layouts the user imported stay in their own group, as before a22c74e */}
       {enabledKeyboardLayouts.some((l) => customLayouts.some((c) => c.id === l.id)) && (
@@ -1039,6 +1039,7 @@ export function App() {
       <option value="bornona" hidden aria-hidden="true">Bornona</option>
     </select>
   );
+  const layoutSelect = layoutBox('layout');
   const sidebar = (
     <Sidebar top={
       <>
@@ -1048,7 +1049,7 @@ export function App() {
             <img className="brand-logo" src={theme === 'dark' ? './branding/brand-dark.svg' : './branding/brand-light.svg'} alt="ProNotes" />
           </picture>
         </div>
-        {phone && <label className="side-layout">{t('কিবোর্ড লেআউট')}{layoutSelect}</label>}
+        {/* the layout is chosen in Settings → কিবোর্ড now, and 🌐 held switches the language (decisions.md 97) */}
       </>
     } docs={docs} trash={trash} folders={folders} currentId={current?.id ?? null} view={view} setView={setView} kindIcon={KIND_ICON} kindLabel={KIND_LABEL}
       prefs={listPrefs} setPrefs={setListPrefs} getConfig={getSideConfig} onToggleLanguage={toggleBangla}
@@ -1166,7 +1167,7 @@ export function App() {
 
 
       {settingsOpen && (
-        <Settings drive={{ enabled: driveEnabled(), connected: driveConnected, busy: driveBusy, list: driveList, onConnect: () => void driveConnect('list'), onBackup: () => void driveBackup(), onDownload: (b) => void driveDownload(b), onRefresh: () => void driveRefresh(), onRestore: (b) => void driveRestore(b), onDelete: (b) => void driveDelete(b), keep: driveKeep, setKeep: setDriveKeep, deviceName, setDeviceName, autoDevice: autoDeviceName(), thisDevice, onDisconnect: () => void driveDisconnect(), auto: autoDrive, setAuto: setAutoDrive }}
+        <Settings layoutPicker={layoutBox('settings-layout-select')} drive={{ enabled: driveEnabled(), connected: driveConnected, busy: driveBusy, list: driveList, onConnect: () => void driveConnect('list'), onBackup: () => void driveBackup(), onDownload: (b) => void driveDownload(b), onRefresh: () => void driveRefresh(), onRestore: (b) => void driveRestore(b), onDelete: (b) => void driveDelete(b), keep: driveKeep, setKeep: setDriveKeep, deviceName, setDeviceName, autoDevice: autoDeviceName(), thisDevice, onDisconnect: () => void driveDisconnect(), auto: autoDrive, setAuto: setAutoDrive }}
           backupInfo={{ last: lastBackup, remind: backupRemind, setRemind: setBackupRemind }}
           onClose={() => setSettingsOpen(false)} platform={coarse || phone ? 'mobile' : 'desktop'} vf={vf} setVf={setVf} oldReph={oldReph} setOldReph={setOldReph}
           keyboardLayouts={allKeyboardLayouts} hiddenDesktop={hiddenDesktop} setHiddenDesktop={setHiddenDesktop}

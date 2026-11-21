@@ -1,33 +1,47 @@
 import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react';
 import { load, save } from './prefs';
 import { useT } from '../i18n';
+import { KbEdgeContext } from './OnScreenKeyboard';
 
 /**
- * iPad (and computers): the keyboard as a small phone-sized panel that floats over the page, like the
- * iPad's own floating keyboard and Gboard's. Drag the bar to move it (the place is remembered on this
- * device); ⤓ puts it back at the bottom. It always stays on screen.
+ * The keyboard as a small panel that floats over the page, like the iPad's own floating keyboard and Gboard's;
+ * phones too, held upright or sideways (decisions.md 97). Drag the bar to move it, drag the corner ◢ to make it
+ * bigger or smaller (within limits); both are remembered on this device. ⤓ puts it back at the bottom. It always
+ * stays on screen. The side it floats on tells the keypad where the digits go (nearest the thumb).
  */
-export function FloatingKeyboard({ children, onDock }: { children: ReactNode; onDock: () => void }) {
+const FLOAT_W = 360;
+export function FloatingKeyboard({ children, onDock, phone }: { children: ReactNode; onDock: () => void; phone?: boolean }) {
   const { t } = useT();
   const box = useRef<HTMLDivElement>(null);
   const [pos, setPos] = useState<{ x: number; y: number }>(() => load('kb.floatPos', { x: -1, y: -1 }));
+  const wKey = phone ? 'kb.floatWPhone' : 'kb.floatW';
+  // the width limits: from about a phone keyboard's 60% up to the screen (and never wider than 560)
+  const limits = () => ({ min: Math.min(240, window.innerWidth - 8), max: Math.max(240, Math.min(560, window.innerWidth - 8)) });
+  const fitW = (w: number) => { const l = limits(); return Math.round(Math.max(l.min, Math.min(l.max, w))); };
+  const [w, setW] = useState<number>(() => fitW(load(wKey, phone ? Math.min(FLOAT_W, window.innerWidth * 0.8) : FLOAT_W)));
   const drag = useRef<{ dx: number; dy: number } | null>(null);
+  const size = useRef<{ x0: number; w0: number } | null>(null);
 
-  /** Keep the panel inside the window (after a turn of the iPad, too). */
+  /** Keep the panel inside the window (after a turn of the device, too). */
   const clamp = (x: number, y: number) => {
     const el = box.current;
-    const w = el?.offsetWidth ?? 340, h = el?.offsetHeight ?? 260;
-    return { x: Math.max(4, Math.min(window.innerWidth - w - 4, x)), y: Math.max(4, Math.min(window.innerHeight - h - 4, y)) };
+    const bw = el?.offsetWidth ?? w, h = el?.offsetHeight ?? 260;
+    return { x: Math.max(4, Math.min(window.innerWidth - bw - 4, x)), y: Math.max(4, Math.min(window.innerHeight - h - 4, y)) };
   };
   useEffect(() => {
-    const place = () => setPos((p) => (p.x < 0 ? clamp(window.innerWidth - (box.current?.offsetWidth ?? 340) - 24, window.innerHeight - (box.current?.offsetHeight ?? 260) - 24) : clamp(p.x, p.y)));
+    const place = () => {
+      setW((x) => fitW(x));
+      setPos((p) => (p.x < 0 ? clamp(window.innerWidth - (box.current?.offsetWidth ?? w) - 24, window.innerHeight - (box.current?.offsetHeight ?? 260) - 24) : clamp(p.x, p.y)));
+    };
     place();
     window.addEventListener('resize', place);
     return () => window.removeEventListener('resize', place);
-  }, []);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  const edge: 'left' | 'right' = pos.x + w / 2 > window.innerWidth / 2 ? 'right' : 'left';
 
   return (
-    <div ref={box} className="kb-float" data-testid="kb-floating" style={{ left: pos.x, top: pos.y }}>
+    <div ref={box} className={'kb-float' + (phone ? ' phone' : '')} data-testid="kb-floating" data-edge={edge}
+      style={{ left: pos.x, top: pos.y, width: w, ['--kb-fs' as string]: String(Math.round((w / FLOAT_W) * 1000) / 1000) }}>
       <div className="kb-float-bar" data-testid="kb-float-bar"
         onPointerDown={(e) => { e.preventDefault(); e.currentTarget.setPointerCapture(e.pointerId); drag.current = { dx: e.clientX - pos.x, dy: e.clientY - pos.y }; }}
         onPointerMove={(e) => { if (drag.current) setPos(clamp(e.clientX - drag.current.dx, e.clientY - drag.current.dy)); }}
@@ -36,7 +50,11 @@ export function FloatingKeyboard({ children, onDock }: { children: ReactNode; on
         <button type="button" tabIndex={-1} data-testid="kb-dock" aria-label={t('কিবোর্ড নিচে বসান')} title={t('কিবোর্ড নিচে বসান')}
           onPointerDown={(e) => e.stopPropagation()} onClick={onDock}>⤓</button>
       </div>
-      {children}
+      <KbEdgeContext.Provider value={edge}>{children}</KbEdgeContext.Provider>
+      <span className="kb-float-size" data-testid="kb-float-size" role="slider" aria-label={t('কিবোর্ডের মাপ')} aria-valuenow={w} aria-valuemin={limits().min} aria-valuemax={limits().max}
+        onPointerDown={(e) => { e.preventDefault(); e.stopPropagation(); size.current = { x0: e.clientX, w0: w }; try { e.currentTarget.setPointerCapture(e.pointerId); } catch { /* a synthetic press */ } }}
+        onPointerMove={(e) => { if (size.current) setW(fitW(size.current.w0 + (e.clientX - size.current.x0))); }}
+        onPointerUp={() => { if (size.current) { size.current = null; save(wKey, w); setPos((p) => clamp(p.x, p.y)); } }} />
     </div>
   );
 }

@@ -41,7 +41,8 @@ export function CaretOverlay({ editor, active }: { editor: Editor; active: boole
 
   const measure = useCallback(() => {
     const { view, state } = editor;
-    if (!active || !view.hasFocus() || !state.selection.empty) return setBox(null);
+    // while the drop is held the page may have lost focus to the finger (iOS): keep drawing until it lifts
+    if (!active || (!view.hasFocus() && !dragging.current) || !state.selection.empty) return setBox(null);
     try {
       const c = view.coordsAtPos(state.selection.head);
       const h = Math.max(12, c.bottom - c.top);
@@ -117,8 +118,19 @@ export function CaretOverlay({ editor, active }: { editor: Editor; active: boole
   const onDropUp = () => {
     dragging.current = false;
     setLoupe(null);
+    if (!editor.view.hasFocus()) editor.view.focus();
     showDrop();
   };
+  // iOS (decisions.md 97): a touch that starts on the drop must not become a page scroll, a tap on the text under it
+  // or a loss of focus — Safari can do all three before the pointer events arrive. The touch events, not passive,
+  // are cancelled at once; the pointer events still drive the drag.
+  const dropEl = useRef<HTMLSpanElement | null>(null);
+  const setDropEl = useCallback((el: HTMLSpanElement | null) => {
+    const stop = (e: TouchEvent) => { if (e.cancelable) e.preventDefault(); };
+    if (dropEl.current) { dropEl.current.removeEventListener('touchstart', stop); dropEl.current.removeEventListener('touchmove', stop); }
+    dropEl.current = el;
+    if (el) { el.addEventListener('touchstart', stop, { passive: false }); el.addEventListener('touchmove', stop, { passive: false }); }
+  }, []);
 
   if (!active || !box) return null;
   const size = Math.min(40, Math.max(22, box.h * 1.25));
@@ -126,7 +138,7 @@ export function CaretOverlay({ editor, active }: { editor: Editor; active: boole
     <div className="caret-overlay" aria-hidden="true">
       <span className="pn-caret" data-testid="pn-caret" style={{ left: box.x - 1, top: box.top, height: box.h }} />
       {drop && (
-        <span className="pn-drop" data-testid="pn-drop" style={{ left: box.x - 14, top: box.top + box.h + 2 }}
+        <span ref={setDropEl} className="pn-drop" data-testid="pn-drop" style={{ left: box.x - 14, top: box.top + box.h + 2 }}
           onPointerDown={onDropDown} onPointerMove={onDropMove} onPointerUp={onDropUp} onPointerCancel={onDropUp} />
       )}
       {loupe && (

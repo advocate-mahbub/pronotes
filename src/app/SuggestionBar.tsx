@@ -38,9 +38,9 @@ export function SuggestionBar({ editor, bank, version, tools = false }: { editor
   const toolEls = tools && (
     <span className="sug-tools">
       <button type="button" className="tool" tabIndex={-1} data-testid="kb-undo" disabled={!can.undo} aria-label={t('আগের অবস্থায় ফিরুন (Undo)')} title={t('আগের অবস্থায় ফিরুন (Undo)')}
-        onPointerDown={(e) => { e.preventDefault(); editor.commands.undo(); }}>↶</button>
+        onPointerDown={(e) => { e.preventDefault(); editor.commands.undo(); }}>{UNDO_ICON}</button>
       <button type="button" className="tool" tabIndex={-1} data-testid="kb-redo" disabled={!can.redo} aria-label={t('আবার করুন (Redo)')} title={t('আবার করুন (Redo)')}
-        onPointerDown={(e) => { e.preventDefault(); editor.commands.redo(); }}>↷</button>
+        onPointerDown={(e) => { e.preventDefault(); editor.commands.redo(); }}>{REDO_ICON}</button>
     </span>
   );
   if (words.length === 0) return <div className="sug empty" data-testid="sug-empty" aria-hidden={!tools}>{toolEls}</div>;
@@ -56,3 +56,15 @@ export function SuggestionBar({ editor, bank, version, tools = false }: { editor
     </div>
   );
 }
+
+/** ↶ ↷ as small line icons in round buttons (decisions.md 97): the text arrows drew tall and narrow. */
+const UNDO_ICON = (
+  <svg viewBox="0 0 20 20" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <path d="M7.5 5 4 8.5 7.5 12" /><path d="M4.5 8.5h7a4.5 4.5 0 0 1 0 9H9" />
+  </svg>
+);
+const REDO_ICON = (
+  <svg viewBox="0 0 20 20" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <path d="M12.5 5 16 8.5 12.5 12" /><path d="M15.5 8.5h-7a4.5 4.5 0 0 0 0 9H11" />
+  </svg>
+);
