@@ -1,4 +1,5 @@
 import { test, expect, type Page } from '@playwright/test';
+import { section } from './settings-tab';
 
 const editor = (p: Page) => p.getByTestId('editor');
 const para = (p: Page, i: number) => editor(p).locator('> p').nth(i);
@@ -42,7 +43,7 @@ test('MS Word shortcuts while typing Bangla: align, double underline, size, move
 
 test('the shortcuts are listed in Settings', async ({ page }) => {
   await page.goto('./');
-  await page.getByTestId('settings').click();
+  await section(page, 'type');
   const box = page.getByTestId('settings-shortcuts');
   await box.locator('summary').click();
   await expect(box).toContainText('Ctrl+Shift+D');

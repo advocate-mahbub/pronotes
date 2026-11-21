@@ -75,24 +75,29 @@ const ANNA_GAP: string[][] = [['Anna:1', 'Anna:2', 'Anna:3', 'Anna:4'], ['Anna:5
 export const KB_TRACK_EVENT = 'pronotes:kb-track';
 
 /** A keyboard position in 🌐's menu (left, full, right, floating, split): drawn as an icon, named for screen readers. */
-export interface KbMenuItem { id: string; label: string; icon?: ReactNode; on?: boolean; act: () => void }
+export interface KbMenuItem { id: string; label: string; icon?: ReactNode; on?: boolean; act: () => void; /** the menu's second or third row */ row?: 2 | 3 }
 
-/** The iPhone keyboard menu's icons, drawn the same way: a keyboard; an arrowhead where it moves to (decisions.md 97). */
-const kbShape = (x: number, w: number) => (
-  <>
-    <rect x={x} y="7" width={w} height="14" rx="2.2" />
-    {[10, 13.5].map((y) => Array.from({ length: Math.max(2, Math.round((w - 5) / 3.4)) }, (_, i) => <rect key={y + '-' + i} x={x + 2.4 + i * 3.4} y={y} width="1.7" height="1.7" rx=".4" fill="currentColor" stroke="none" />))}
-    <rect x={x + w * 0.25} y="17" width={w * 0.5} height="1.7" rx=".4" fill="currentColor" stroke="none" />
-  </>
-);
+/**
+ * The keyboard menu's icons (decisions.md 98): a keyboard outline; for left and right the keys sit on that side, with
+ * a small arrowhead in the empty part pointing the same way; floating is a smaller keyboard lifted over its shadow.
+ */
+const keys = (x: number, w: number, y = 7) => {
+  const n = Math.max(2, Math.round((w - 4) / 3.4));
+  const step = (w - 4) / n;
+  return (
+    <>
+      {[y + 3, y + 6.5].map((yy) => Array.from({ length: n }, (_, i) => <rect key={yy + '-' + i} x={x + 2 + i * step + (step - 1.7) / 2} y={yy} width="1.7" height="1.7" rx=".4" fill="currentColor" stroke="none" />))}
+      <rect x={x + w * 0.22} y={y + 10} width={w * 0.56} height="1.7" rx=".4" fill="currentColor" stroke="none" />
+    </>
+  );
+};
+const svg = (kids: ReactNode) => <svg viewBox="0 0 34 28" width="34" height="28" fill="none" stroke="currentColor" strokeWidth="1.6" aria-hidden="true">{kids}</svg>;
 export const KB_ICONS: Record<'left' | 'full' | 'right' | 'float' | 'split', ReactNode> = {
-  left: <svg viewBox="0 0 34 28" width="34" height="28" fill="none" stroke="currentColor" strokeWidth="1.6" aria-hidden="true">{kbShape(2, 23)}<path d="M31.5 10.5v7l-4.2-3.5z" fill="currentColor" stroke="none" /></svg>,
-  full: <svg viewBox="0 0 34 28" width="34" height="28" fill="none" stroke="currentColor" strokeWidth="1.6" aria-hidden="true">{kbShape(3, 28)}</svg>,
-  right: <svg viewBox="0 0 34 28" width="34" height="28" fill="none" stroke="currentColor" strokeWidth="1.6" aria-hidden="true"><path d="M2.5 10.5v7l4.2-3.5z" fill="currentColor" stroke="none" />{kbShape(9, 23)}</svg>,
-  // floating: a smaller keyboard lifted off the bottom line
-  float: <svg viewBox="0 0 34 28" width="34" height="28" fill="none" stroke="currentColor" strokeWidth="1.6" aria-hidden="true"><g transform="translate(5.5 -3.5) scale(.68)">{kbShape(3, 28)}</g><path d="M3 24.5h28" strokeDasharray="2.2 2.2" strokeLinecap="round" /></svg>,
-  // split: the keyboard in two halves
-  split: <svg viewBox="0 0 34 28" width="34" height="28" fill="none" stroke="currentColor" strokeWidth="1.6" aria-hidden="true">{kbShape(1.5, 13)}{kbShape(19.5, 13)}</svg>,
+  left: svg(<><rect x="2" y="7" width="30" height="14" rx="2.2" />{keys(2, 20)}<path d="M29 11v6l-3.6-3z" fill="currentColor" stroke="none" /></>),
+  full: svg(<><rect x="2" y="7" width="30" height="14" rx="2.2" />{keys(2, 30)}</>),
+  right: svg(<><rect x="2" y="7" width="30" height="14" rx="2.2" />{keys(12, 20)}<path d="M5 11v6l3.6-3z" fill="currentColor" stroke="none" /></>),
+  float: svg(<><path d="M26 12h3a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H11a2 2 0 0 1-2-2v-5" strokeOpacity=".4" /><rect x="4" y="5" width="22" height="12" rx="2" />{keys(4, 22, 5)}</>),
+  split: svg(<><rect x="1.5" y="7" width="13" height="14" rx="2.2" />{keys(1.5, 13)}<rect x="19.5" y="7" width="13" height="14" rx="2.2" />{keys(19.5, 13)}</>),
 };
 
 /** The key back to the letters shows letters of the language being typed (like iOS's "ABC"). */
@@ -711,20 +716,29 @@ export function OnScreenKeyboard({ editor: ed, target, map, bangla, getConfig, o
       {menu && (
         // like the iPhone's (decisions.md 97): the two languages, then the keyboard's positions as icons
         <div className="kb-menu" data-testid="kb-menu" role="menu" onPointerDown={(e) => e.preventDefault()}>
-          {(['en', 'bn'] as const).map((l) => (
-            <button key={l} type="button" tabIndex={-1} role="menuitemradio" aria-checked={(l === 'bn') === bangla} data-menu={'lang-' + l} data-testid={'kb-lang-' + l}
-              className={'kb-menu-lang' + ((l === 'bn') === bangla ? ' on' : '') + (menuHot === 'lang-' + l ? ' hot' : '')}
-              onClick={() => { pickMenu('lang-' + l); setMenu(false); }}>{l === 'bn' ? t('বাংলা') : 'English'}</button>
-          ))}
-          {menuItems && menuItems.length > 0 && (
-            <div className="kb-menu-modes">
-              {menuItems.map((m) => (
-                <button key={m.id} type="button" tabIndex={-1} role="menuitemradio" aria-checked={Boolean(m.on)} data-menu={m.id} data-testid={'kb-' + m.id}
-                  className={(m.on ? 'on' : '') + (menuHot === m.id ? ' hot' : '') + (m.icon ? '' : ' wide')} aria-label={m.label} title={m.label}
-                  onClick={() => { m.act(); setMenu(false); }}>{m.icon ?? m.label}</button>
-              ))}
-            </div>
-          )}
+          {/* row 1: English ⇄ BN; row 2: full and floating; row 3: left and right, or split (decisions.md 98) */}
+          <div className="kb-menu-row kb-menu-langs">
+            {(['en', 'bn'] as const).map((l, i) => (
+              <span key={l} className="kb-menu-pair">
+                {i === 1 && <span className="kb-menu-swap" aria-hidden="true">⇄</span>}
+                <button type="button" tabIndex={-1} role="menuitemradio" aria-checked={(l === 'bn') === bangla} data-menu={'lang-' + l} data-testid={'kb-lang-' + l}
+                  className={'kb-menu-lang' + ((l === 'bn') === bangla ? ' on' : '') + (menuHot === 'lang-' + l ? ' hot' : '')}
+                  onClick={() => { pickMenu('lang-' + l); setMenu(false); }}>{l === 'bn' ? 'BN' : 'English'}</button>
+              </span>
+            ))}
+          </div>
+          {([2, 3] as const).map((row) => {
+            const list = (menuItems ?? []).filter((m) => (m.row ?? 2) === row);
+            return list.length ? (
+              <div key={row} className="kb-menu-row kb-menu-modes">
+                {list.map((m) => (
+                  <button key={m.id} type="button" tabIndex={-1} role="menuitemradio" aria-checked={Boolean(m.on)} data-menu={m.id} data-testid={'kb-' + m.id}
+                    className={(m.on ? 'on' : '') + (menuHot === m.id ? ' hot' : '') + (m.icon ? '' : ' wide')} aria-label={m.label} title={m.label}
+                    onClick={() => { m.act(); setMenu(false); }}>{m.icon ?? m.label}</button>
+                ))}
+              </div>
+            ) : null;
+          })}
         </div>
       )}
     </div>

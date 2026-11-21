@@ -153,9 +153,9 @@ test('custom .avrolayout: import, type with it, survives reload, delete needs tw
   await page.keyboard.press('KeyK');
   expect((await paras(page))[0]).toBe(probhat.map.KeyK[0]);
   await page.reload();
+  await section(page, 'কিবোর্ড ও টাইপিং');
   await expect(page.getByTestId('layout')).toHaveValue(/^custom-/);
   await expect(page.getByTestId('layout').locator('optgroup[label="আপনার যোগ করা"] option')).toHaveText(['পরীক্ষা লেআউট']);
-  await section(page, 'কিবোর্ড ও টাইপিং');
   const del = page.getByTestId('layout-list').getByRole('button');
   await del.click();
   await expect(page.getByTestId('layout-list')).toBeVisible();

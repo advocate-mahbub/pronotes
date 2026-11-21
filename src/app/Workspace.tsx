@@ -854,18 +854,18 @@ export function Workspace(p: Props) {
               ? [
                 { id: 'hand-full', label: t('পুরো চওড়া কিবোর্ড'), icon: KB_ICONS.full, on: !phoneFloat && !splitLand, act: () => { setPhoneFloat(false); setSplitLand(false); } },
                 { id: 'float', label: t('ভাসমান'), icon: KB_ICONS.float, on: phoneFloat, act: () => setPhoneFloat(true) },
-                { id: 'split', label: t('Split কিবোর্ড'), icon: KB_ICONS.split, on: !phoneFloat && splitLand, act: () => { setPhoneFloat(false); setSplitLand(true); } },
+                { id: 'split', label: t('Split কিবোর্ড'), icon: KB_ICONS.split, row: 3, on: !phoneFloat && splitLand, act: () => { setPhoneFloat(false); setSplitLand(true); } },
               ]
               : [
-                { id: 'hand-left', label: t('বাম হাতের কিবোর্ড'), icon: KB_ICONS.left, on: !phoneFloat && hand === 'left', act: () => { setPhoneFloat(false); setHand('left'); } },
+                { id: 'hand-left', label: t('বাম হাতের কিবোর্ড'), icon: KB_ICONS.left, row: 3, on: !phoneFloat && hand === 'left', act: () => { setPhoneFloat(false); setHand('left'); } },
                 { id: 'hand-full', label: t('পুরো চওড়া কিবোর্ড'), icon: KB_ICONS.full, on: !phoneFloat && !hand, act: () => { setPhoneFloat(false); setHand(null); } },
-                { id: 'hand-right', label: t('ডান হাতের কিবোর্ড'), icon: KB_ICONS.right, on: !phoneFloat && hand === 'right', act: () => { setPhoneFloat(false); setHand('right'); } },
+                { id: 'hand-right', label: t('ডান হাতের কিবোর্ড'), icon: KB_ICONS.right, row: 3, on: !phoneFloat && hand === 'right', act: () => { setPhoneFloat(false); setHand('right'); } },
                 { id: 'float', label: t('ভাসমান'), icon: KB_ICONS.float, on: phoneFloat, act: () => setPhoneFloat(true) },
               ]
             : [
               { id: 'dock', label: t('পুরো চওড়া কিবোর্ড'), icon: KB_ICONS.full, on: kbMode === 'dock', act: () => setKbMode('dock') },
               { id: 'float', label: t('ভাসমান'), icon: KB_ICONS.float, on: kbMode === 'float', act: () => setKbMode('float') },
-              { id: 'split-phone', label: t('Split কিবোর্ড'), icon: KB_ICONS.split, on: kbMode === 'splitPhone', act: () => setKbMode('splitPhone') },
+              { id: 'split-phone', label: t('Split কিবোর্ড'), icon: KB_ICONS.split, row: 3, on: kbMode === 'splitPhone', act: () => setKbMode('splitPhone') },
             ];
           const kb = (
             <OnScreenKeyboard compact={compact} onHide={() => setKbDown(true)} editor={editor} map={p.map} bangla={p.bangla} getConfig={getConfig} onToggleLanguage={p.onToggleLanguage}
