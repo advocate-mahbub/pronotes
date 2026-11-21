@@ -1,0 +1,12 @@
+# Line endings: LF in the repository and in every checkout, Windows included (decisions.md 93).
+# Without this, a Windows checkout turns every text file into CRLF and git shows them all as changed.
+* text=auto eol=lf
+*.png binary
+*.jpg binary
+*.webp binary
+*.ico binary
+*.woff2 binary
+*.ttf binary
+*.otf binary
+*.zip binary
+*.wasm binary
