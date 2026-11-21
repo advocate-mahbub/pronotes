@@ -49,7 +49,7 @@ export function useLiveVoice(o: Opts) {
   const showInterim = (raw0: string) => {
     const view = opts.current.editor.view;
     // the grey words too: no Hindi or Chinese letters on the page, even for a moment
-    const raw = langOf(opts.current).startsWith('bn') ? banglaScript(raw0).text : raw0;
+    const raw = banglaScript(raw0).text;
     setHeard(raw.trim());
     if (!raw.trim()) return setInterim(view, '');
     const before = textBeforeCaret(view);

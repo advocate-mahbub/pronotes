@@ -262,7 +262,7 @@ export function Workspace(p: Props) {
     voice: { lang: p.voice.lang, commands: p.voice.commands, corrections: p.corrections, banglaDigits: p.voice.banglaDigits }, disabled: p.ansiTyping, model: p.voiceModes.liveModel });
   // record-to-text (Gemini): one recording, shared by the page's ✦ key and the keyboard strip's 🎙
   const aiv = useAiVoice({ editor: editor as Editor, gemini: { ...p.gemini, model: p.voiceModes.recModel || p.gemini.model }, say: p.say,
-    onOpenSettings: p.onOpenSettings, disabled: p.ansiTyping, voice: { corrections: p.corrections, banglaDigits: p.voice.banglaDigits } });
+    onOpenSettings: p.onOpenSettings, disabled: p.ansiTyping, voice: { corrections: p.corrections, banglaDigits: p.voice.banglaDigits, lang: p.voice.lang } });
   // one 🎙: a tap = Live, held = record-to-text (decisions.md 77); each can be turned off in Settings
   const liveOk = p.voiceModes.live && live.available;
   const recOk = p.voiceModes.rec && p.voiceEngine === 'ai';

@@ -11,9 +11,9 @@
  */
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import type { Editor } from '@tiptap/react';
-import { AiError, aiErrorMessage, addHeld, beginHeld, clearHeld, errText, loadHeld, PcmRecorder, polishTranscript, VOICE_ERROR_TEXT, VOICE_MAX_SECONDS, VoiceError, transcribe } from '../ai';
+import { geminiRescript, AiError, aiErrorMessage, addHeld, beginHeld, clearHeld, errText, loadHeld, PcmRecorder, polishTranscript, VOICE_ERROR_TEXT, VOICE_MAX_SECONDS, VoiceError, transcribe } from '../ai';
 import { insertPlainText, setInterim, textBeforeCaret } from '../editor';
-import { banglaScript } from '../voice';
+import { toBanglaVoice } from '../voice';
 import { parseCorrections } from '../voice';
 import { useT } from '../i18n';
 import { load, save } from './prefs';
@@ -27,7 +27,7 @@ interface Props {
   /** Bijoy (ANSI) typing is on: voice cannot type there (the key says why when pressed). */
   disabled?: boolean;
   /** The voice settings that also apply to AI voice: corrections and Bangla digits. */
-  voice?: { corrections: string; banglaDigits: boolean };
+  voice?: { corrections: string; banglaDigits: boolean; lang?: string };
   /** Icon shown on the key (the microphone). */
   icon?: ReactNode;
 }
@@ -139,8 +139,9 @@ export function useAiVoice({ editor, gemini, say, onOpenSettings, disabled, voic
     try {
       abort.current = new AbortController();
       const raw = await transcribe(samples, { key: gemini.key, model: gemini.model, signal: abort.current.signal, onModelChange: gemini.setModel });
-      // no Hindi, Chinese or other letters in Bangla (decisions.md 82); English stays English
-      const raw1 = banglaScript(raw).text;
+      // no Hindi, Chinese or other letters in Bangla (decisions.md 82); a sentence that came in Hindi or
+      // romanised Bangla is written again in Bengali letters (decisions.md 87); English stays English
+      const raw1 = await toBanglaVoice(raw, voice?.lang?.startsWith('en') ? 'en-US' : 'bn-BD', geminiRescript(gemini.key, gemini.model));
       const text = voice ? polishTranscript(raw1, voice, parseCorrections) : raw1;
       held.current = null;
       void clearHeld();
