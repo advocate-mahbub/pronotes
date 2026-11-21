@@ -1,6 +1,6 @@
 import { test, expect, type Page } from '@playwright/test';
 import fs from 'node:fs';
-import { section } from './settings-tab';
+import { section, unfoldGroups } from './settings-tab';
 
 const editor = (p: Page) => p.getByTestId('editor');
 const text = (p: Page) => editor(p).locator('p').first().textContent();
@@ -41,7 +41,9 @@ test('Keyman .kmx with rules: deadkey, context and Backspace rule in the editor;
   for (const k of ['KeyF', 'KeyK']) await page.keyboard.press(k);
   await expect(title).toHaveValue('কি');
   await page.reload();
+  await section(page, 'type');
   await expect(page.getByTestId('layout')).toHaveValue(/^custom-/);
+  await page.getByTestId('settings').click();
   await editor(page).click();
   await editor(page).evaluate((el) => (el as unknown as { editor: { commands: { focus: (p: string) => void } } }).editor.commands.focus('end'));
   await page.keyboard.press('KeyM');
@@ -119,6 +121,7 @@ test.describe('layout lists in Settings (touch screen)', () => {
     await expect(page.getByTestId('toast')).toContainText('PN Test'); // shown once it is saved
     await expect(box).toHaveValue(/^custom-/);
     await page.reload();
+    await section(page, 'type');
     await expect(page.getByTestId('layout')).toHaveValue(/^custom-/);
     await expect(page.getByTestId('layout').locator('option[value="unibijoy"]')).toHaveCount(0);
   });
@@ -136,6 +139,7 @@ test('Settings opens on the tab used last time, and ✕ closes it', async ({ pag
   await page.goto('./');
   await expect(editor(page)).toBeVisible();
   await page.getByTestId('settings').click();
+  await unfoldGroups(page); // decisions.md 98: the keyboard tab's groups start folded
   await expect(page.getByTestId('layout-add-btn')).toBeVisible(); // the first tab: writing
   await page.getByTestId('stab-words').click();
   await expect(page.getByTestId('layout-add-btn')).toBeHidden();

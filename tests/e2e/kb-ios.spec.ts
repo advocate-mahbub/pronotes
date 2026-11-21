@@ -33,6 +33,15 @@ test.describe('iPhone', () => {
     const menu = page.getByTestId('kb-menu');
     for (const id of ['kb-lang-en', 'kb-lang-bn', 'kb-hand-left', 'kb-hand-full', 'kb-hand-right', 'kb-float']) await expect(menu.getByTestId(id)).toBeVisible();
     await expect(menu.getByTestId('kb-hand-full').locator('svg')).toHaveCount(1);
+    // decisions.md 98: three rows — English ⇄ BN; full · floating; left · right
+    const rows = menu.locator('.kb-menu-row');
+    await expect(rows).toHaveCount(3);
+    await expect(rows.nth(0).locator('button')).toHaveText(['English', 'BN']);
+    await expect(rows.nth(1).locator('button')).toHaveCount(2);
+    await expect(rows.nth(1).getByTestId('kb-hand-full')).toBeVisible();
+    await expect(rows.nth(1).getByTestId('kb-float')).toBeVisible();
+    await expect(rows.nth(2).getByTestId('kb-hand-left')).toBeVisible();
+    await expect(rows.nth(2).getByTestId('kb-hand-right')).toBeVisible();
     await expect(menu.getByTestId('kb-lang-bn')).toHaveAttribute('aria-checked', 'true');
     await menu.getByTestId('kb-lang-en').tap();
     await expect(menu).toHaveCount(0);
@@ -110,5 +119,35 @@ test.describe('iPad split', () => {
     await expect(page.getByTestId('kb-anna-gap-0')).toBeVisible();
     await tap(page, 'Anna:5');
     await expect(page.getByTestId('editor')).toContainText('৷৴');
+  });
+});
+
+test.describe('Settings, iPad', () => {
+  test.use({ viewport: { width: 1180, height: 820 }, hasTouch: true });
+  test('no layout box above the page; Settings → কিবোর্ড has it, in folded groups', async ({ page }) => {
+    await page.goto('./');
+    await expect(page.locator('header [data-testid="layout"]')).toHaveCount(0);
+    await page.getByTestId('settings').click();
+    await page.getByTestId('stab-type').click();
+    for (const id of ['kb-layouts', 'kb-osk', 'kb-shortcuts', 'kb-typing']) await expect(page.getByTestId(id + '-fold')).toHaveAttribute('aria-expanded', 'false');
+    await expect(page.getByTestId('layout')).toHaveCount(0);
+    await page.getByTestId('kb-layouts-fold').click();
+    await expect(page.getByTestId('layout')).toBeVisible();
+    // an iPad (wide screen) keeps the switch keys
+    await page.getByTestId('kb-shortcuts-fold').click();
+    await expect(page.getByTestId('toggle-key')).toBeVisible();
+  });
+});
+
+test.describe('Settings, iPhone', () => {
+  const iphone = devices['iPhone 13'];
+  test.use({ viewport: iphone.viewport, userAgent: iphone.userAgent, isMobile: true, hasTouch: true });
+  test('a phone has no Bangla/English and Unicode/ANSI switch keys', async ({ page }) => {
+    await page.goto('./');
+    await page.getByTestId('settings').tap();
+    await page.getByTestId('stab-type').tap();
+    await page.getByTestId('kb-shortcuts-fold').tap();
+    await expect(page.getByTestId('toggle-key')).toHaveCount(0);
+    await expect(page.getByTestId('ansi-key')).toHaveCount(0);
   });
 });

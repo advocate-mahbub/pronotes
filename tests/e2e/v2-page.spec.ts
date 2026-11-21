@@ -1,6 +1,7 @@
 import { test, expect, type Page } from '@playwright/test';
 import fs from 'node:fs';
 import JSZip from 'jszip';
+import { section } from './settings-tab';
 
 const editor = (p: Page) => p.getByTestId('editor');
 const typeKeys = async (p: Page, keys: string[]) => { for (const k of keys) await p.keyboard.press(k); };
@@ -165,7 +166,7 @@ test('print uses the document paper size (Folio)', async ({ page }) => {
 
 test('settings: switch key (F12) and the Chandrabindu fix', async ({ page }) => {
   await start(page);
-  await page.getByTestId('settings').click();
+  await section(page, 'type');
   await page.getByTestId('toggle-key').selectOption('f12');
   await expect(page.getByTestId('fix-chandra')).toBeChecked();
   await page.getByTestId('settings').click();

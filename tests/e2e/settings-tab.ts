@@ -24,6 +24,17 @@ export async function section(page: Page, name: string): Promise<void> {
   }
   // own font files are folded too (decisions.md 85)
   if (tab === 'font') await openOwnFonts(page);
+  await unfoldGroups(page);
+}
+
+/** Groups that start folded (decisions.md 98): the keyboard tab's four, the draft font, the app colours. */
+export const FOLDED = ['kb-layouts', 'kb-osk', 'kb-shortcuts', 'kb-typing', 'draft-font', 'app-colours'];
+/** Unfolds every one of them that is on the open tab. */
+export async function unfoldGroups(page: Page): Promise<void> {
+  for (const id of FOLDED) {
+    const f = page.getByTestId(id + '-fold');
+    if ((await f.count()) && (await f.getAttribute('aria-expanded')) === 'false') await f.click();
+  }
 }
 
 /** Unfolds Settings → ফন্ট → নিজের ফন্ট ফাইল. */

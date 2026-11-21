@@ -417,6 +417,8 @@ const FONT_ACCEPT = '.ttf,.otf,.woff,.woff2,.ttc,.otc,.eot,.fon,.pfb,.pfa,font/*
 
 export function Settings(p: Props) {
   const [splitAnna, setSplitAnna] = useState<boolean>(() => load('kb.splitAnna', false));
+  // a phone (narrow screen): no hardware keyboard shortcuts to choose
+  const isPhone = typeof matchMedia === 'function' && matchMedia('(max-width: 640px)').matches;
   const [loupe, setLoupe] = useState<boolean>(() => load('kb.loupe', true));
   const { t } = useT();
   // the Drive backup list is folded away until asked for
@@ -472,7 +474,7 @@ export function Settings(p: Props) {
       <div className="settings-body" role="tabpanel" data-testid={'stab-panel-' + tab}>
       {tab === 'type' && (
         <>
-          <Group title={t('কিবোর্ড লেআউট')} info={p.platform === 'mobile'
+          <Group title={t('কিবোর্ড লেআউট')} fold={{ id: 'kb-layouts' }} info={p.platform === 'mobile'
             ? 'এই ডিভাইসের (Mobile/iPad) লেআউট বাক্সে কোনগুলো থাকবে বেছে নিন। কম্পিউটারের তালিকা কম্পিউটার থেকে বদলান।'
             : 'এই কম্পিউটারের লেআউট বাক্সে কোনগুলো থাকবে বেছে নিন। iPad/ফোনের তালিকা সেখান থেকে বদলান।'}>
             {p.layoutPicker && <label className="srow" data-testid="settings-layout"><span>{t('এখন যে লেআউটে লিখছেন')}</span>{p.layoutPicker}</label>}
@@ -505,7 +507,7 @@ export function Settings(p: Props) {
               </ul>
             )}
           </Group>
-          <Group title={t('অন-স্ক্রিন কিবোর্ড')} info="ProNotes-এর নিজের কিবোর্ড খোলা থাকলে কার্সর নীল ও মোটা দেখায়; লেখায় চাপলে নিচে একটা ফোঁটা আসে, ধরে টানলে কার্সর সরে। Space চেপে টানলেও কার্সর সরে।">
+          <Group title={t('অন-স্ক্রিন কিবোর্ড')} fold={{ id: 'kb-osk' }} info="ProNotes-এর নিজের কিবোর্ড খোলা থাকলে কার্সর নীল ও মোটা দেখায়; লেখায় চাপলে নিচে একটা ফোঁটা আসে, ধরে টানলে কার্সর সরে। Space চেপে টানলেও কার্সর সরে।">
             <Check testid="kb-loupe" checked={loupe} onChange={(v) => { setLoupe(v); save('kb.loupe', v); }} label={t('কার্সর সরানোর সময় বড় করে দেখান')}
               info="ফোঁটা বা Space টেনে কার্সর সরানোর সময় কার্সরের দুপাশের লেখা একটা ছোট জানালায় বড় করে দেখায়, যাতে কোন অক্ষরের পাশে কার্সর বসছে বোঝা যায়।" />
             {/* the keys' Bangla font and its size (decisions.md 82): any Unicode font here, own files included */}
@@ -534,7 +536,9 @@ export function Settings(p: Props) {
               info="কিবোর্ড দুই ভাগ (Split) করলে মাঝের ফাঁকা জায়গায় আনা-গণ্ডার চিহ্ন (৴ ৵ ৶ … ১৲, ৻, ৹) থাকবে, ১২৩ না খুলেই লেখা যাবে।" />
             <KbLookFields />
           </Group>
-          <Group title={t('শর্টকাট key')} info="iPad-এ Ctrl+Space অনেক সময় iPad নিজেই ভাষা বদলাতে নিয়ে নেয়; তখন F12 বা Ctrl+M বেছে নিন। ফিজিক্যাল কিবোর্ডেই কাজ করে; অন-স্ক্রিন কিবোর্ডে EN/বাং বাটন আছে।">
+          <Group title={t('শর্টকাট key')} fold={{ id: 'kb-shortcuts' }} info="iPad-এ Ctrl+Space অনেক সময় iPad নিজেই ভাষা বদলাতে নিয়ে নেয়; তখন F12 বা Ctrl+M বেছে নিন। ফিজিক্যাল কিবোর্ডেই কাজ করে; অন-স্ক্রিন কিবোর্ডে EN/বাং বাটন আছে।">
+            {/* a phone has no keyboard keys to press (decisions.md 98) */}
+            {!isPhone && <>
             <label className="srow"><span>{t('বাংলা ⇄ English বদল')}</span>
               <select data-testid="toggle-key" value={p.toggleKey} onChange={(e) => p.setToggleKey(e.target.value as ToggleKey)}>
                 {TOGGLE_KEYS.map((k) => <option key={k.id} value={k.id}>{k.label}</option>)}
@@ -545,6 +549,7 @@ export function Settings(p: Props) {
                 {ANSI_KEYS.map((k) => <option key={k.id} value={k.id}>{t(k.label)}</option>)}
               </select>
             </label>
+            </>}
             <details className="srow-more" data-testid="settings-shortcuts">
               <summary>{t('কিবোর্ড শর্টকাট (Word-এর মতো)')}</summary>
               <p className="note">{t('MS Word-এর শর্টকাট এখানেও চলে; বাংলা লেআউটে লিখলেও একই কী। বাংলা/ইংরেজি বদল আর ANSI-র কী আগে কাজ করে। ব্রাউজার নিজে কিছু কী রেখে দেয় (Ctrl+N, Ctrl+T, Ctrl+W, Ctrl+Tab), অ্যাপ হিসেবে ইনস্টল করলে বেশিরভাগ পাওয়া যায়।')}</p>
@@ -562,7 +567,7 @@ export function Settings(p: Props) {
               ))}
             </details>
           </Group>
-          <Group title={t('টাইপিং-এর ধরন')} info="ProNotes নির্দিষ্ট লেআউটে (Fixed Keyboard Layout) আধুনিক ধরনে টাইপ করে: কার সবসময় ব্যঞ্জনবর্ণের পরে চাপতে হয়।">
+          <Group title={t('টাইপিং-এর ধরন')} fold={{ id: 'kb-typing' }} info="ProNotes নির্দিষ্ট লেআউটে (Fixed Keyboard Layout) আধুনিক ধরনে টাইপ করে: কার সবসময় ব্যঞ্জনবর্ণের পরে চাপতে হয়।">
             <Check testid="oldreph" checked={p.oldReph} onChange={p.setOldReph} label={t('বিজয়-ধাঁচের রেফ')} info="বিজয়-ধাঁচের রেফ: বর্ণ লেখার পরে রেফ চাপুন (ক ম রেফ লিখলে হবে কর্ম)" />
             <Check testid="vf" checked={p.vf} onChange={p.setVf} label={t('স্বর-গঠন')} info="স্বর-গঠন: শব্দের শুরুতে বা স্বরবর্ণের পরে কার চাপুন (ি চাপলে হবে ই, ে চাপলে এ, অ-এর পরে া চাপলে আ)" />
             <Check testid="fix-chandra" checked={p.fixChandra} onChange={p.setFixChandra} label={t('চন্দ্রবিন্দু নিজে ঠিক করো')} info="চন্দ্রবিন্দুর জায়গা নিজে থেকে ঠিক করো (ক ঁ া লিখলে হবে কাঁ)" />
@@ -624,7 +629,7 @@ export function Settings(p: Props) {
 
       {tab === 'font' && (
         <>
-          <Group title={t('ড্রাফটের ডিফল্ট ফন্ট')} info="ফন্ট এই ডিভাইসে না থাকলে পর্দায় অন্য ফন্টে দেখাবে, কিন্তু Word ফাইলে নাম এটাই থাকবে; যে কম্পিউটারে ফাইলটা খুলবেন সেখানে ফন্টটা থাকলেই হবে। কাগজ ও মার্জিন এখন রিবনের “পাতা” ট্যাবে।">
+          <Group title={t('ড্রাফটের ডিফল্ট ফন্ট')} fold={{ id: 'draft-font' }} info="ফন্ট এই ডিভাইসে না থাকলে পর্দায় অন্য ফন্টে দেখাবে, কিন্তু Word ফাইলে নাম এটাই থাকবে; যে কম্পিউটারে ফাইলটা খুলবেন সেখানে ফন্টটা থাকলেই হবে। কাগজ ও মার্জিন এখন রিবনের “পাতা” ট্যাবে।">
             <label className="srow"><span>{t('বাংলা ড্রাফট')}</span>
               <select data-testid="fmt-font" value={p.format.font} onChange={(e) => p.setFormat({ ...p.format, font: e.target.value })}>
                 {pageFonts.map((f) => <option key={f} value={f}>{fontLabel(f) + (here(f) ? '' : ' ' + t('(এই ডিভাইসে নেই)'))}</option>)}
@@ -725,7 +730,7 @@ export function Settings(p: Props) {
               <button type="button" aria-pressed={p.uiLang === 'en'} data-testid="ui-en" onClick={() => p.setUiLang('en')}>English</button>
             </div>
           </Group>
-          <Group title={t('অ্যাপের রং')} info="সাদা, নীল, রঙিন বা কালো — অ্যাপের পুরো রং। উপরের ◐ বোতাম আগের মতোই আলো না অন্ধকার বাছে; এখানে বাছা রং দুটোতেই নিজের মতো হালকা বা গাঢ় হয়। ব্যাকআপে যায়।">
+          <Group title={t('অ্যাপের রং')} fold={{ id: 'app-colours' }} info="সাদা, নীল, রঙিন বা কালো — অ্যাপের পুরো রং। উপরের ◐ বোতাম আগের মতোই আলো না অন্ধকার বাছে; এখানে বাছা রং দুটোতেই নিজের মতো হালকা বা গাঢ় হয়। ব্যাকআপে যায়।">
             <PaletteField />
           </Group>
           <Group title={t('অ্যাপের ফন্ট')} info="মেনু, বাটন আর কিবোর্ডের কী-এর লেখার ফন্ট — বাংলা আর English আলাদা। ডকুমেন্টের লেখার ফন্ট আলাদা (হোম → ফন্টের ঘর)। বিজয় (ANSI) ফন্ট এখানে আসে না: মেনুর লেখা ইউনিকোডে, বিজয় ফন্টে ভেঙে যেত। Kalpurush অ্যাপের সাথেই আসে (খোলা লাইসেন্স, SIL OFL)।">

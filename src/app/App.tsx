@@ -1039,7 +1039,6 @@ export function App() {
       <option value="bornona" hidden aria-hidden="true">Bornona</option>
     </select>
   );
-  const layoutSelect = layoutBox('layout');
   const sidebar = (
     <Sidebar top={
       <>
@@ -1089,7 +1088,7 @@ export function App() {
         </div>
         {/* quiet: a small ✓ when saved; words only while saving fails */}
         <span className={'status ' + saveState} data-testid="save-status" role="status" title={statusText}>{statusText}</span>
-        {!phone && layoutSelect}
+        {/* the layout box lives in Settings → কিবোর্ড only (decisions.md 98) */}
         <button type="button" className="tb lang" data-testid="lang-toggle" data-lang={bangla ? 'bn' : 'en'}
           title={t(bangla ? 'টাইপ: বাংলা — চাপলে English' : 'টাইপ: English — চাপলে বাংলা')}
           aria-label={t(bangla ? 'টাইপ: বাংলা — চাপলে English' : 'টাইপ: English — চাপলে বাংলা')}
@@ -1167,7 +1166,7 @@ export function App() {
 
 
       {settingsOpen && (
-        <Settings layoutPicker={layoutBox('settings-layout-select')} drive={{ enabled: driveEnabled(), connected: driveConnected, busy: driveBusy, list: driveList, onConnect: () => void driveConnect('list'), onBackup: () => void driveBackup(), onDownload: (b) => void driveDownload(b), onRefresh: () => void driveRefresh(), onRestore: (b) => void driveRestore(b), onDelete: (b) => void driveDelete(b), keep: driveKeep, setKeep: setDriveKeep, deviceName, setDeviceName, autoDevice: autoDeviceName(), thisDevice, onDisconnect: () => void driveDisconnect(), auto: autoDrive, setAuto: setAutoDrive }}
+        <Settings layoutPicker={layoutBox('layout')} drive={{ enabled: driveEnabled(), connected: driveConnected, busy: driveBusy, list: driveList, onConnect: () => void driveConnect('list'), onBackup: () => void driveBackup(), onDownload: (b) => void driveDownload(b), onRefresh: () => void driveRefresh(), onRestore: (b) => void driveRestore(b), onDelete: (b) => void driveDelete(b), keep: driveKeep, setKeep: setDriveKeep, deviceName, setDeviceName, autoDevice: autoDeviceName(), thisDevice, onDisconnect: () => void driveDisconnect(), auto: autoDrive, setAuto: setAutoDrive }}
           backupInfo={{ last: lastBackup, remind: backupRemind, setRemind: setBackupRemind }}
           onClose={() => setSettingsOpen(false)} platform={coarse || phone ? 'mobile' : 'desktop'} vf={vf} setVf={setVf} oldReph={oldReph} setOldReph={setOldReph}
           keyboardLayouts={allKeyboardLayouts} hiddenDesktop={hiddenDesktop} setHiddenDesktop={setHiddenDesktop}

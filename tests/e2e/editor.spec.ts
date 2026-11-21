@@ -1,5 +1,6 @@
 import { test, expect, type Page } from '@playwright/test';
 import fs from 'node:fs';
+import { section } from './settings-tab';
 
 const sequences = JSON.parse(fs.readFileSync(new URL('../golden/sequences.json', import.meta.url), 'utf8'));
 const editor = (p: Page) => p.getByTestId('editor');
@@ -8,7 +9,8 @@ const text = (p: Page) => editor(p).evaluate((el) => el.textContent ?? '');
 async function open(page: Page, opts: { layout?: string; vf?: boolean; oldReph?: boolean } = {}) {
   await page.goto('./');
   await expect(editor(page)).toBeVisible();
-  if (opts.layout) await page.getByTestId('layout').selectOption(opts.layout);
+  // the layout box is in Settings → কিবোর্ড (decisions.md 98)
+  if (opts.layout) { await section(page, 'type'); await page.getByTestId('layout').selectOption(opts.layout); await page.getByTestId('settings').click(); }
   if (opts.vf !== undefined || opts.oldReph !== undefined) {
     await page.getByTestId('settings').click();
     await page.getByTestId('vf').setChecked(opts.vf ?? true);
