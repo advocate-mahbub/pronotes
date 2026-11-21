@@ -10,7 +10,7 @@
 import { UserApps } from './UserApps';
 import type { BridgeConfig } from '../../apps-site/protocol';
 import type { BornonaConfig } from '../editor';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
 import { useT } from '../i18n';
 import { saveFile } from '../storage/download';
 import { callCommand, craftApp, craftAppUrl, enabledCraftApps, listedFamilies, manifestFonts, openMessage, readBridgeMessage, runCommand, type CraftApp } from './bridge';
@@ -228,27 +228,18 @@ export function CraftWorkspace({ visible, initialApp, handoff, onShowDrafts, onV
               <button type="button" className="btn small" data-testid="craft-stop" onClick={stop}>{t('বন্ধ করুন')}</button>
             </div>
           )}
-          <div className="craft-grid">
+          {/* the apps as icons, like a phone's home screen (decisions.md 91); held, what the app is */}
+          <div className="craft-icons" data-testid="craft-icons">
             {enabledCraftApps().map((a) => (
-              <button type="button" key={a.id} className={'craft-card' + (app?.id === a.id ? ' running' : '')} data-testid={'craft-app-' + a.id} onClick={() => start(a)}>
-                <strong>{a.name}</strong>
-                <span>{t(a.label)}</span>
-                <small>v{a.version}{app?.id === a.id ? ' · ' + t('চলছে') : ''}</small>
-              </button>
+              <AppIcon key={a.id} testid={'craft-app-' + a.id} name={a.name} img={CRAFT_ICONS[a.id]} running={app?.id === a.id}
+                about={t(a.label) + ' · v' + a.version + (app?.id === a.id ? ' · ' + t('চলছে') : '')} onOpen={() => start(a)} />
             ))}
+            {typing && (
+              <AppIcon testid="craft-mine" name={t('আমার অ্যাপ')} glyph={MINE_GLYPH} running={mineOn}
+                about={t('নিজের ওয়েব অ্যাপ (.zip) যোগ করুন ও চালান; লেখার ঘরে ProNotes-এর কিবোর্ড লেআউট') + ' · ' + (mineOn ? t('চলছে') : 'apps.mahbuburrahman.bd')}
+                onOpen={() => { setMineOn(true); setView('mine'); }} />
+            )}
           </div>
-          {typing && (
-            <>
-              <h3 className="craft-h">{t('আমার অ্যাপ')}</h3>
-              <div className="craft-grid">
-                <button type="button" className={'craft-card' + (mineOn ? ' running' : '')} data-testid="craft-mine" onClick={() => { setMineOn(true); setView('mine'); }}>
-                  <strong>{t('আমার অ্যাপ')}</strong>
-                  <span>{t('নিজের ওয়েব অ্যাপ (.zip) যোগ করুন ও চালান; লেখার ঘরে ProNotes-এর কিবোর্ড লেআউট')}</span>
-                  <small>{mineOn ? t('চলছে') : 'apps.mahbuburrahman.bd'}</small>
-                </button>
-              </div>
-            </>
-          )}
           <p className="craft-note">{t('অ্যাপগুলো ArtCraft-এর ওপেন-সোর্স (MIT/Apache-2.0) web build, অপরিবর্তিত অবস্থায় এই সাইট থেকে চলে। ProNotes-এর সাথে এদের দলের কোনো সম্পর্ক নেই।')}</p>
           <h3 className="craft-h">{t('এই ডিভাইসে রাখা ফাইল')}</h3>
           <ul className="craft-files" data-testid="craft-files">
@@ -305,5 +296,39 @@ export function CraftWorkspace({ visible, initialApp, handoff, onShowDrafts, onV
         </div>
       )}
     </section>
+  );
+}
+
+// the apps' own icons, from their open-source repositories (MIT/Apache-2.0) (decisions.md 91)
+const CRAFT_ICONS: Record<string, string> = Object.fromEntries(
+  Object.entries(import.meta.glob('../assets/craft-icons/*.webp', { eager: true, query: '?url', import: 'default' }) as Record<string, string>)
+    .map(([path, url]) => [path.replace(/^.*\/|\.webp$/g, ''), url]),
+);
+const MINE_GLYPH = (
+  <svg viewBox="0 0 48 48" width="100%" height="100%" aria-hidden="true">
+    <rect width="48" height="48" rx="11" fill="#3a4a6b" />
+    {[[11, 11], [27, 11], [11, 27]].map(([x, y]) => <rect key={x + '-' + y} x={x} y={y} width="10" height="10" rx="2.5" fill="#f1e6cf" />)}
+    <path d="M32 27v10M27 32h10" stroke="#c8a45d" strokeWidth="3" strokeLinecap="round" />
+  </svg>
+);
+
+/** One app on the launcher: icon, name under it; a tap opens it, a hold says what it is. */
+function AppIcon({ testid, name, img, glyph, running, about, onOpen }: { testid: string; name: string; img?: string; glyph?: ReactNode; running?: boolean; about: string; onOpen: () => void }) {
+  const [info, setInfo] = useState(false);
+  const hold = useRef<{ timer: number; fired: boolean } | null>(null);
+  return (
+    <div className={'app-icon' + (running ? ' running' : '')}>
+      <button type="button" data-testid={testid} title={about} aria-label={name + ' — ' + about}
+        onPointerDown={() => { hold.current = { fired: false, timer: window.setTimeout(() => { if (hold.current) hold.current.fired = true; setInfo(true); }, 500) }; }}
+        onPointerUp={() => { if (hold.current) clearTimeout(hold.current.timer); }}
+        onPointerLeave={() => { if (hold.current) clearTimeout(hold.current.timer); }}
+        onContextMenu={(e) => e.preventDefault()}
+        onClick={() => { if (hold.current?.fired) { hold.current = null; return; } setInfo(false); onOpen(); }}>
+        <span className="app-icon-img">{img ? <img src={img} alt="" draggable={false} /> : glyph ?? <span className="app-icon-letter">{name.slice(0, 1)}</span>}</span>
+        <span className="app-icon-name">{name}</span>
+        {running && <span className="app-icon-dot" aria-hidden="true" />}
+      </button>
+      {info && <p className="app-icon-info" role="note" data-testid={testid + '-info'} onClick={() => setInfo(false)}>{about}</p>}
+    </div>
   );
 }

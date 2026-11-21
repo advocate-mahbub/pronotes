@@ -90,3 +90,18 @@ describe('apps site (decisions.md 81)', () => {
     expect(seen).toBe(3); // the app hears every change
   });
 });
+
+// decisions.md 91: a zipped app's own icon
+import { iconOf } from '../../apps-site/icon';
+describe('iconOf', () => {
+  const f = (path: string, text = '') => ({ path, data: new TextEncoder().encode(text) });
+  it('the largest manifest icon that is in the zip', () => {
+    const files = [f('index.html'), f('manifest.json', JSON.stringify({ icons: [{ src: 'i/48.png', sizes: '48x48' }, { src: './i/512.png', sizes: '512x512' }, { src: 'gone.png', sizes: '1024x1024' }] })), f('i/48.png'), f('i/512.png')];
+    expect(iconOf(files, 'index.html')).toBe('i/512.png');
+  });
+  it('else the page\'s apple-touch-icon or icon link (relative to the page), else a root favicon, else none', () => {
+    expect(iconOf([f('app/index.html', '<link rel="icon" href="../img/f.svg"><link rel="apple-touch-icon" href="t.png">'), f('app/t.png'), f('img/f.svg')], 'app/index.html')).toBe('app/t.png');
+    expect(iconOf([f('index.html', '<link rel="icon" href="https://x.com/a.png">'), f('favicon.ico')], 'index.html')).toBe('favicon.ico');
+    expect(iconOf([f('index.html', '<p>')], 'index.html')).toBe('');
+  });
+});
