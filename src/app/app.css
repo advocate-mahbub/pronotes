@@ -113,7 +113,7 @@ button:focus-visible, select:focus-visible { outline: 2px solid var(--gold); out
 
 .kb { background: var(--key-2); border: 1px solid var(--line); border-radius: 12px; padding: 4px; display: flex; flex-direction: column; gap: 4px; user-select: none; -webkit-user-select: none; touch-action: manipulation; }
 .kb-row { display: flex; gap: 5px; }
-.k { flex: 1 1 0; min-width: 0; position: relative; height: 52px; border: 0; border-radius: 8px; background: var(--key); box-shadow: 0 1.5px 0 var(--key-shadow); cursor: pointer; padding: 0; font-family: "PN KB", "PN UI", var(--f-display); -webkit-tap-highlight-color: transparent; }
+.k { flex: 1 1 0; min-width: 0; position: relative; height: calc(52px * var(--kb-hs, 1)); border: 0; border-radius: 8px; background: var(--key); box-shadow: 0 1.5px 0 var(--key-shadow); cursor: pointer; padding: 0; font-family: "PN KB", "PN UI", var(--f-display); -webkit-tap-highlight-color: transparent; }
 .k .m { font-size: 22px; font-weight: 600; line-height: 1; }
 .k .m.tiny { font: 600 11px var(--f-mono); }
 .k .s { position: absolute; top: 4px; right: 6px; font-size: 12px; color: var(--muted); line-height: 1; }
@@ -131,7 +131,7 @@ button:focus-visible, select:focus-visible { outline: 2px solid var(--gold); out
   .dock { gap: 3px; padding-bottom: 3px; }
   .sug { min-height: 0; }
   .kb { margin-inline: -4px; border-radius: 8px; padding: 2px 0; gap: 2px; border-inline: 0; }
-  .k { height: 43px; border-radius: 5px; } .kb-row { gap: 2px; } .k .m { font-size: 16px; } .k .m.tiny { font-size: 9px; } .k .s { font-size: 9px; } .k .l { display: none; }
+  .k { height: calc(43px * var(--kb-hs, 1)); border-radius: 5px; } .kb-row { gap: 2px; } .k .m { font-size: 16px; } .k .m.tiny { font-size: 9px; } .k .s { font-size: 9px; } .k .l { display: none; }
   .page-body { padding: 18px; font-size: 19px; }
 }
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
@@ -962,7 +962,7 @@ input.cf[data-testid$="-type"] { flex: 0 1 112px; width: 112px; }
 .kb.compact .kb-row.split .gap { flex-basis: 22%; }
 .kb .k.w3 { flex: 3 1 0; }
 /* numpad: big keys like a phone's keypad */
-.kb.num .k { height: 50px; }
+.kb.num .k { height: calc(50px * var(--kb-hs, 1)); }
 .kb.num .k.pad .m { font-size: 24px; }
 .kb .k.live .m { font-size: 18px; }
 .kb .k.live.on { background: #c62828; color: #fff; }
@@ -972,7 +972,7 @@ input.cf[data-testid$="-type"] { flex: 0 1 112px; width: 112px; }
 .kb-grip .grip { width: 48px; height: 5px; border-radius: 3px; background: var(--muted); opacity: .45; }
 /* a phone turned sideways: lower keys so the page keeps some room */
 @media (max-height: 500px) and (orientation: landscape) and (pointer: coarse) {
-  .kb .k { height: 28px; border-radius: 5px; }
+  .kb .k { height: calc(28px * var(--kb-hs, 1)); border-radius: 5px; }
   .kb .kb-row { gap: 3px; }
   .kb { padding-top: 2px; padding-bottom: 2px; gap: 3px; }
   .kb .k .m { font-size: 16px; }
@@ -1027,7 +1027,7 @@ body:has([data-testid="osk"]) .sug.empty { display: flex; min-height: 46px; }
   .kb { padding: 6px 3px calc(4px + env(safe-area-inset-bottom, 0px)); gap: 10px; }
   .kb .kb-main { gap: 10px; }
   .kb .kb-row { gap: 6px; }
-  .kb .k { height: 42px; border-radius: 6px; }
+  .kb .k { height: calc(42px * var(--kb-hs, 1)); border-radius: 6px; }
   .kb-liftwrap.phone .kb-grip { height: 12px; }
 }
 /* phone keypads: the same total height as the letters (5 rows of 42 + 4 gaps of 10 = 250px), so
@@ -1035,13 +1035,13 @@ body:has([data-testid="osk"]) .sug.empty { display: flex; min-height: 46px; }
 @media (max-width: 640px) {
   .kb.num .kb-main, .kb.num { gap: 6px; }
   .kb.num .kb-row { gap: 6px; }
-  .kb.num .k { height: 37px; }
-  .kb.pad-anna .k { height: 44px; }
+  .kb.num .k { height: calc(37px * var(--kb-hs, 1)); }
+  .kb.pad-anna .k { height: calc(44px * var(--kb-hs, 1)); }
   .kb.num .k.pad .m { font-size: 21px; }
 }
 /* a phone held sideways: the same rule at the lower key height */
 @media (max-height: 500px) and (orientation: landscape) and (pointer: coarse) {
-  .kb.num .k { height: 22px; } .kb.pad-anna .k { height: 26px; }
+  .kb.num .k { height: calc(22px * var(--kb-hs, 1)); } .kb.pad-anna .k { height: calc(26px * var(--kb-hs, 1)); }
   .kb.num .k.pad .m { font-size: 15px; } .kb .k.pad .v { display: none; }
 }
 .kb-liftwrap.reach { position: relative; z-index: 6; }
@@ -1051,7 +1051,7 @@ body:has([data-testid="osk"]) .sug.empty { display: flex; min-height: 46px; }
 @media (max-width: 640px) {
   .kb, .kb .kb-main { gap: 0; }
   .kb .kb-row { gap: 0; }
-  .kb .k { height: 52px; background: transparent; box-shadow: none; border-radius: 0; }
+  .kb .k { height: calc(52px * var(--kb-hs, 1)); background: transparent; box-shadow: none; border-radius: 0; }
   .kb .k::before { content: ''; position: absolute; inset: 5px 3px; border-radius: 6px; background: var(--key); box-shadow: 0 1.5px 0 var(--key-shadow); }
   .kb .k > span { position: relative; z-index: 1; }
   .kb .k > .s, .kb .k > .a, .kb .k > .l { position: absolute; }
@@ -1062,8 +1062,8 @@ body:has([data-testid="osk"]) .sug.empty { display: flex; min-height: 46px; }
   .kb .k.hit, .kb .k:active { background: transparent; box-shadow: none; }
   .kb .k.hit::before, .kb .k:active::before { background: var(--accent-soft); }
   .kb .k.sign::before { box-shadow: 0 1.5px 0 var(--key-shadow); }
-  .kb.num .k { height: 43px; } .kb.num .k::before { inset: 3px; }
-  .kb.pad-anna .k { height: 52px; } .kb.pad-anna .k::before { inset: 4px 3px; }
+  .kb.num .k { height: calc(43px * var(--kb-hs, 1)); } .kb.num .k::before { inset: 3px; }
+  .kb.pad-anna .k { height: calc(52px * var(--kb-hs, 1)); } .kb.pad-anna .k::before { inset: 4px 3px; }
 }
 /* keypad keys: the value under the sign; the anna pad's ৻ and ৹ as wide as a digit key */
 .kb .k.pad { display: flex; flex-direction: column; align-items: center; justify-content: center; }
@@ -1176,7 +1176,7 @@ body:has(.kb-strip.down) .mic, body:has(.kb-strip.down) .live-mic { bottom: calc
 :root[data-theme="dark"] { --ios-kb: #202124; --ios-key: #464749; --ios-fn: #464749; --ios-fg: #ffffff; --ios-hit: #6b6c70; }
 @media (max-width: 640px) {
   .kb-liftwrap.phone .kb.compact { background: var(--ios-kb); border: 0; border-radius: 26px 26px 0 0; padding-top: 4px; padding-left: 3px; padding-right: 3px; }
-  .kb.compact:not(.num):not(.pad-anna) .k { height: 54px; }
+  .kb.compact:not(.num):not(.pad-anna) .k { height: calc(54px * var(--kb-hs, 1)); }
   .kb.compact:not(.num):not(.pad-anna) .k::before { inset: 5.65px 3px; border-radius: 8.5px; background: var(--ios-key); box-shadow: none; }
   .kb.compact:not(.num):not(.pad-anna) .k.fn::before { background: var(--ios-fn); box-shadow: none; }
   .kb.compact .k .m { color: var(--ios-fg); font-weight: 400; font-size: 24px; }
@@ -1306,3 +1306,19 @@ body:has(.kb-strip.down) .mic, body:has(.kb-strip.down) .live-mic { bottom: calc
 .k.rec-dot .vc-dot { width: 11px; height: 11px; border-radius: 50%; background: #d32f2f; animation: pn-rec 1s steps(1) infinite; }
 @media (prefers-reduced-motion: reduce) { .k.rec-dot .vc-dot { animation: none; } }
 .voice-ctl .vc-b svg { display: block; }
+
+/* the app's colour sets (decisions.md 88): Settings → অ্যাপ → অ্যাপের রং; ◐ still picks light or dark.
+   data-mode is the light/dark in effect (set by the app), so these win over the device-dark rules above. */
+:root[data-palette="white"][data-mode="light"] { --bg: #f2f3f5; --sheet: #ffffff; --fg: #111418; --muted: #5d636b; --line: #e1e4e8; --key: #ffffff; --key-2: #e6e9ed; --key-shadow: #c4c8cd; --accent: #1a56db; --accent-fg: #ffffff; --accent-soft: #dbe6fb; --gold: #b8913f; --sel: rgba(37, 99, 235, .30); --ios-kb: #d1d4d9; --ios-key: #ffffff; --ios-fn: #abb1bb; --ios-fg: #000000; --ios-hit: #e9eaee; color-scheme: light; }
+:root[data-palette="white"][data-mode="dark"] { --bg: #121212; --sheet: #1e1e1e; --fg: #e8e8e8; --muted: #a0a0a0; --line: #333333; --key: #2c2c2e; --key-2: #1c1c1e; --key-shadow: #000000; --accent: #8ab4f8; --accent-fg: #0b0b0b; --accent-soft: #263247; --gold: #c8a45d; --glass-bg: rgba(30, 30, 30, .62); --glass-strong: rgba(44, 44, 46, .86); --sel: rgba(138, 180, 248, .45); --ios-kb: #1c1c1e; --ios-key: #3a3a3c; --ios-fn: #2c2c2e; --ios-fg: #ffffff; --ios-hit: #5a5a5e; color-scheme: dark; }
+:root[data-palette="blue"][data-mode="light"] { --bg: #eef4fb; --sheet: #ffffff; --fg: #0c2340; --muted: #55667c; --line: #d3e0ef; --key: #ffffff; --key-2: #dde8f5; --key-shadow: #b5c6db; --accent: #1565c0; --accent-fg: #ffffff; --accent-soft: #d6e6f9; --gold: #c8a45d; --sel: rgba(37, 99, 235, .30); --ios-kb: #d1d4d9; --ios-key: #ffffff; --ios-fn: #abb1bb; --ios-fg: #000000; --ios-hit: #e9eaee; color-scheme: light; }
+:root[data-palette="blue"][data-mode="dark"] { --bg: #07162b; --sheet: #0d2140; --fg: #e3edf9; --muted: #9db0c8; --line: #1d3657; --key: #163056; --key-2: #0b1d38; --key-shadow: #020a16; --accent: #64b5f6; --accent-fg: #04121f; --accent-soft: #15365c; --gold: #c8a45d; --glass-bg: rgba(13, 33, 64, .62); --glass-strong: rgba(20, 44, 80, .86); --sel: rgba(100, 181, 246, .45); --ios-kb: #0b1d38; --ios-key: #1f3c66; --ios-fn: #163056; --ios-fg: #ffffff; --ios-hit: #2f5a91; color-scheme: dark; }
+:root[data-palette="colorful"][data-mode="light"] { --bg: #fdf6ec; --sheet: #ffffff; --fg: #2b2135; --muted: #6e6377; --line: #f0dfc8; --key: #ffffff; --key-2: #fbe7d0; --key-shadow: #e0c3a0; --accent: #d84a33; --accent-fg: #ffffff; --accent-soft: #fde0d6; --gold: #12a38f; --sel: rgba(37, 99, 235, .30); --ios-kb: #d1d4d9; --ios-key: #ffffff; --ios-fn: #abb1bb; --ios-fg: #000000; --ios-hit: #e9eaee; color-scheme: light; }
+:root[data-palette="colorful"][data-mode="dark"] { --bg: #14101c; --sheet: #1f1830; --fg: #f3eaf8; --muted: #b3a5c2; --line: #33284a; --key: #2c2244; --key-2: #1a1428; --key-shadow: #07040c; --accent: #ff8a65; --accent-fg: #1a0d07; --accent-soft: #4a2a2a; --gold: #4dd0b9; --glass-bg: rgba(31, 24, 48, .62); --glass-strong: rgba(44, 34, 68, .86); --sel: rgba(255, 138, 101, .45); --ios-kb: #1a1428; --ios-key: #3a2d58; --ios-fn: #2c2244; --ios-fg: #ffffff; --ios-hit: #5a4680; color-scheme: dark; }
+:root[data-palette="black"][data-mode="light"] { --bg: #f2f3f5; --sheet: #ffffff; --fg: #000000; --muted: #55595f; --line: #dfe2e6; --key: #ffffff; --key-2: #e6e9ed; --key-shadow: #c4c8cd; --accent: #111111; --accent-fg: #ffffff; --accent-soft: #e4e4e4; --gold: #b8913f; --sel: rgba(37, 99, 235, .30); --ios-kb: #d1d4d9; --ios-key: #ffffff; --ios-fn: #abb1bb; --ios-fg: #000000; --ios-hit: #e9eaee; color-scheme: light; }
+:root[data-palette="black"][data-mode="dark"] { --bg: #000000; --sheet: #000000; --fg: #f0f0f0; --muted: #9a9a9a; --line: #262626; --key: #1c1c1e; --key-2: #0a0a0a; --key-shadow: #000000; --accent: #c8a45d; --accent-fg: #000000; --accent-soft: #2e2615; --gold: #c8a45d; --glass-bg: rgba(0, 0, 0, .72); --glass-strong: rgba(18, 18, 18, .92); --sel: rgba(200, 164, 93, .50); --ios-kb: #0a0a0a; --ios-key: #2a2a2c; --ios-fn: #1c1c1e; --ios-fg: #ffffff; --ios-hit: #4a4a4c; color-scheme: dark; }
+/* Settings → কিবোর্ড: the colour picker and the small live picture (decisions.md 88) */
+.kb-colors { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 12px; }
+.kb-colors input[type="color"] { width: 44px; height: 30px; padding: 0; border: 1px solid var(--line); border-radius: 8px; background: none; }
+.kb-preview { display: flex; gap: 6px; padding: 8px; margin: 6px 0; border-radius: 12px; border: 1px solid var(--line); }
+.kb-preview span { flex: 1 1 0; height: 40px; display: flex; align-items: center; justify-content: center; border-radius: 7px; font: 400 20px "PN KB", "PN UI", var(--f-display); }

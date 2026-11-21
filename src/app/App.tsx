@@ -36,6 +36,7 @@ import { listDriveFonts, uploadDriveFont, downloadDriveFont, planFontSync, curre
 import { CraftWorkspace, type CraftHandoff, type CraftView } from '../craft/CraftWorkspace';
 import { craftApp } from '../craft/bridge';
 import { load, save, allPrefs, restorePrefs } from './prefs';
+import { applyPalette, loadPalette, applyKbLook, loadKbLook, applyKbHeight, loadKbHeight } from './look';
 import { I18nContext, setUiLangGlobal, translate, tr, type UiLang } from '../i18n';
 import { LOCAL_UNI, WEB_FONTS, ENGLISH_FONTS, isFontAvailable, applyAppFonts, fontFileUrl, DEFAULT_APP_BN, DEFAULT_APP_EN, type AppFonts } from '../fonts';
 import './fonts.css';
@@ -104,7 +105,15 @@ export function App() {
     save('theme', theme);
     if (theme === 'auto') delete document.documentElement.dataset.theme;
     else document.documentElement.dataset.theme = theme;
+    // the colour set and the light/dark in effect, which follows the device while ◐ is on auto (decisions.md 88)
+    applyPalette(loadPalette(), theme);
+    const m = window.matchMedia?.('(prefers-color-scheme: dark)');
+    const on = () => applyPalette(loadPalette(), theme);
+    m?.addEventListener?.('change', on);
+    return () => m?.removeEventListener?.('change', on);
   }, [theme]);
+  // the keyboard's own colours and height (decisions.md 88)
+  useEffect(() => { applyKbLook(loadKbLook()); applyKbHeight(loadKbHeight()); }, []);
   const [layoutId, setLayoutId] = useState(() => load('layout', PRONOTES_LAYOUT_ID));
   // Layouts hidden from the layout box, separately for computers and touch devices (phone, iPad).
   // Stored as "hidden" so that an empty list means "show all" and newly added layouts show up.

@@ -13,6 +13,7 @@ import { KEEP_CHOICES, type DriveBackup } from '../storage/gdrive';
 import type { BackupLast } from './backup-status';
 import type { VoiceModes } from './voice-modes';
 import { NumberField } from './NumberField';
+import { PALETTES, KB_THEMES, KB_H_MIN, KB_H_MAX, applyPalette, loadPalette, loadKbLook, saveKbLook, colorsOf, contrast, textOn, loadKbHeight, saveKbHeight, type Palette, type KbLook, type KbColors } from './look';
 import { WORD_SHORTCUTS, showKeys } from '../editor/word-shortcuts';
 
 export interface FontInfo {
@@ -510,6 +511,18 @@ export function Settings(p: Props) {
               <NumberField min={SCALE_MIN} max={SCALE_MAX} step={5} steppers testid="kb-font-size" value={p.appFonts.kbScale ?? 100} onChange={(n) => p.setAppFonts({ ...p.appFonts, kbScale: n })} />
             </label>
             <p className="kb-font-sample" data-testid="kb-font-sample" aria-hidden="true">{en ? 'Aa' : 'ক খ গ ঘ ি ু ্'}</p>
+            {/* the keys' English font and size, under the Bangla ones (decisions.md 88); own English font files included */}
+            <label className="srow"><span>{t('কী-এর English ফন্ট')}</span>
+              <select data-testid="kb-font-en" value={p.appFonts.kbEn ?? ''} onChange={(e) => p.setAppFonts({ ...p.appFonts, kbEn: e.target.value })}>
+                <option value="">{t('অ্যাপের English ফন্ট')} ({p.appFonts.en || t('ডিভাইসের নিজের')})</option>
+                {appEn.map((n) => <option key={n} value={n}>{n}</option>)}
+              </select>
+            </label>
+            <label className="srow"><span>{t('কী-এর English অক্ষরের মাপ')} (%)</span>
+              <NumberField min={SCALE_MIN} max={SCALE_MAX} step={5} steppers testid="kb-font-en-size" value={p.appFonts.kbEnScale ?? 100} onChange={(n) => p.setAppFonts({ ...p.appFonts, kbEnScale: n })} />
+            </label>
+            <p className="kb-font-sample" data-testid="kb-font-en-sample" aria-hidden="true">Aa Bb Cc 123</p>
+            <KbLookFields />
           </Group>
           <Group title={t('শর্টকাট key')} info="iPad-এ Ctrl+Space অনেক সময় iPad নিজেই ভাষা বদলাতে নিয়ে নেয়; তখন F12 বা Ctrl+M বেছে নিন। ফিজিক্যাল কিবোর্ডেই কাজ করে; অন-স্ক্রিন কিবোর্ডে EN/বাং বাটন আছে।">
             <label className="srow"><span>{t('বাংলা ⇄ English বদল')}</span>
@@ -695,6 +708,9 @@ export function Settings(p: Props) {
               <button type="button" aria-pressed={p.uiLang === 'en'} data-testid="ui-en" onClick={() => p.setUiLang('en')}>English</button>
             </div>
           </Group>
+          <Group title={t('অ্যাপের রং')} info="সাদা, নীল, রঙিন বা কালো — অ্যাপের পুরো রং। উপরের ◐ বোতাম আগের মতোই আলো না অন্ধকার বাছে; এখানে বাছা রং দুটোতেই নিজের মতো হালকা বা গাঢ় হয়। ব্যাকআপে যায়।">
+            <PaletteField />
+          </Group>
           <Group title={t('অ্যাপের ফন্ট')} info="মেনু, বাটন আর কিবোর্ডের কী-এর লেখার ফন্ট — বাংলা আর English আলাদা। ডকুমেন্টের লেখার ফন্ট আলাদা (হোম → ফন্টের ঘর)। বিজয় (ANSI) ফন্ট এখানে আসে না: মেনুর লেখা ইউনিকোডে, বিজয় ফন্টে ভেঙে যেত। Kalpurush অ্যাপের সাথেই আসে (খোলা লাইসেন্স, SIL OFL)।">
             <label className="srow"><span>{t('বাংলা')}</span>
               <select data-testid="app-font-bn" value={p.appFonts.bn} onChange={(e) => p.setAppFonts({ ...p.appFonts, bn: e.target.value })}>
@@ -839,7 +855,7 @@ export function Settings(p: Props) {
 
 type SettingsTab = 'type' | 'voice' | 'font' | 'words' | 'app';
 const TABS: { id: SettingsTab; label: string }[] = [
-  { id: 'type', label: 'লেখা' },
+  { id: 'type', label: 'কিবোর্ড' },
   { id: 'voice', label: 'ভয়েস ও AI' },
   { id: 'font', label: 'ফন্ট ও বিজয়' },
   { id: 'words', label: 'শব্দ' },
@@ -937,4 +953,61 @@ const SAMPLE_BIJOY = toBijoy('আমার সোনার বাংলা');
 function styleName(f: { italic?: boolean; weight?: number }): string {
   const bold = (f.weight ?? 400) >= 600;
   return bold && f.italic ? 'Bold Italic' : bold ? 'Bold' : f.italic ? 'Italic' : 'Regular';
+}
+
+/** Settings → কিবোর্ড: the keyboard's height and colours, with a small live picture (decisions.md 88). */
+function KbLookFields() {
+  const { t } = useT();
+  const [h, setH] = useState(loadKbHeight);
+  const [look, setLook] = useState<KbLook>(loadKbLook);
+  const put = (l: KbLook) => { setLook(l); saveKbLook(l); };
+  const c = colorsOf(look);
+  const setC = (k: keyof KbColors, v: string) => put({ ...look, custom: { ...look.custom, [k]: v } });
+  const low = c ? contrast(c.fg, c.key) < 4.5 : false;
+  const COLOR_FIELDS: [keyof KbColors, string][] = [['bg', 'পটভূমি'], ['key', 'বোতাম'], ['fg', 'অক্ষর'], ['active', 'চাপা বা চালু বোতাম']];
+  return (
+    <>
+      <Line info="ProNotes-এর কিবোর্ডের বোতাম কতটা উঁচু হবে। ১০০% = আগের মাপ। এটা শুধু এই ডিভাইসের জন্য, কারণ প্রতিটা পর্দা আলাদা।">
+        <label className="srow"><span>{t('কিবোর্ডের উচ্চতা')} (%)</span>
+          <NumberField min={KB_H_MIN} max={KB_H_MAX} step={5} steppers testid="kb-height" value={h} onChange={(n) => { setH(n); saveKbHeight(n); }} />
+        </label>
+      </Line>
+      <Line info="কিবোর্ডের রং। “অ্যাপের রং অনুযায়ী” = অ্যাপ যে রঙে, কিবোর্ডও সেই রঙে। “নিজের রং”-এ চারটা রং নিজে বাছা যায়। রং ব্যাকআপে যায়।">
+        <label className="srow"><span>{t('কিবোর্ডের থিম')}</span>
+          <select data-testid="kb-theme" value={look.theme} onChange={(e) => put({ ...look, theme: e.target.value as KbLook['theme'] })}>
+            {KB_THEMES.map((x) => <option key={x.id} value={x.id}>{t(x.label)}</option>)}
+          </select>
+        </label>
+      </Line>
+      {look.theme === 'custom' && (
+        <div className="kb-colors" data-testid="kb-colors">
+          {COLOR_FIELDS.map(([k, label]) => (
+            <label key={k} className="srow"><span>{t(label)}</span>
+              <input type="color" data-testid={'kb-c-' + k} value={look.custom[k]} onChange={(e) => setC(k, e.target.value)} />
+            </label>
+          ))}
+        </div>
+      )}
+      {c && (
+        <div className="kb-preview" data-testid="kb-preview" aria-hidden="true" style={{ background: c.bg }}>
+          {['ক', 'খ', 'গ', 'A', 'B'].map((x) => <span key={x} style={{ background: c.key, color: c.fg }}>{x}</span>)}
+          <span style={{ background: c.active, color: textOn(c.active) }}>⇧</span>
+        </div>
+      )}
+      {low && <p className="state-line warn" data-testid="kb-contrast-warn">{t('অক্ষর আর বোতামের রং খুব কাছাকাছি — পড়তে কষ্ট হতে পারে।')}</p>}
+    </>
+  );
+}
+
+/** Settings → অ্যাপ: the app's colour set; ◐ still chooses light or dark (decisions.md 88). */
+function PaletteField() {
+  const { t } = useT();
+  const [pal, setPal] = useState<Palette>(loadPalette);
+  return (
+    <label className="srow"><span>{t('অ্যাপের রং')}</span>
+      <select data-testid="app-palette" value={pal} onChange={(e) => { const v = e.target.value as Palette; setPal(v); save('palette', v); applyPalette(v, load('theme', 'auto')); }}>
+        {PALETTES.map((x) => <option key={x.id} value={x.id}>{t(x.label)}</option>)}
+      </select>
+    </label>
+  );
 }
