@@ -26,3 +26,31 @@ describe('Bangla voice in Bengali letters', () => {
     expect(await toBanglaVoice('amar', 'bn-BD', async () => 'amar')).toBe('amar');
   });
 });
+
+// decisions.md 87: each sentence judged on its own
+import { looksRomanBangla, voiceSentences } from '../../src/voice/script';
+describe('Hindi and romanised Bangla inside Bangla voice', () => {
+  it('romanised Bangla / Hindi sentences are found; English ones are not', () => {
+    expect(looksRomanBangla('Ok, bar theek hai.')).toBe(true);
+    expect(looksRomanBangla('Abar theek achhe.')).toBe(true);
+    expect(looksRomanBangla('Okay, but the cut.')).toBe(false);
+    expect(looksRomanBangla('I have a head ache.')).toBe(false);
+    expect(looksRomanBangla('আমি ঠিক আছি')).toBe(false);
+  });
+  it('sentences keep their marks and spaces', () => {
+    expect(voiceSentences('এক। Two? তিন')).toEqual(['এক। ', 'Two? ', 'তিন']);
+  });
+  it('only the wrong sentences are rewritten; Hindi letters never stay', async () => {
+    const seen: string[] = [];
+    const rewrite = async (s: string) => { seen.push(s); return s.includes('ठीक') ? 'এবার ঠিক আছে।' : 'আবার ঠিক আছে।'; };
+    const out = await toBanglaVoice('তুমি কি আমার কথা বুঝতে পারছো? Okay, but the cut. ए बार ठीक अच्छे। Abar theek achhe.', 'bn-BD', rewrite);
+    expect(out).toBe('তুমি কি আমার কথা বুঝতে পারছো? Okay, but the cut. এবার ঠিক আছে। আবার ঠিক আছে।');
+    expect(seen).toEqual(['ए बार ठीक अच्छे।', 'Abar theek achhe.']);
+  });
+  it('without a key: Hindi letters become Bengali, Latin stays', async () => {
+    expect(await toBanglaVoice('ठीक है। Abar theek achhe.', 'bn-BD')).toBe('ঠীক হৈ। Abar theek achhe.');
+  });
+  it('English voice: Hindi letters do not stay either', async () => {
+    expect(await toBanglaVoice('hello ठीक', 'en-US')).toBe('hello ঠীক');
+  });
+});

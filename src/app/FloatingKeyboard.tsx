@@ -63,12 +63,8 @@ export function useLandscape(): boolean {
  * while the hands hold the iPad. Drag the bar above it; the height is remembered for upright and
  * sideways separately.
  */
-export function LiftableKeyboard({ children, landscape, phone = false, edgeToEdge = false }: { children: ReactNode; landscape: boolean; phone?: boolean; edgeToEdge?: boolean }) {
-  const { t } = useT();
-  const key = (phone ? 'kb.liftPhone.' : 'kb.lift.') + (landscape ? 'land' : 'port');
-  const [lift, setLift] = useState<number>(() => load(key, 0));
-  useEffect(() => setLift(load(key, 0)), [key]);
-  const drag = useRef<{ y: number; l: number } | null>(null);
+export function LiftableKeyboard({ children, phone = false, edgeToEdge = false }: { children: ReactNode; landscape: boolean; phone?: boolean; edgeToEdge?: boolean }) {
+  // no grip any more: the keyboard's height is set in Settings → কিবোর্ড (decisions.md 88)
   // split on the iPad: the halves belong at the screen's edges, where the thumbs are, even with the
   // drafts list open beside the page — the keyboard reaches out over it, edge to edge
   const wrap = useRef<HTMLDivElement>(null);
@@ -85,18 +81,9 @@ export function LiftableKeyboard({ children, landscape, phone = false, edgeToEdg
     if (wrap.current?.parentElement) ro?.observe(wrap.current.parentElement);
     return () => { window.removeEventListener('resize', place); ro?.disconnect(); };
   }, [edgeToEdge]);
-  // a phone's screen is small: up to a third of it
-  const max = () => Math.round(window.innerHeight * (phone ? 0.33 : 0.4));
   return (
     <div ref={wrap} className={'kb-liftwrap' + (phone ? ' phone' : '') + (reach ? ' reach' : '')} data-testid="kb-liftwrap"
-      style={{ paddingBottom: Math.min(lift, max()), ...(reach ? { marginLeft: -reach.l, width: reach.w } : {}) }}>
-      <div className="kb-grip" data-testid="kb-grip" role="separator" aria-label={t('কিবোর্ড ওপরে-নিচে সরান')} title={t('কিবোর্ড ওপরে-নিচে সরান')}
-        onPointerDown={(e) => { e.preventDefault(); e.currentTarget.setPointerCapture(e.pointerId); drag.current = { y: e.clientY, l: lift }; }}
-        onPointerMove={(e) => { if (drag.current) setLift(Math.max(0, Math.min(max(), drag.current.l + drag.current.y - e.clientY))); }}
-        onPointerUp={() => { if (drag.current) { drag.current = null; save(key, lift); } }}
-        onDoubleClick={() => { setLift(0); save(key, 0); }}>
-        <span className="grip" aria-hidden="true" />
-      </div>
+      style={reach ? { marginLeft: -reach.l, width: reach.w } : undefined}>
       {children}
     </div>
   );

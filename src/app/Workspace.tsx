@@ -259,20 +259,26 @@ export function Workspace(p: Props) {
 
   // live voice typing: words appear as they are spoken (🎙 on the keyboard, or the round button by the page)
   const live = useLiveVoice({ editor: editor as Editor, geminiKey: p.gemini.key, bangla: p.bangla, say: p.say,
-    voice: { corrections: p.corrections, banglaDigits: p.voice.banglaDigits }, disabled: p.ansiTyping, model: p.voiceModes.liveModel });
+    voice: { lang: p.voice.lang, commands: p.voice.commands, corrections: p.corrections, banglaDigits: p.voice.banglaDigits }, disabled: p.ansiTyping, model: p.voiceModes.liveModel });
   // record-to-text (Gemini): one recording, shared by the page's ✦ key and the keyboard strip's 🎙
   const aiv = useAiVoice({ editor: editor as Editor, gemini: { ...p.gemini, model: p.voiceModes.recModel || p.gemini.model }, say: p.say,
-    onOpenSettings: p.onOpenSettings, disabled: p.ansiTyping, voice: { corrections: p.corrections, banglaDigits: p.voice.banglaDigits } });
+    onOpenSettings: p.onOpenSettings, disabled: p.ansiTyping, voice: { corrections: p.corrections, banglaDigits: p.voice.banglaDigits, lang: p.voice.lang } });
   // one 🎙: a tap = Live, held = record-to-text (decisions.md 77); each can be turned off in Settings
   const liveOk = p.voiceModes.live && live.available;
   const recOk = p.voiceModes.rec && p.voiceEngine === 'ai';
   const voicing = live.on || aiv.state !== 'idle';
+  // Settings → voice → ভাসমান রেকর্ডার (decisions.md 86): the controls float over the page's lower right, the strips
+  // keep only a red dot; off (the usual), they sit in the keyboard's strip as before
+  const floatRec = Boolean(p.voice.float);
+  const recDot = <span className="k rec-dot" data-testid="strip-rec-dot" aria-hidden="true"><span className="vc-dot" /></span>;
+  const liveFloat = live.on && (!stripShown || floatRec);
+  const aiFloat = floatRec && aiv.state !== 'idle';
   const toggleVoiceRef = useRef<() => void>(() => {});
   // the page's one 🎙: Live first, then record-to-text (AI) or the device's voice; whatever is on is shown
   const deviceOk = p.voiceEngine === 'device';
   const tapAct = liveOk ? live.toggle : recOk ? aiv.press : deviceOk ? () => toggleVoiceRef.current() : null;
   const holdAct = liveOk ? (recOk ? aiv.press : deviceOk ? () => toggleVoiceRef.current() : undefined) : undefined;
-  const floatMic = recOk && aiv.state !== 'idle' && !stripShown ? <AiVoiceKey v={aiv} disabled={p.ansiTyping} icon={MIC} />
+  const floatMic = aiFloat ? null : recOk && aiv.state !== 'idle' && !stripShown ? <AiVoiceKey v={aiv} disabled={p.ansiTyping} icon={MIC} />
     : !tapAct || stripShown ? null
     : (
       <MicKey onTap={tapAct} onHold={holdAct} disabled={p.ansiTyping && !liveOk}
@@ -283,7 +289,7 @@ export function Workspace(p: Props) {
         {live.on ? <span aria-hidden="true">●</span> : MIC}
       </MicKey>
     );
-  const micSlot = voicing ? <VoiceControls live={live} ai={aiv} />
+  const micSlot = voicing ? (floatRec ? recDot : <VoiceControls live={live} ai={aiv} />)
     : liveOk || recOk ? <MicKey onTap={liveOk ? live.toggle : aiv.press} onHold={liveOk && recOk ? aiv.press : undefined} /> : null;
 
   // Pinch (two fingers, or a trackpad pinch) zooms only the page; the rest of the app stays as it is.
@@ -763,11 +769,22 @@ export function Workspace(p: Props) {
         )}
         {/* one 🎙 on the page (decisions.md 82): a tap = the first voice mode, held = the second, as in the keyboard strip.
             The compact keyboard's strip has its own 🎙, so this one steps aside while that strip is up. */}
-        {floatMic}
+        {!liveFloat && floatMic}
         {/* the record mode's consent box: AiVoiceKey shows its own while it is on screen */}
         {!(recOk && aiv.state !== 'idle' && !stripShown) && aiv.consentUi}
         {live.ui}
-        {live.on && !stripShown && <div className="voice-pill-wrap"><VoiceControls live={live} /></div>}
+        {/* the controls and the red button on one line, centred on each other (decisions.md 86) */}
+        {(liveFloat || aiFloat) && (
+          <div className="voice-float" data-testid="voice-float">
+            <div className="voice-pill-wrap"><VoiceControls live={live} ai={aiFloat ? aiv : undefined} /></div>
+            {liveFloat && !stripShown && floatMic ? floatMic : (
+              <button type="button" className="mic one-mic live" data-testid="voice-float-stop" aria-label={t('বন্ধ করুন')} title={t('বন্ধ করুন')}
+                onPointerDown={(e) => e.preventDefault()} onClick={() => (live.on ? live.stop() : aiv.state === 'rec' || aiv.state === 'paused' ? aiv.write() : undefined)}>
+                <span aria-hidden="true">●</span>
+              </button>
+            )}
+          </div>
+        )}
         {kbDown && p.kbVisible && !deviceKb && (
           // the keyboard put down: its bottom strip stays (🌐 · ⌨ · 🎙), so voice and the language are a tap away
           <div className={'kb-strip down' + (voicing ? ' voicing' : '')} data-testid="kb-strip-down" onPointerDown={(e) => e.preventDefault()}>
@@ -815,7 +832,7 @@ export function Workspace(p: Props) {
           // iPad split/floating (decisions.md 83): the strip's middle is voice — a tap starts it (held: the second
           // mode, as on 🎙); while it runs, its controls and the words being heard sit there instead of at 🎙
           const voiceGap = compact && !phoneKb ? (
-            voicing ? (
+            voicing && floatRec ? <div className="kb-gap" data-testid="kb-voice-gap" aria-hidden="true" /> : voicing ? (
               <div className="kb-gap on" data-testid="kb-voice-gap" onPointerDown={(e) => e.preventDefault()}>
                 <VoiceControls live={live} ai={aiv} />
                 {live.heard && <span className="kb-heard" data-testid="kb-heard">{live.heard.length > 60 ? "…" + live.heard.slice(-60) : live.heard}</span>}

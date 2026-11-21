@@ -4,6 +4,7 @@
  * ProNotes' drafts, settings or keys. ProNotes shows this page inside ▦ → আমার অ্যাপ.
  */
 import { readZip, tidyPaths, findEntry } from './zip';
+import { iconOf } from './icon';
 import { listApps, putApp, removeApp, getApp, typeOf, type AppInfo } from './store';
 import { allowedHost } from './host';
 
@@ -56,12 +57,14 @@ export async function install(file: File): Promise<AppInfo> {
   if (!entry) throw new Error('no-entry');
   const name = await nameOf(files, entry, file.name);
   const slug = name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 24) || 'app';
-  const info: AppInfo = { id: slug + '-' + Math.random().toString(36).slice(2, 6), name, entry, size: files.reduce((s, f) => s + f.data.length, 0), files: files.length, addedAt: Date.now(), source: file.name };
+  const info: AppInfo = { id: slug + '-' + Math.random().toString(36).slice(2, 6), name, entry, size: files.reduce((s, f) => s + f.data.length, 0), files: files.length, addedAt: Date.now(), source: file.name, icon: iconOf(files, entry) };
   await putApp(info, files.map((f) => ({ path: f.path, type: typeOf(f.path), data: new Blob([f.data as BlobPart], { type: typeOf(f.path) }) })));
   return info;
 }
 
 let message = '';
+let editing = false;
+const hue = (s: string) => [...s].reduce((n, c) => (n * 31 + c.codePointAt(0)!) % 360, 7);
 async function showList() {
   const apps = await listApps().catch(() => [] as AppInfo[]);
   const input = h('input', { type: 'file', accept: '.zip,application/zip,application/x-zip-compressed', hidden: '', 'data-testid': 'apps-add-file' }) as HTMLInputElement;
@@ -78,16 +81,23 @@ async function showList() {
   };
   const add = h('button', { class: 'primary', 'data-testid': 'apps-add' }, T('+ zip থেকে অ্যাপ যোগ করুন', '+ Add an app from a zip'));
   add.onclick = () => input.click();
-  const list = h('ul', { class: 'list', 'data-testid': 'apps-list' });
+  // icons like a phone's home screen (decisions.md 91); "সাজান" shows × on each to delete
+  const edit = h('button', { 'data-testid': 'apps-edit' }, editing ? T('শেষ', 'Done') : T('সাজান', 'Edit'));
+  edit.onclick = () => { editing = !editing; void showList(); };
+  const list = h('ul', { class: 'icons' + (editing ? ' editing' : ''), 'data-testid': 'apps-list' });
   for (const a of apps) {
-    const open = h('button', { class: 'primary', 'data-testid': 'apps-open-' + a.id }, T('খুলুন', 'Open'));
-    open.onclick = () => void showApp(a.id);
-    const del = h('button', { 'data-testid': 'apps-del-' + a.id }, T('মুছুন', 'Delete'));
+    const img = a.icon
+      ? h('img', { src: `/a/${encodeURIComponent(a.id)}/${a.icon.split('/').map(encodeURIComponent).join('/')}`, alt: '', draggable: 'false' })
+      : h('span', { class: 'letter', style: `background:hsl(${hue(a.name)} 45% 42%)` }, [...a.name][0]?.toUpperCase() ?? '?');
+    if (img instanceof HTMLImageElement) img.onerror = () => img.replaceWith(h('span', { class: 'letter', style: `background:hsl(${hue(a.name)} 45% 42%)` }, [...a.name][0]?.toUpperCase() ?? '?'));
+    const open = h('button', { class: 'tile', 'data-testid': 'apps-open-' + a.id, title: `${a.name} · ${size(a.size)} · ${a.files} ${T('ফাইল', 'files')}` }, h('span', { class: 'img' }, img), h('span', { class: 'name' }, a.name));
+    open.onclick = () => { if (!editing) void showApp(a.id); };
+    const del = h('button', { class: 'del', 'data-testid': 'apps-del-' + a.id, 'aria-label': T('মুছুন', 'Delete') + ' ' + a.name }, '×');
     del.onclick = async () => { if (confirm(T(`"${a.name}" এই ডিভাইস থেকে মুছে ফেলবেন?`, `Delete "${a.name}" from this device?`))) { await removeApp(a.id); void showList(); } };
-    list.append(h('li', { class: 'card', 'data-testid': 'apps-card' }, h('strong', { title: a.source }, a.name), h('small', {}, `${size(a.size)} · ${a.files} ${T('ফাইল', 'files')}`), h('div', { class: 'row' }, open, del)));
+    list.append(h('li', { class: 'icon', 'data-testid': 'apps-card' }, open, ...(editing ? [del] : [])));
   }
   root.replaceChildren(
-    h('div', { class: 'bar' }, h('strong', {}, T('আমার অ্যাপ', 'My apps')), h('span', { class: 'sp' }), add, input),
+    h('div', { class: 'bar' }, h('strong', {}, T('আমার অ্যাপ', 'My apps')), h('span', { class: 'sp' }), ...(apps.length ? [edit] : []), add, input),
     ...(message ? [h('p', { class: message.startsWith('⚠') ? 'err' : 'note', role: 'status', 'data-testid': 'apps-msg' }, message)] : []),
     apps.length ? list : h('p', { class: 'empty', 'data-testid': 'apps-empty' }, T('এখনো কোনো অ্যাপ নেই। ওয়েব অ্যাপের .zip যোগ করুন (ভেতরে index.html থাকতে হবে)।', 'No apps yet. Add a web app as a .zip (with an index.html inside).')),
     h('p', { class: 'note' }, T(

@@ -3,7 +3,7 @@ import { deflateRawSync } from 'node:zlib';
 
 // decisions.md 81: ▦ → আমার অ্যাপ — the user's own web apps from a .zip, on a separate address, typing
 // Bangla with the ProNotes layout in their text boxes
-function zip(files: Record<string, string>): Buffer {
+function zip(files: Record<string, string | Buffer>): Buffer {
   const parts: Buffer[] = [], cen: Buffer[] = [];
   let off = 0;
   for (const [path, text] of Object.entries(files)) {
@@ -56,6 +56,8 @@ test('add a zip app, run it offline from this device, type Bangla in it with the
   await expect(app.locator('#ce')).toHaveText('কল');
   // back to the list and delete
   await runner.getByTestId('apps-back').click();
+  // delete: "সাজান" shows × on each icon (decisions.md 91)
+  await runner.getByTestId('apps-edit').click();
   page.once('dialog', (d) => void d.accept());
   await runner.locator('[data-testid^="apps-del-"]').click();
   await expect(runner.getByTestId('apps-empty')).toBeVisible();
@@ -104,4 +106,22 @@ test('ProNotes’ own on-screen keyboard types into an app’s text box (decisio
   await app.locator('#ce').click();
   await key('KeyL').click();
   await expect(app.locator('#ce')).toHaveText('ল');
+});
+
+test('apps show as icons: the app\'s own icon from its manifest, a letter when it has none', async ({ page }) => {
+  const png = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==', 'base64');
+  const WITH_ICON = zip({
+    'index.html': '<!doctype html><title>Iconic</title><link rel="manifest" href="manifest.json"><p>hi</p>',
+    'manifest.json': JSON.stringify({ name: 'Iconic', icons: [{ src: 'img/i-48.png', sizes: '48x48' }, { src: 'img/i-192.png', sizes: '192x192' }] }),
+    'img/i-48.png': png,
+    'img/i-192.png': png,
+  });
+  const runner = await openMine(page);
+  await runner.getByTestId('apps-add-file').setInputFiles({ name: 'iconic.zip', mimeType: 'application/zip', buffer: WITH_ICON });
+  await runner.getByTestId('apps-add-file').setInputFiles({ name: 'khata.zip', mimeType: 'application/zip', buffer: APP });
+  await expect(runner.getByTestId('apps-card')).toHaveCount(2);
+  const iconic = runner.getByTestId('apps-card').filter({ hasText: 'Iconic' });
+  await expect(iconic.locator('img')).toHaveAttribute('src', /\/img\/i-192\.png$/);
+  await expect.poll(() => iconic.locator('img').evaluate((i) => (i as HTMLImageElement).naturalWidth)).toBe(1);
+  await expect(runner.getByTestId('apps-card').filter({ hasText: 'Test Khata' }).locator('.letter')).toHaveText('T');
 });

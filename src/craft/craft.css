@@ -51,3 +51,17 @@
 /* আমার অ্যাপ: the app above, ProNotes' keyboard under it while an app text box has focus (decisions.md 82) */
 .user-apps-wrap { flex: 1; min-height: 0; display: flex; flex-direction: column; gap: 4px; }
 .user-apps-dock { flex: 0 0 auto; }
+/* the launcher as a phone home screen (decisions.md 91): rounded icons, the name under each */
+.craft-icons { display: grid; grid-template-columns: repeat(auto-fill, minmax(72px, 1fr)); gap: 18px 6px; padding: 6px 0 4px; }
+@media (min-width: 700px) { .craft-icons { grid-template-columns: repeat(auto-fill, minmax(104px, 1fr)); } }
+.app-icon { position: relative; display: flex; justify-content: center; }
+.app-icon > button { position: relative; display: flex; flex-direction: column; align-items: center; gap: 7px; width: 100%; padding: 4px 0; border: 0; background: none; color: var(--fg); cursor: pointer; -webkit-touch-callout: none; user-select: none; -webkit-tap-highlight-color: transparent; }
+.app-icon-img { display: block; width: 60px; height: 60px; border-radius: 22.5%; overflow: hidden; box-shadow: 0 2px 8px rgba(0, 0, 0, .22); background: var(--sheet); transition: transform .12s; }
+@media (min-width: 700px) { .app-icon-img { width: 76px; height: 76px; } }
+.app-icon-img img { width: 100%; height: 100%; display: block; object-fit: cover; }
+.app-icon > button:active .app-icon-img { transform: scale(.94); }
+.app-icon > button:focus-visible .app-icon-img { outline: 3px solid var(--gold); outline-offset: 2px; }
+.app-icon-letter { display: flex; width: 100%; height: 100%; align-items: center; justify-content: center; font: 700 30px var(--f-display); color: #fff; background: #3a4a6b; }
+.app-icon-name { max-width: 100%; font: 500 13px var(--f-sans); text-align: center; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.app-icon-dot { position: absolute; top: 0; right: calc(50% - 36px); width: 12px; height: 12px; border-radius: 50%; background: var(--gold); border: 2px solid var(--bg); }
+.app-icon-info { position: absolute; z-index: 5; top: calc(100% + 2px); left: 50%; transform: translateX(-50%); width: max-content; max-width: 240px; margin: 0; padding: 8px 10px; border-radius: 10px; background: var(--sheet); border: 1px solid var(--line); box-shadow: 0 8px 22px rgba(0, 0, 0, .2); font: 13px/1.45 var(--f-sans); color: var(--fg); }

@@ -39,6 +39,8 @@ export interface DictionarySource { id: string; title: string; author?: string; 
 export interface DictionaryEntry { id: string; title: string; normalizedTitle: string; language: 'en' | 'bn'; partOfSpeech?: string; pronunciation?: string; sourceId?: string; sourcePages?: number[]; jurisdiction?: string; verificationStatus: 'machine_unverified' | 'user_reviewed'; createdAt: number; updatedAt: number; }
 export interface DictionarySense { id: string; entryId: string; definition: string; senseNumber?: number; subject?: string; sourcePage?: number; /** All PDF pages associated with the source entry; sourcePage remains for older records. */ sourcePages?: number[]; verificationStatus: 'machine_unverified' | 'user_reviewed'; }
 export interface DictionaryEquivalent { id: string; entryId: string; /** Optional: scope a translation to one particular legal sense. */ senseId?: string; language: 'en' | 'bn'; text: string; normalizedText: string; kind: 'translation' | 'synonym' | 'near_equivalent'; note?: string; reviewStatus?: 'draft' | 'reviewed' | 'verified'; verificationEvidence?: { note: string; reviewer: string; authority: string; verifiedAt: number }; createdAt: number; updatedAt?: number; }
+/** One word of a learner list: word, part of speech, CEFR level (A1–C1), which list (decisions.md 92). */
+export interface WordListItem { id: string; w: string; pos: string; lvl: string; list: string }
 export interface DictionaryRelation { id: string; fromEntryId: string; toEntryId: string; type: 'see' | 'see_also' | 'compare' | 'related'; }
 
 export interface Folder {
@@ -86,6 +88,8 @@ interface Schema extends DBSchema {
   dictionarySenses: { key: string; value: DictionarySense; indexes: { entryId: string } };
   dictionaryEquivalents: { key: string; value: DictionaryEquivalent; indexes: { entryId: string; language: string; normalizedText: string } };
   dictionaryRelations: { key: string; value: DictionaryRelation; indexes: { fromEntryId: string; toEntryId: string } };
+  /** v5: learner word lists (Oxford 3000 / 5000), kept apart from the law dictionary (decisions.md 92). */
+  wordList: { key: string; value: WordListItem; indexes: { list: string } };
 }
 
 export const DB_NAME = 'pronotes';
@@ -95,7 +99,7 @@ const DAY = 24 * 60 * 60 * 1000;
 let dbp: Promise<IDBPDatabase<Schema>> | null = null;
 export function db(): Promise<IDBPDatabase<Schema>> {
   if (!dbp) {
-    dbp = openDB<Schema>(DB_NAME, 4, {
+    dbp = openDB<Schema>(DB_NAME, 5, {
       upgrade(d, oldVersion) {
         if (oldVersion < 1) {
           const docs = d.createObjectStore('docs', { keyPath: 'id' });
@@ -114,6 +118,7 @@ export function db(): Promise<IDBPDatabase<Schema>> {
           const relations = d.createObjectStore('dictionaryRelations', { keyPath: 'id' });
           relations.createIndex('fromEntryId', 'fromEntryId'); relations.createIndex('toEntryId', 'toEntryId');
         }
+        if (oldVersion < 5) d.createObjectStore('wordList', { keyPath: 'id' }).createIndex('list', 'list');
       },
     });
   }
@@ -626,4 +631,30 @@ export async function importOxfordDictionaryJsonl(
     }
   }
   return { imported, skipped, sensesImported, relationsImported, unresolvedRelations, cancelled };
+}
+
+/* ---------- learner word lists: Oxford 3000 / 5000 (decisions.md 92) ---------- */
+/** Replaces the word list with the one in a ProNotes word-list file (pronotes-oxford-wordlist). */
+export async function importWordList(json: string): Promise<number> {
+  const f = JSON.parse(json) as { format?: string; words?: { w?: string; pos?: string; lvl?: string; list?: string }[] };
+  if (f.format !== 'pronotes-oxford-wordlist' || !Array.isArray(f.words)) throw new Error('not-wordlist');
+  const words = f.words.filter((x) => x.w && x.lvl);
+  const d = await db();
+  const tx = d.transaction('wordList', 'readwrite');
+  await tx.store.clear();
+  let i = 0;
+  for (const x of words) await tx.store.put({ id: String(i++).padStart(5, '0'), w: String(x.w), pos: String(x.pos ?? ''), lvl: String(x.lvl), list: String(x.list ?? '') });
+  await tx.done;
+  return words.length;
+}
+export async function countWordList(): Promise<number> { return (await db()).count('wordList'); }
+export async function clearWordList(): Promise<void> { await (await db()).clear('wordList'); }
+/** Words starting with (then containing) the query, optionally of one level; in list order. */
+export async function searchWordList(query: string, level = '', limit = 200): Promise<WordListItem[]> {
+  const q = query.trim().toLowerCase();
+  const all = (await (await db()).getAll('wordList')).filter((x) => !level || x.lvl === level);
+  if (!q) return all.slice(0, limit);
+  const starts = all.filter((x) => x.w.toLowerCase().startsWith(q));
+  const inside = all.filter((x) => !x.w.toLowerCase().startsWith(q) && x.w.toLowerCase().includes(q));
+  return [...starts, ...inside].slice(0, limit);
 }

@@ -65,6 +65,26 @@ export function cleanVoice(raw: string, lang: string, o: VoiceOptions): string {
 }
 
 /**
+ * Live voice (decisions.md 86): the same clean-up as recorded voice — corrections, spoken punctuation, Bangla
+ * digits, "." → "।" — for text that arrives a phrase at a time. Live engines add marks of their own, so a spoken
+ * mark can sit right beside the engine's ("দাঁড়ি।" or "আছে। ।"): the word is still read as the mark, and of two
+ * marks in a row one stays. With Bangla digits off, digits the engine wrote in Bangla go back to 0–9.
+ */
+export function liveVoiceText(raw: string, lang: string, o: VoiceOptions): string {
+  let s = fixNukta(raw);
+  if (o.commands) {
+    const words = (lang.startsWith('bn') ? CMDS_BN.concat(CMDS_EN) : CMDS_EN).map(([w]) => esc(w)).join('|');
+    s = s.replace(new RegExp('(' + words + ')(?=[।,.?!;:])', 'gi'), '$1 ');
+  }
+  s = cleanVoice(s, lang, o);
+  if (lang.startsWith('bn') && !o.banglaDigits) s = s.replace(/[০-৯]/g, (d) => String(BN_DIG.indexOf(d)));
+  return s
+    .replace(/([।.?!])(?:\s*[।.])+/g, '$1')
+    .replace(/,(?:\s*,)+/g, ',')
+    .replace(/([;:])(?:\s*[;:])+/g, '$1');
+}
+
+/**
  * v8 `putVoice` without the editor: the text to insert at the caret for a final result,
  * or '' when there is nothing to insert. `before` = text before the caret.
  */

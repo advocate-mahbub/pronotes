@@ -76,6 +76,18 @@ export const NUMPAD_ROWS: string[][] = [
   ['#Frac', 'Txt:±', 'Txt:৳', 'Txt:=', 'Txt:≠', 'Txt::'],
   ['#Pad', '#Space', '#Back', '#Enter'],
 ];
+/**
+ * The digit pad in the split keyboard (decisions.md 89): English digits in one half, Bangla digits in the other,
+ * each with the signs shared out beside them (none left out), so neither language needs a switch. Row by row:
+ * [English half, Bangla half]; the halves can trade sides (⇄).
+ */
+export const SPLIT_NUM_ROWS: [string[], string[]][] = [
+  [['Txt:1', 'Txt:2', 'Txt:3', 'Txt:÷', 'Txt:('], ['Txt:১', 'Txt:২', 'Txt:৩', 'Txt:<', 'Txt:≤']],
+  [['Txt:4', 'Txt:5', 'Txt:6', 'Txt:×', 'Txt:)'], ['Txt:৪', 'Txt:৫', 'Txt:৬', 'Txt:>', 'Txt:≥']],
+  [['Txt:7', 'Txt:8', 'Txt:9', 'Txt:-', 'Txt:/'], ['Txt:৭', 'Txt:৮', 'Txt:৯', 'Txt:≠', 'Txt:৳']],
+  [['Txt:,', 'Txt:0', 'Txt:.', 'Txt:+', 'Txt:%'], ['Txt:,', 'Txt:০', 'Txt:.', 'Txt:±', '#Back']],
+  [['#Pad', '#Frac', 'Txt:=', 'Txt::'], ['#Space', '#Enter']],
+];
 /** ৴৵৶: 1–16 annas in a 4×4 grid ("Anna:n"), then the ganda mark, ৹ and the controls. */
 export const ANNA_PAD_ROWS: string[][] = [
   ['Anna:1', 'Anna:2', 'Anna:3', 'Anna:4'],

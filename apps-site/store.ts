@@ -1,5 +1,5 @@
 /** Installed apps in this site's own IndexedDB (never ProNotes' database: a different origin). */
-export interface AppInfo { id: string; name: string; entry: string; size: number; files: number; addedAt: number; source: string }
+export interface AppInfo { id: string; name: string; entry: string; size: number; files: number; addedAt: number; source: string; /** the app's own icon, a path inside it (decisions.md 91) */ icon?: string }
 interface FileRec { key: string; type: string; data: Blob }
 
 const DB = 'pronotes-apps';

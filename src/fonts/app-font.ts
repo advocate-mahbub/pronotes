@@ -16,7 +16,11 @@ export const DEFAULT_APP_EN = '';
  * letters grow, not the layout). kb/kbScale: the keyboard keys' Bangla font ('' = the app's Bangla font)
  * and its size (decisions.md 82).
  */
-export interface AppFonts { bn: string; en: string; bnScale?: number; enScale?: number; kb?: string; kbScale?: number }
+export interface AppFonts {
+  bn: string; en: string; bnScale?: number; enScale?: number; kb?: string; kbScale?: number;
+  /** The keys' English font ('' = the app's English font) and its size (decisions.md 88). */
+  kbEn?: string; kbEnScale?: number;
+}
 export const KB_FONT_FAMILY = 'PN KB';
 export const SCALE_MIN = 70;
 export const SCALE_MAX = 150;
@@ -45,10 +49,16 @@ export function appFontCss(f: AppFonts, ownUrl: (name: string) => string | undef
   const enScale = scaleOf(f.enScale);
   const enSrc = f.en ? fontSrc(f.en, ownUrl(f.en)) : enScale !== 100 ? DEVICE_EN.map((n) => `local(${q(n)})`).join(', ') : '';
   const kb = f.kb || f.bn;
+  // the keys' English letters: their own face only when a font or a size of their own is chosen; otherwise
+  // they fall through to "PN UI", the app's English
+  const kbEnScale = scaleOf(f.kbEnScale);
+  const kbEnName = f.kbEn || f.en;
+  const kbEnSrc = !f.kbEn && kbEnScale === 100 ? '' : kbEnName ? fontSrc(kbEnName, ownUrl(kbEnName)) : DEVICE_EN.map((n) => `local(${q(n)})`).join(', ');
   return [
     f.bn ? face(APP_FONT_FAMILY, fontSrc(f.bn, ownUrl(f.bn)), BN_RANGE, scaleOf(f.bnScale)) : '',
     enSrc ? face(APP_FONT_FAMILY, enSrc, EN_RANGE, enScale) : '',
     kb ? face(KB_FONT_FAMILY, fontSrc(kb, ownUrl(kb)), BN_RANGE, scaleOf(f.kbScale)) : '',
+    kbEnSrc ? face(KB_FONT_FAMILY, kbEnSrc, EN_RANGE, kbEnScale) : '',
   ].filter(Boolean).join('\n');
 }
 

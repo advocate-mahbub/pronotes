@@ -1,0 +1,78 @@
+/* ডিকশনারি (decisions.md 92): a bar, one search box, the list and the word's card; on a phone the card
+   takes the whole screen (‹ goes back to the list), on wider screens list and card sit side by side */
+.lawdict { flex: 1; min-height: 0; display: flex; flex-direction: column; background: var(--bg); color: var(--fg); font-family: var(--f-sans); }
+.ld-bar { position: relative; display: flex; align-items: center; gap: 8px; padding: 8px 12px; border-bottom: 1px solid var(--line); background: var(--sheet); }
+.ld-back { width: 40px; height: 40px; border: 0; border-radius: 50%; background: none; color: var(--fg); font: 400 28px/1 var(--f-sans); cursor: pointer; }
+.ld-title { font: 700 18px var(--f-display); }
+.ld-sp { flex: 1; }
+.ld-tabs { display: inline-flex; padding: 3px; border-radius: 999px; background: var(--bg); border: 1px solid var(--line); }
+.ld-tabs button { border: 0; background: none; min-height: 32px; padding: 0 12px; border-radius: 999px; font: 600 14px var(--f-sans); color: var(--muted); cursor: pointer; }
+.ld-tabs button[aria-selected="true"] { background: var(--accent); color: var(--accent-fg); }
+.ld-more { width: 40px; height: 40px; border: 1px solid var(--line); border-radius: 50%; background: var(--sheet); color: var(--fg); font-size: 20px; cursor: pointer; }
+.ld-menu { position: absolute; z-index: 20; right: 12px; top: calc(100% + 4px); display: flex; flex-direction: column; min-width: 240px; padding: 6px; border-radius: 14px; background: var(--sheet); border: 1px solid var(--line); box-shadow: 0 12px 30px rgba(0, 0, 0, .2); }
+.ld-menu button { text-align: left; border: 0; background: none; min-height: 44px; padding: 0 12px; border-radius: 10px; font: 500 15px var(--f-sans); color: var(--fg); cursor: pointer; }
+.ld-menu button:hover { background: var(--bg); }
+.ld-msg { margin: 8px 12px 0; padding: 8px 12px; border-radius: 10px; background: var(--accent-soft); font-size: 14px; cursor: pointer; }
+.ld-progress { display: flex; align-items: center; gap: 10px; padding: 8px 12px; }
+.ld-progress progress { flex: 1; }
+.ld-body { flex: 1; min-height: 0; display: grid; grid-template-columns: minmax(260px, 340px) 1fr; }
+.ld-list { min-height: 0; display: flex; flex-direction: column; border-right: 1px solid var(--line); }
+.ld-search { display: flex; align-items: center; gap: 8px; margin: 12px; padding: 0 12px; border: 1px solid var(--line); border-radius: 12px; background: var(--sheet); }
+.ld-search span { color: var(--muted); font-size: 18px; }
+.ld-search input { flex: 1; min-width: 0; min-height: 44px; border: 0; background: none; color: var(--fg); font: 17px var(--f-sans); outline: none; }
+.ld-count { padding: 0 14px 6px; color: var(--muted); font-size: 12px; }
+.ld-results { list-style: none; margin: 0; padding: 0 8px 12px; overflow: auto; }
+.ld-results button { display: flex; flex-direction: column; align-items: flex-start; width: 100%; padding: 9px 10px; border: 0; border-radius: 10px; background: none; color: var(--fg); text-align: left; cursor: pointer; }
+.ld-results button strong { font: 600 16px var(--f-sans); }
+.ld-results button small { color: var(--muted); font-size: 12px; }
+.ld-results button.on, .ld-results button:hover { background: var(--sheet); }
+.ld-none, .ld-hint, .ld-muted { color: var(--muted); padding: 10px; font-size: 14px; }
+.ld-card { min-height: 0; overflow: auto; padding: 18px 22px 40px; }
+.ld-card h2 { margin: 0 0 8px; font: 700 26px var(--f-display); }
+.ld-card h2 small { font: 400 14px var(--f-sans); color: var(--muted); }
+.ld-meanings { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
+.ld-chip { display: inline-flex; align-items: baseline; gap: 6px; padding: 5px 12px; border-radius: 999px; border: 1px solid var(--line); background: var(--sheet); font: 600 17px var(--f-sans); color: var(--fg); }
+.ld-chip small { font: 500 11px var(--f-sans); color: var(--muted); }
+.ld-chip.verified { border-color: #2e7d32; }
+.ld-chip.reviewed { border-color: var(--gold); }
+.ld-chip.link { font-size: 14px; cursor: pointer; margin: 2px; }
+.ld-actions { display: flex; flex-wrap: wrap; gap: 6px; margin: 6px 0 12px; }
+.ld-senses { margin: 0; padding-left: 1.4em; display: flex; flex-direction: column; gap: 10px; font: 16px/1.6 var(--f-sans); }
+.ld-senses:has(> li:only-child) { list-style: none; padding-left: 0; }
+.ld-senses small { color: var(--muted); }
+.ld-related { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; margin-top: 14px; }
+.ld-related > small { color: var(--muted); margin-right: 4px; }
+.ld-source { margin-top: 22px; padding-top: 10px; border-top: 1px solid var(--line); color: var(--muted); font-size: 12px; line-height: 1.5; }
+.ld-empty { margin: 20px 12px; padding: 18px; border: 1px dashed var(--line); border-radius: 14px; text-align: center; }
+.ld-empty p { color: var(--muted); font-size: 14px; line-height: 1.6; }
+.ld-form, .ld-dups { margin: 10px 12px; padding: 12px; border: 1px solid var(--line); border-radius: 14px; background: var(--sheet); display: flex; flex-direction: column; gap: 8px; }
+.ld-form input, .ld-form textarea, .ld-edit input, .ld-edit textarea, .ld-edit select { min-height: 40px; border: 1px solid var(--line); border-radius: 10px; background: var(--bg); color: var(--fg); font: 15px var(--f-sans); padding: 0 10px; }
+.ld-form textarea, .ld-edit textarea { min-height: 70px; padding: 8px 10px; }
+.ld-err { color: #c62828; }
+.ld-edit { margin-top: 16px; padding: 12px; border-radius: 14px; border: 1px dashed var(--line); }
+.ld-edit h3 { margin: 12px 0 6px; font: 600 14px var(--f-sans); color: var(--muted); }
+.ld-row { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-bottom: 6px; }
+.ld-row input, .ld-row textarea { flex: 1 1 160px; min-width: 0; }
+.ld-row-text { flex: 1 1 200px; min-width: 0; font-size: 15px; }
+.ld-row-text small { color: var(--muted); }
+.ld-words { flex: 1; min-height: 0; display: flex; flex-direction: column; max-width: 760px; width: 100%; margin: 0 auto; }
+.ld-levels { display: flex; flex-wrap: wrap; gap: 6px; padding: 0 12px 8px; }
+.ld-levels button { min-height: 34px; padding: 0 14px; border-radius: 999px; border: 1px solid var(--line); background: var(--sheet); color: var(--fg); font: 600 14px var(--f-sans); cursor: pointer; }
+.ld-levels button[aria-checked="true"] { background: var(--accent); color: var(--accent-fg); border-color: var(--accent); }
+.ld-wordlist { list-style: none; margin: 0; padding: 0 12px 20px; overflow: auto; }
+.ld-wordlist li { display: grid; grid-template-columns: 1fr auto auto; align-items: baseline; gap: 2px 10px; padding: 8px 4px; border-bottom: 1px solid var(--line); }
+.ld-wordlist li strong { font: 600 16px var(--f-sans); }
+.ld-wordlist li span { color: var(--muted); font-size: 13px; }
+.ld-wordlist li small { grid-column: 1 / -1; color: var(--muted); font-size: 11px; }
+.ld-wordlist .lvl { font: 700 12px var(--f-sans); padding: 2px 8px; border-radius: 6px; color: #fff; background: #607d8b; }
+.ld-wordlist .lvl.A1 { background: #2e7d32; } .ld-wordlist .lvl.A2 { background: #558b2f; } .ld-wordlist .lvl.B1 { background: #1565c0; } .ld-wordlist .lvl.B2 { background: #6a1b9a; } .ld-wordlist .lvl.C1 { background: #c62828; }
+@media (max-width: 700px) {
+  .ld-bar { flex-wrap: wrap; }
+  .ld-bar > .btn.small { display: none; }
+  .ld-body { grid-template-columns: 1fr; }
+  .ld-list { border-right: 0; }
+  .lawdict:not(.has-sel) .ld-card { display: none; }
+  .lawdict.has-sel .ld-list { display: none; }
+  .ld-card { padding: 14px 16px 40px; }
+}
+.ld-ref { display: inline; padding: 0; border: 0; background: none; color: inherit; font: inherit; text-decoration: underline dotted var(--gold); text-underline-offset: 3px; cursor: pointer; }
