@@ -1,3 +1,4 @@
+import type { Mark, Node as PMNode } from '@tiptap/pm/model';
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { EditorContent, useEditor, type Editor } from '@tiptap/react';
@@ -29,7 +30,7 @@ import { attachBornona } from './bornona-input';
 import { OnScreenKeyboard } from './OnScreenKeyboard';
 import { useLiveVoice } from './LiveVoice';
 import { FloatingKeyboard, LiftableKeyboard, useLandscape, useShortTouch, type KbMode } from './FloatingKeyboard';
-import { GLOBE_ICON, type KbMenuItem } from './OnScreenKeyboard';
+import { GLOBE_ICON, KB_ICONS, type KbMenuItem } from './OnScreenKeyboard';
 import type { Hand } from './kb-gestures';
 import { AiVoiceKey, useAiVoice } from './AiVoiceKey';
 import { VoiceControls } from './VoiceControls';
@@ -174,6 +175,11 @@ export function Workspace(p: Props) {
   // phones held sideways may split the keyboard
   const [splitLand, setSplitLand0] = useState<boolean>(() => load('kb.splitLand', false));
   const setSplitLand = (v: boolean) => { setSplitLand0(v); save('kb.splitLand', v); };
+  // phones too may float the keyboard, held upright or sideways (decisions.md 97)
+  const [phoneFloat, setPhoneFloat0] = useState<boolean>(() => load('kb.phoneFloat', false));
+  const setPhoneFloat = (v: boolean) => { setPhoneFloat0(v); save('kb.phoneFloat', v); };
+  // the split keyboard's gap may hold the anna-ganda signs (Settings → কিবোর্ড)
+  const annaGap = load('kb.splitAnna', false);
   const landscape = useLandscape();
   // the phone keyboard also for a phone turned sideways (wide, but short)
   const shortTouch = useShortTouch();
@@ -249,7 +255,7 @@ export function Workspace(p: Props) {
       scrollMargin: { top: 64, bottom: 72, left: 8, right: 8 },
       scrollThreshold: { top: 64, bottom: 72, left: 8, right: 8 },
     },
-    onUpdate: ({ editor }) => {
+    onUpdate: ({ editor }: { editor: Editor }) => {
       pending.current = true;
       cb.current.onSaveState('saving');
       clearTimeout(timer.current);
@@ -657,14 +663,14 @@ export function Workspace(p: Props) {
       // text already typed in Bijoy (ANSI typing) is passed through, the rest is converted
       const r: Run[] = [];
       let first = true;
-      editor.state.doc.nodesBetween(from, to, (node, pos) => {
+      editor.state.doc.nodesBetween(from, to, (node: PMNode, pos: number) => {
         if (node.isBlock && node.isTextblock) {
           if (!first) r.push({ en: true, text: '\n' });
           first = false;
         }
         if (!node.isText) return;
         const t = node.text!.slice(Math.max(0, from - pos), to - pos);
-        const f = node.marks.find((m) => m.type.name === 'textStyle')?.attrs.fontFamily;
+        const f = node.marks.find((m: Mark) => m.type.name === 'textStyle')?.attrs.fontFamily;
         if (isBijoyFont(f, cb.current.ansiFont)) r.push({ en: false, text: t });
         else {
           const at = Math.max(pos, from);
@@ -826,8 +832,8 @@ export function Workspace(p: Props) {
         )}
         {p.kbVisible && !deviceKb && !kbDown && (() => {
           const phoneKb = p.phone || shortTouch;
-          const float = !phoneKb && kbMode === 'float';
-          const split = phoneKb ? landscape && splitLand : kbMode === 'splitPhone';
+          const float = phoneKb ? phoneFloat : kbMode === 'float';
+          const split = !float && (phoneKb ? landscape && splitLand : kbMode === 'splitPhone');
           const compact = phoneKb || float || kbMode === 'splitPhone';
           // iPad split/floating (decisions.md 83): the strip's middle is voice — a tap starts it (held: the second
           // mode, as on 🎙); while it runs, its controls and the words being heard sit there instead of at 🎙
@@ -842,25 +848,31 @@ export function Workspace(p: Props) {
                 label={holdAct ? t('ভয়েস: চাপলে Live, চেপে ধরলে রেকর্ড করে লেখা') : t('ভয়েস টাইপিং')}><span aria-hidden="true" /></MicKey>
             ) : null
           ) : undefined;
+          // 🌐 held (decisions.md 97): the iPhone's left / full / right, then floating (and split where it fits)
           const items: KbMenuItem[] = phoneKb
             ? landscape
-              ? [{ id: 'split', label: splitLand ? t('জোড়া কিবোর্ড') : t('Split কিবোর্ড'), act: () => setSplitLand(!splitLand) }]
+              ? [
+                { id: 'hand-full', label: t('পুরো চওড়া কিবোর্ড'), icon: KB_ICONS.full, on: !phoneFloat && !splitLand, act: () => { setPhoneFloat(false); setSplitLand(false); } },
+                { id: 'float', label: t('ভাসমান'), icon: KB_ICONS.float, on: phoneFloat, act: () => setPhoneFloat(true) },
+                { id: 'split', label: t('Split কিবোর্ড'), icon: KB_ICONS.split, on: !phoneFloat && splitLand, act: () => { setPhoneFloat(false); setSplitLand(true); } },
+              ]
               : [
-                { id: 'hand-left', label: '◧', on: hand === 'left', act: () => setHand('left') },
-                { id: 'hand-full', label: '▭', on: !hand, act: () => setHand(null) },
-                { id: 'hand-right', label: '◨', on: hand === 'right', act: () => setHand('right') },
+                { id: 'hand-left', label: t('বাম হাতের কিবোর্ড'), icon: KB_ICONS.left, on: !phoneFloat && hand === 'left', act: () => { setPhoneFloat(false); setHand('left'); } },
+                { id: 'hand-full', label: t('পুরো চওড়া কিবোর্ড'), icon: KB_ICONS.full, on: !phoneFloat && !hand, act: () => { setPhoneFloat(false); setHand(null); } },
+                { id: 'hand-right', label: t('ডান হাতের কিবোর্ড'), icon: KB_ICONS.right, on: !phoneFloat && hand === 'right', act: () => { setPhoneFloat(false); setHand('right'); } },
+                { id: 'float', label: t('ভাসমান'), icon: KB_ICONS.float, on: phoneFloat, act: () => setPhoneFloat(true) },
               ]
             : [
-              { id: 'dock', label: t('স্থির'), on: kbMode === 'dock', act: () => setKbMode('dock') },
-              { id: 'float', label: t('ভাসমান'), on: kbMode === 'float', act: () => setKbMode('float') },
-              { id: 'split-phone', label: t('Split'), on: kbMode === 'splitPhone', act: () => setKbMode('splitPhone') },
+              { id: 'dock', label: t('পুরো চওড়া কিবোর্ড'), icon: KB_ICONS.full, on: kbMode === 'dock', act: () => setKbMode('dock') },
+              { id: 'float', label: t('ভাসমান'), icon: KB_ICONS.float, on: kbMode === 'float', act: () => setKbMode('float') },
+              { id: 'split-phone', label: t('Split কিবোর্ড'), icon: KB_ICONS.split, on: kbMode === 'splitPhone', act: () => setKbMode('splitPhone') },
             ];
           const kb = (
             <OnScreenKeyboard compact={compact} onHide={() => setKbDown(true)} editor={editor} map={p.map} bangla={p.bangla} getConfig={getConfig} onToggleLanguage={p.onToggleLanguage}
               onWordDone={(before) => { if (learnTail(p.bank, before)) p.onBankChanged(); }} flash={flash}
-              hand={phoneKb && !landscape ? hand : null} setHand={phoneKb ? setHand : undefined} split={split} menuItems={items} live={live.available ? { on: live.on, toggle: live.toggle } : undefined} mic={voiceGap && voicing ? <span className="k" aria-hidden="true" /> : micSlot} voicing={voicing} gap={voiceGap} />
+              hand={phoneKb && !landscape && !float ? hand : null} setHand={phoneKb ? setHand : undefined} split={split} annaGap={annaGap} menuItems={items} live={live.available ? { on: live.on, toggle: live.toggle } : undefined} mic={voiceGap && voicing ? <span className="k" aria-hidden="true" /> : micSlot} voicing={voicing} gap={voiceGap} />
           );
-          if (float) return <FloatingKeyboard onDock={() => setKbMode('dock')}>{kb}</FloatingKeyboard>;
+          if (float) return <FloatingKeyboard phone={phoneKb} onDock={() => (phoneKb ? setPhoneFloat(false) : setKbMode('dock'))}>{kb}</FloatingKeyboard>;
           return <LiftableKeyboard landscape={landscape} phone={phoneKb} edgeToEdge={split && !phoneKb}>{kb}</LiftableKeyboard>;
         })()}
       </footer>

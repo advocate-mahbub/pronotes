@@ -53,11 +53,16 @@ export const PHONE_ROWS: string[][] = [
  * AltGr character of each key (the anna-ganda signs in the ProNotes layout), and ৸ and ১৲ (AltGr of - and =)
  * sit next to - = [ ]. "Alt+" codes = that key's AltGr character; ~ \ | are here too.
  */
+/**
+ * The owner's ticks and boxes (decisions.md 97): ☑ with the text-style selector U+FE0E, so an iPhone draws it
+ * in black and white like ☒ and not as the blue emoji box.
+ */
+export const BALLOT_CHECK = '\u2611\uFE0E';
 export const PHONE_SYMBOL_ROWS: string[][] = [
   NUMBERS.map((c) => 'Alt+' + c),
-  ['Minus', 'Equal', 'BracketLeft', 'BracketRight', 'Alt+Minus', 'Alt+Equal'],
-  ['Semicolon', 'Quote', 'Txt:~', 'Txt:\\', 'Txt:|'],
-  ['#Shift', 'Comma', 'Period', 'Slash', '#Back'],
+  ['Minus', 'Equal', 'BracketLeft', 'BracketRight', 'Alt+Minus', 'Alt+Equal', 'Txt:✓', 'Txt:✗', 'Txt:×', 'Txt:÷'],
+  ['Semicolon', 'Quote', 'Txt:~', 'Txt:\\', 'Txt:|', 'Txt:±', 'Txt:→', 'Txt:৳', 'Txt:…'],
+  ['#Shift', 'Comma', 'Period', 'Slash', 'Txt:☐', `Txt:${BALLOT_CHECK}`, 'Txt:☒', '#Back'],
   BOTTOM,
 ];
 /** The keypads, chosen from a long-press of #+= (or the iPad's #Pad key). */

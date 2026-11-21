@@ -858,6 +858,13 @@ html, body { overflow: hidden; }
 :root[data-theme="dark"] { --sel: rgba(200, 164, 93, .50); }
 .page-body ::selection, .page-body::selection { background: var(--sel); }
 .page-body ::-moz-selection { background: var(--sel); }
+/* ProNotes draws the selection itself (decisions.md 97): iOS ignores ::selection and its own tint vanishes on a
+   dark page. Light: clear blue; dark: a light band with dark letters, so selected text always stands out. */
+:root { --sel-band: #b9d3ff; --sel-ink: inherit; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]):not([data-mode="light"]) { --sel-band: #f3e3b3; --sel-ink: #111418; } }
+:root[data-theme="dark"], :root[data-mode="dark"] { --sel-band: #f3e3b3; --sel-ink: #111418; }
+.page-body .pn-sel { background: var(--sel-band); color: var(--sel-ink); border-radius: 2px; }
+.page-body .pn-sel::selection, .page-body .pn-sel ::selection { background: transparent; }
 
 /* ---------- Title chart page: steps on the left, the drawing on the right ---------- */
 .chart-ws { flex: 1; min-height: 0; display: flex; flex-direction: column; gap: 8px; }
@@ -941,15 +948,32 @@ input.cf[data-testid$="-type"] { flex: 0 1 112px; width: 112px; }
 .kb-pop { position: absolute; z-index: 30; display: flex; background: var(--sheet); border: 1px solid var(--line); border-radius: 10px; box-shadow: 0 6px 20px rgba(0,0,0,.22); overflow: hidden; }
 .kb-pop span { height: 48px; display: flex; align-items: center; justify-content: center; font: 600 22px "PN KB", var(--f-display); }
 .kb-pop span.on { background: var(--accent); color: var(--accent-fg); }
-/* long-press the language key */
-.kb-menu { position: absolute; z-index: 30; left: 6px; bottom: 56px; display: flex; gap: 6px; padding: 6px; background: var(--sheet); border: 1px solid var(--line); border-radius: 12px; box-shadow: 0 6px 20px rgba(0,0,0,.22); }
-.kb-menu button { min-width: 48px; height: 44px; border-radius: 8px; border: 1px solid var(--line); background: var(--key); font-size: 22px; color: inherit; }
-.kb-menu button.wide { font: 500 15px var(--f-sans); padding: 0 14px; }
-.kb-menu button.on { background: var(--accent); color: var(--accent-fg); }
+/* long-press 🌐: the iPhone's menu (decisions.md 97) — the two languages as rows, the positions as icons under them */
+.kb-menu { position: absolute; z-index: 30; left: 6px; bottom: 50px; width: min(300px, calc(100% - 12px)); display: flex; flex-direction: column; gap: 2px; padding: 8px;
+  background: var(--glass-strong, var(--sheet)); -webkit-backdrop-filter: blur(22px) saturate(1.4); backdrop-filter: blur(22px) saturate(1.4);
+  border: 1px solid var(--line); border-radius: 22px; box-shadow: 0 12px 36px rgba(0,0,0,.30); color: var(--fg); }
+.kb-menu .kb-menu-lang { height: 46px; padding: 0 16px; border: 0; border-radius: 23px; background: none; color: inherit; text-align: left; font: 400 18px "PN KB", var(--f-sans); }
+.kb-menu .kb-menu-lang.on { background: color-mix(in srgb, var(--fg) 12%, transparent); }
+.kb-menu .kb-menu-lang.hot { background: color-mix(in srgb, var(--fg) 20%, transparent); }
+.kb-menu-modes { display: flex; justify-content: space-around; padding-top: 6px; }
+.kb-menu-modes button { width: 58px; height: 46px; border: 0; border-radius: 23px; background: none; color: inherit; display: inline-flex; align-items: center; justify-content: center; }
+.kb-menu-modes button.wide { width: auto; padding: 0 12px; font: 500 14px var(--f-sans); }
+.kb-menu-modes button.on { background: color-mix(in srgb, var(--fg) 12%, transparent); }
+.kb-menu-modes button.hot { background: color-mix(in srgb, var(--fg) 22%, transparent); }
+/* the split keyboard's gap with the anna-ganda signs (Settings → কিবোর্ড) */
+.kb-row.split .gap.anna-gap { display: flex; gap: 2px; padding: 0 4px; }
+.kb-row.split .gap.anna-gap .k { flex: 1 1 0; min-width: 0; }
+.kb-row.split .gap.anna-gap .k .m { font-size: 15px; }
+.kb-row.split .gap.anna-gap .k .v { display: none; }
 /* the floating keyboard (iPad, computers) */
-.kb-float { position: fixed; z-index: 60; width: min(360px, calc(100vw - 8px)); border-radius: 14px; background: var(--key-2); box-shadow: 0 10px 34px rgba(0,0,0,.28); border: 1px solid var(--line); overflow: visible; touch-action: none; }
+.kb-float { position: fixed; z-index: 60; max-width: calc(100vw - 8px); border-radius: 14px; background: var(--key-2); box-shadow: 0 10px 34px rgba(0,0,0,.28); border: 1px solid var(--line); overflow: visible; touch-action: none; }
 .kb-float .kb { border: 0; border-radius: 0 0 14px 14px; margin: 0; }
-.kb-float .k { height: 40px; } .kb-float .k .m { font-size: 17px; } .kb-float .k .s { font-size: 9px; } .kb-float .k .l { display: none; }
+.kb-float .k, .kb-float .kb.compact:not(.num):not(.pad-anna) .k { height: calc(40px * var(--kb-fs, 1)); } .kb-float .k .m, .kb-float .kb.compact .k .m { font-size: calc(17px * var(--kb-fs, 1)); }
+.kb-float .kb.compact:not(.num):not(.pad-anna) .k::before { inset: calc(4px * var(--kb-fs, 1)) 2px; }
+.kb-float .kb-strip { height: calc(36px * var(--kb-fs, 1)); }
+/* the corner that sizes the floating keyboard (decisions.md 97) */
+.kb-float-size { position: absolute; right: -6px; bottom: -6px; width: 30px; height: 30px; touch-action: none; cursor: nwse-resize; z-index: 2; }
+.kb-float-size::after { content: ''; position: absolute; right: 9px; bottom: 9px; width: 12px; height: 12px; border-right: 3px solid var(--muted); border-bottom: 3px solid var(--muted); border-bottom-right-radius: 5px; opacity: .7; } .kb-float .k .s { font-size: 9px; } .kb-float .k .l { display: none; }
 .kb-float-bar { height: 22px; display: flex; align-items: center; justify-content: center; position: relative; cursor: grab; touch-action: none; }
 .kb-float-bar .grip { width: 44px; height: 5px; border-radius: 3px; background: var(--muted); opacity: .5; }
 .kb-float-bar button { position: absolute; right: 6px; top: 0; height: 22px; border: 0; background: none; color: var(--muted); font-size: 16px; padding: 0 6px; }
@@ -1101,8 +1125,8 @@ body:has([data-testid="osk"]) .sug.empty { display: flex; min-height: 46px; }
 .kb-pop.enter-menu span { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; font-size: 20px; }
 .kb-pop.enter-menu small { font: 500 10px var(--f-sans); white-space: nowrap; }
 /* ↶ ↷ at the left end of the suggestion row */
-.sug-tools { display: inline-flex; gap: 2px; margin-right: 6px; flex: 0 0 auto; }
-.sug .tool { width: 40px; height: 34px; border: 0; border-radius: 8px; background: transparent; color: var(--fg); font-size: 20px; cursor: pointer; }
+.sug-tools { display: inline-flex; align-items: center; gap: 6px; margin: 0 6px 0 4px; flex: 0 0 auto; }
+.sug .tool { width: 32px; height: 32px; padding: 0; border: 0; border-radius: 50%; background: var(--key-2); color: var(--fg); display: inline-flex; align-items: center; justify-content: center; cursor: pointer; }
 .sug .tool:disabled { opacity: .3; }
 .sug .tool:active { background: var(--accent-soft); }
 .sug.empty .sug-tools { margin-right: auto; }

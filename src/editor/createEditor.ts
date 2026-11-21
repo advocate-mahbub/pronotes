@@ -15,6 +15,7 @@ import { FindReplace } from './find-replace';
 import { Pagination, type PageLayout } from './pagination';
 import { TableTools, SyncTableView } from './table-tools';
 import { WordShortcuts } from './word-shortcuts';
+import { SelectionMark } from './selection-mark';
 import { hasAltLayer, isAnsiKey, isToggleKey } from '../bornona-engine';
 
 /** Markdown-like shortcuts ("- ", "1. ", "# ", "[ ] ") must never reshape a legal draft while typing. */
@@ -66,6 +67,7 @@ export function editorExtensions(bornona: Partial<BornonaOptions> & Pick<Bornona
     PageBreak,
     InterimText,
     FindReplace,
+    SelectionMark,
     FormattingMarks,
     Pagination.configure({ getLayout: opts.getLayout ?? (() => ({ on: false }) as PageLayout) }),
     BornonaExtension.configure(bornona),

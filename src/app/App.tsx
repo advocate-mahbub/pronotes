@@ -32,7 +32,7 @@ import { Sidebar } from './Sidebar';
 import { Workspace, type SaveState } from './Workspace';
 import { LawDictionary } from './LawDictionary';
 import { ChartWorkspace } from './ChartWorkspace';
-import { listDriveFonts, uploadDriveFont, downloadDriveFont, planFontSync, currentToken, downloadBackup, DriveError, autoDeviceName, fitDevice, driveBackupName, driveEnabled, KEEP_DEFAULT, listBackups, pruneBackups, signIn, signOut, takeRedirect, trashBackup, uploadBackup, type AfterSignIn, type DriveBackup } from '../storage/gdrive';
+import { listDriveFonts, uploadDriveFont, downloadDriveFont, planFontSync, listDriveLayouts, uploadDriveLayout, downloadDriveLayout, planLayoutSync, currentToken, downloadBackup, DriveError, autoDeviceName, fitDevice, driveBackupName, driveEnabled, KEEP_DEFAULT, listBackups, pruneBackups, signIn, signOut, takeRedirect, trashBackup, uploadBackup, type AfterSignIn, type DriveBackup } from '../storage/gdrive';
 import { CraftWorkspace, type CraftHandoff, type CraftView } from '../craft/CraftWorkspace';
 import { craftApp } from '../craft/bridge';
 import { load, save, allPrefs, restorePrefs } from './prefs';
@@ -768,6 +768,9 @@ export function App() {
     setCustomLayouts(next);
     setLayoutId(added[0].id);
     await saveLayouts(next);
+    // into the user's Drive as well, like fonts (decisions.md 94)
+    const tk = currentToken();
+    if (tk && driveEnabled()) for (const l of added) void uploadDriveLayout(tk, l).catch(() => undefined);
     let msg = tr('{name} লেআউট যোগ হলো', { name: added.map((l) => l.name).join(', ') });
     if (added.some((l) => l.kmx?.enc === 'ansi')) msg += ' ' + tr('এই কিবোর্ড বিজয় (ANSI)-তে লেখে: ইউনিকোড ডকুমেন্টে লিখলে ইউনিকোডে বদলে বসবে।');
     const notes = [...new Set(got.flatMap((l) => l.notes))];
@@ -779,7 +782,43 @@ export function App() {
     await saveLayouts(next);
     setCustomLayouts(next);
     if (layoutId === id) setLayoutId(PRONOTES_LAYOUT_ID);
+    save('device.layoutsGone', [...load<string[]>('device.layoutsGone', []), id]);
+    void syncLayouts();
     say('লেআউট মুছে ফেলা হয়েছে');
+  };
+
+  // ---------- own layouts in the user's Google Drive, like fonts (decisions.md 94) ----------
+  const layoutSyncBusy = useRef(false);
+  const syncLayouts = async () => {
+    const tk = currentToken();
+    if (!tk || !driveEnabled() || layoutSyncBusy.current || !navigator.onLine) return;
+    layoutSyncBusy.current = true;
+    try {
+      const local = await loadLayouts();
+      const gone = load<string[]>('device.layoutsGone', []);
+      const plan = planLayoutSync(local, await listDriveLayouts(tk), gone);
+      for (const r of plan.trash) await trashBackup(tk, r.id);
+      if (plan.trash.length || gone.length) save('device.layoutsGone', []);
+      for (const id of plan.up) {
+        const l = local.find((x) => x.id === id);
+        if (l) await uploadDriveLayout(tk, l);
+      }
+      const got: Layout[] = [];
+      for (const r of plan.down) {
+        const l = await downloadDriveLayout<Layout>(tk, r.id).catch(() => null);
+        if (l && typeof l.id === 'string' && typeof l.name === 'string' && l.map) got.push(l);
+      }
+      if (got.length) {
+        const next = [...(await loadLayouts()), ...got.filter((g) => !local.some((x) => x.id === g.id))];
+        await saveLayouts(next);
+        setCustomLayouts(next);
+        say('Google Drive থেকে {n}টা লেআউট এল', { n: got.length });
+      }
+    } catch {
+      /* Drive away or the sign-in ran out: tried again the next time Drive is on */
+    } finally {
+      layoutSyncBusy.current = false;
+    }
   };
 
   // ---------- fonts ----------
@@ -903,7 +942,7 @@ export function App() {
   };
   syncFontsRef.current = syncFonts;
   // whenever Drive comes on (sign-in, a new session with a token) and once the fonts here are loaded
-  useEffect(() => { if (driveConnected) void syncFonts(); }, [driveConnected]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { if (driveConnected) { void syncFonts(); void syncLayouts(); } }, [driveConnected]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ---------- voice corrections (IndexedDB, debounced) ----------
   const corrTimer = useRef<number>(undefined);
@@ -989,8 +1028,8 @@ export function App() {
   const themeLabel: Record<Theme, string> = { auto: 'রং: ডিভাইস অনুযায়ী', light: 'রং: আলো', dark: 'রং: অন্ধকার' };
 
   const showSide = sideOpen;
-  const layoutSelect = (
-    <select className="layout" aria-label={t('কিবোর্ড লেআউট')} title={t('কিবোর্ড লেআউট')} data-testid="layout" value={layoutId} onChange={(e) => setLayoutId(e.target.value)}>
+  const layoutBox = (testid: string) => (
+    <select className="layout" aria-label={t('কিবোর্ড লেআউট')} title={t('কিবোর্ড লেআউট')} data-testid={testid} value={layoutId} onChange={(e) => setLayoutId(e.target.value)}>
       <optgroup label={t('সাথে দেওয়া')}>{enabledKeyboardLayouts.filter((l) => !customLayouts.some((c) => c.id === l.id)).map((l) => <option key={l.id} value={l.id}>{l.name}</option>)}</optgroup>
       {/* layouts the user imported stay in their own group, as before a22c74e */}
       {enabledKeyboardLayouts.some((l) => customLayouts.some((c) => c.id === l.id)) && (
@@ -1000,6 +1039,7 @@ export function App() {
       <option value="bornona" hidden aria-hidden="true">Bornona</option>
     </select>
   );
+  const layoutSelect = layoutBox('layout');
   const sidebar = (
     <Sidebar top={
       <>
@@ -1009,7 +1049,7 @@ export function App() {
             <img className="brand-logo" src={theme === 'dark' ? './branding/brand-dark.svg' : './branding/brand-light.svg'} alt="ProNotes" />
           </picture>
         </div>
-        {phone && <label className="side-layout">{t('কিবোর্ড লেআউট')}{layoutSelect}</label>}
+        {/* the layout is chosen in Settings → কিবোর্ড now, and 🌐 held switches the language (decisions.md 97) */}
       </>
     } docs={docs} trash={trash} folders={folders} currentId={current?.id ?? null} view={view} setView={setView} kindIcon={KIND_ICON} kindLabel={KIND_LABEL}
       prefs={listPrefs} setPrefs={setListPrefs} getConfig={getSideConfig} onToggleLanguage={toggleBangla}
@@ -1127,7 +1167,7 @@ export function App() {
 
 
       {settingsOpen && (
-        <Settings drive={{ enabled: driveEnabled(), connected: driveConnected, busy: driveBusy, list: driveList, onConnect: () => void driveConnect('list'), onBackup: () => void driveBackup(), onDownload: (b) => void driveDownload(b), onRefresh: () => void driveRefresh(), onRestore: (b) => void driveRestore(b), onDelete: (b) => void driveDelete(b), keep: driveKeep, setKeep: setDriveKeep, deviceName, setDeviceName, autoDevice: autoDeviceName(), thisDevice, onDisconnect: () => void driveDisconnect(), auto: autoDrive, setAuto: setAutoDrive }}
+        <Settings layoutPicker={layoutBox('settings-layout-select')} drive={{ enabled: driveEnabled(), connected: driveConnected, busy: driveBusy, list: driveList, onConnect: () => void driveConnect('list'), onBackup: () => void driveBackup(), onDownload: (b) => void driveDownload(b), onRefresh: () => void driveRefresh(), onRestore: (b) => void driveRestore(b), onDelete: (b) => void driveDelete(b), keep: driveKeep, setKeep: setDriveKeep, deviceName, setDeviceName, autoDevice: autoDeviceName(), thisDevice, onDisconnect: () => void driveDisconnect(), auto: autoDrive, setAuto: setAutoDrive }}
           backupInfo={{ last: lastBackup, remind: backupRemind, setRemind: setBackupRemind }}
           onClose={() => setSettingsOpen(false)} platform={coarse || phone ? 'mobile' : 'desktop'} vf={vf} setVf={setVf} oldReph={oldReph} setOldReph={setOldReph}
           keyboardLayouts={allKeyboardLayouts} hiddenDesktop={hiddenDesktop} setHiddenDesktop={setHiddenDesktop}

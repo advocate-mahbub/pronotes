@@ -247,3 +247,44 @@ export function planFontSync(local: { id: string }[], remote: DriveFont[], gone:
     trash: remote.filter((r) => r.appProperties?.pnFont && (dead.has(r.appProperties.pnFont) || extra.has(r))),
   };
 }
+
+/**
+ * The user's own keyboard layouts in their own Drive, the same way as fonts (decisions.md 94): a layout
+ * added on one device (Bijoy's UniBijoy.avrolayout, say) comes to every device where Drive is on. Each file
+ * is the layout as ProNotes read it (JSON), with its ProNotes id as an app property. The layout files
+ * themselves are no longer in the public repository; they live only in the user's Drive.
+ */
+export const LAYOUTS_FOLDER = 'ProNotes Layouts';
+export interface DriveLayout { id: string; name: string; appProperties?: { pnLayout?: string } }
+
+export async function listDriveLayouts(token: string, f: Fetch = fetch): Promise<DriveLayout[]> {
+  const folder = await folderNamed(LAYOUTS_FOLDER, token, f);
+  const r = await call<{ files: DriveLayout[] }>(`${API}/files?${new URLSearchParams({
+    q: `'${q(folder)}' in parents and trashed=false`, pageSize: '200', fields: 'files(id,name,appProperties)',
+  })}`, { method: 'GET' }, token, f);
+  return r.files ?? [];
+}
+
+export async function uploadDriveLayout(token: string, layout: { id: string; name: string }, f: Fetch = fetch): Promise<{ id: string }> {
+  const folder = await folderNamed(LAYOUTS_FOLDER, token, f);
+  const boundary = 'pronotes' + Math.random().toString(36).slice(2);
+  const meta = { name: layout.name.replace(/[\\/:*?"<>|]/g, ' ').trim() + '.pnlayout.json', parents: [folder], mimeType: 'application/json', appProperties: { pnLayout: layout.id } };
+  const body = new Blob([
+    `--${boundary}\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n${JSON.stringify(meta)}\r\n--${boundary}\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n`,
+    JSON.stringify(layout), `\r\n--${boundary}--\r\n`,
+  ]);
+  return call(`${UPLOAD}?uploadType=multipart&fields=id`, { method: 'POST', headers: { 'Content-Type': `multipart/related; boundary=${boundary}` }, body }, token, f);
+}
+
+export async function downloadDriveLayout<T = unknown>(token: string, id: string, f: Fetch = fetch): Promise<T> {
+  const buf = await call<ArrayBuffer>(`${API}/files/${encodeURIComponent(id)}?alt=media`, { method: 'GET' }, token, f, 'buffer');
+  return JSON.parse(new TextDecoder().decode(buf)) as T;
+}
+
+/** What to do so this device and Drive hold the same layouts; the same rules as for fonts. */
+export function planLayoutSync(local: { id: string }[], remote: DriveLayout[], gone: string[]): { down: DriveLayout[]; up: string[]; trash: DriveLayout[] } {
+  const asFonts = remote.map((r) => ({ ...r, appProperties: { pnFont: r.appProperties?.pnLayout } }));
+  const p = planFontSync(local, asFonts, gone);
+  const back = (l: DriveFont[]) => l.map((x) => remote[asFonts.indexOf(x as (typeof asFonts)[number])]);
+  return { down: back(p.down), up: p.up, trash: back(p.trash) };
+}

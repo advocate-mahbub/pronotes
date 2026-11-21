@@ -20,8 +20,8 @@ const BN_IN_WORD = /[\u0981-\u0983\u0985-\u09B9\u09BC-\u09D7\u09DC-\u09DF\u09E6-
 export function toBijoy(u: string, prev = ''): string {
   // quotes travel as private placeholders: the library's own output uses ‘ ’ “ ” as letter parts (স্তু ¯‘, স্থ ¯’)
   const q = u
-    .replace(/(^|[\s(\[{—–-])"/g, '$1“').replace(/"/g, '”')
-    .replace(/(^|[\s(\[{—–-])'/g, '$1‘').replace(/'/g, '’')
+    .replace(/(^|[\s([{—–-])"/g, '$1“').replace(/"/g, '”')
+    .replace(/(^|[\s([{—–-])'/g, '$1‘').replace(/'/g, '’')
     .replace(/“/g, '\uE020').replace(/”/g, '\uE021').replace(/‘/g, '\uE022').replace(/’/g, '\uE023');
   const cont = BN_IN_WORD.test(prev) && !/^\s/.test(q);
   let b: string;

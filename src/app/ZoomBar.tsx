@@ -35,7 +35,7 @@ export function ZoomBar({ pct, live, paper, setPct, min, max, wake = 0 }: Props)
   const hover = useRef(false);
   const timer = useRef<number | undefined>(undefined);
   const nap = () => { clearTimeout(timer.current); timer.current = window.setTimeout(() => { if (!hover.current) setAwake(false); }, ZOOM_BAR_IDLE_MS); };
-  useEffect(() => { setAwake(true); if (live === null && !open) nap(); else clearTimeout(timer.current); }, [pct, live, wake, open]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { setAwake(true); if (live === null && !open) nap(); else clearTimeout(timer.current); }, [pct, live, wake, open]);
   useEffect(() => () => clearTimeout(timer.current), []);
   const shown = live ?? pct;
   const down = () => setPct(Math.max(min, [...ZOOM_STEPS].reverse().find((z) => z < pct - 1) ?? min));

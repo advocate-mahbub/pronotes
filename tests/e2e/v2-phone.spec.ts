@@ -3,7 +3,7 @@ import { test, expect, devices } from '@playwright/test';
 const iphone = devices['iPhone 13'];
 test.use({ viewport: iphone.viewport, userAgent: iphone.userAgent, deviceScaleFactor: 2, isMobile: true, hasTouch: true });
 
-test('phone: reflowing page, short language toggle, keyboard down and up, layout in the ☰ list', async ({ page }) => {
+test('phone: reflowing page, short language toggle, keyboard down and up, layout in Settings → keyboard (not in the ☰ list)', async ({ page }) => {
   await page.goto('./');
   const ed = page.getByTestId('editor');
   await ed.click();
@@ -36,6 +36,7 @@ test('phone: reflowing page, short language toggle, keyboard down and up, layout
   await expect(page.getByTestId('osk')).toBeVisible();
 
   await expect(page.locator('header [data-testid="layout"]')).toHaveCount(0);
+  // decisions.md 97: the layout box moved from the ☰ list to Settings → কিবোর্ড
   await page.getByTestId('side-toggle').tap();
-  await expect(page.getByTestId('sidebar').getByTestId('layout')).toBeVisible();
+  await expect(page.getByTestId('sidebar').getByTestId('layout')).toHaveCount(0);
 });

@@ -90,23 +90,49 @@ export function voiceSentences(s: string): string[] {
  * rewritten in Bengali letters when a way to rewrite is given (it may fail or take too long; then the
  * sentence stays as it came, Hindi letters turned Bengali). Plain English sentences stay English.
  */
+/**
+ * Several wrong sentences in one go are sent to Gemini together, one numbered line each, so a long Live
+ * dictation is one request instead of one per sentence (the free tier allows only a few a minute,
+ * decisions.md 95). An answer that does not come back line for line is not trusted: then each sentence
+ * goes on its own, as before.
+ */
+export const RESCRIPT_BATCH_NOTE = 'প্রতিটা নম্বর দেওয়া লাইন আলাদা বাক্য। উত্তরেও ঠিক একই নম্বর, একই ক্রমে, প্রতি লাইনে একটা — যেমন [1] …';
+
+function readBatch(out: string, n: number): string[] | null {
+  const got = new Map<number, string>();
+  for (const m of out.matchAll(/^\s*\[(\d+)\]\s*(.*)$/gmu)) got.set(Number(m[1]), m[2].trim());
+  const list = Array.from({ length: n }, (_, i) => got.get(i + 1) ?? '');
+  return list.every((x) => x && /\p{Script=Bengali}/u.test(x)) ? list : null;
+}
+
 export async function toBanglaVoice(raw: string, lang: string, rewrite?: (latin: string) => Promise<string>): Promise<string> {
   if (!lang.startsWith('bn')) return banglaScript(raw).text;
   const all = banglaScript(raw);
   const pieces = voiceSentences(raw);
-  const tasks = pieces.map(async (piece) => {
-    const plain = banglaScript(piece).text;
-    const hindi = /\p{Script=Devanagari}/u.test(piece);
-    // all of it in Latin letters (the old rule), or a sentence that is Hindi or romanised Bangla
-    const wrong = hindi || (all.latin && /\p{L}/u.test(piece)) || looksRomanBangla(piece);
-    if (!wrong || !rewrite) return plain;
+  // all of it in Latin letters (the old rule), or a sentence that is Hindi or romanised Bangla
+  const wrong = pieces.map((piece) => /\p{Script=Devanagari}/u.test(piece) || (all.latin && /\p{L}/u.test(piece)) || looksRomanBangla(piece));
+  const put = (piece: string, out: string) => {
+    out = out.trim();
+    if (!out || !/\p{Script=Bengali}/u.test(out)) return banglaScript(piece).text;
+    return banglaScript(out).text + (/\s$/.test(piece) ? ' ' : '');
+  };
+  let batch: string[] | null = null;
+  const idx = pieces.map((_, i) => i).filter((i) => wrong[i]);
+  if (rewrite && idx.length > 1) {
     try {
-      const out = (await rewrite(piece.trim())).trim();
-      if (!out || !/\p{Script=Bengali}/u.test(out)) return plain;
-      const trail = /\s$/.test(piece) ? ' ' : '';
-      return banglaScript(out).text + trail;
+      const text = RESCRIPT_BATCH_NOTE + '\n' + idx.map((i, k) => `[${k + 1}] ${pieces[i].trim()}`).join('\n');
+      batch = readBatch(await rewrite(text), idx.length);
     } catch {
-      return plain;
+      batch = null;
+    }
+  }
+  const tasks = pieces.map(async (piece, i) => {
+    if (!wrong[i] || !rewrite) return banglaScript(piece).text;
+    if (batch) return put(piece, batch[idx.indexOf(i)]);
+    try {
+      return put(piece, await rewrite(piece.trim()));
+    } catch {
+      return banglaScript(piece).text;
     }
   });
   return (await Promise.all(tasks)).join('').replace(/[ \t]{2,}/g, ' ');

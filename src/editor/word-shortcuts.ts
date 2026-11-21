@@ -204,6 +204,7 @@ export const WordShortcuts = Extension.create<WordShortcutsOptions, { copied: Co
     return { copied: null };
   },
   addProseMirrorPlugins() {
+    // eslint-disable-next-line @typescript-eslint/no-this-alias -- the extension, used from inside ProseMirror's plugin
     const ext = this;
     const ed = () => ext.editor;
     const para = (attrs: Record<string, unknown>) => ed().chain().focus().setParagraphFormat(attrs).run();
