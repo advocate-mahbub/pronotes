@@ -76,6 +76,116 @@
       "bridge": "parent",
       "accept": ".pptx,.potx,.ppsx,.deckcraft,.txt,.md,.rtf",
       "enabled": true
+    },
+    {
+      "id": "filmcraft",
+      "name": "filmcraft",
+      "label": "FilmCraft: An open-source, nonlinear video editor written fr",
+      "repo": "storytold/filmcraft",
+      "version": "0.20.1",
+      "sha256": "1cf3072e3f3b6535fcd024d6f6ab2a16cf7776345d868037dc630de0ad0dbbb8",
+      "bridge": "unknown",
+      "accept": "",
+      "enabled": false
+    },
+    {
+      "id": "lightcraft",
+      "name": "lightcraft",
+      "label": "LightCraft: An open-source non-destructive photo editor writ",
+      "repo": "storytold/lightcraft",
+      "version": "0.21.1",
+      "sha256": "57147383a46eaab3b0cc036acf9443b221450c6a19f5dc303ae165bb9678b8cb",
+      "bridge": "unknown",
+      "accept": "",
+      "enabled": false
+    },
+    {
+      "id": "designcraft",
+      "name": "designcraft",
+      "label": "DesignCraft: An open-source page and layout design editor wr",
+      "repo": "storytold/designcraft",
+      "version": "0.20.1",
+      "sha256": "50fb2bebce1f48065318953393626b84b25cd1736c556e523275dadc46ae6906",
+      "bridge": "unknown",
+      "accept": "",
+      "enabled": false
+    },
+    {
+      "id": "effectcraft",
+      "name": "effectcraft",
+      "label": "EffectCraft: An open-source motion graphics and compositing ",
+      "repo": "storytold/effectcraft",
+      "version": "0.24.1",
+      "sha256": "8adc985f345d73207abc69a27938905aba1729b63c6c9b332d0244a7567424f1",
+      "bridge": "unknown",
+      "accept": "",
+      "enabled": false
+    },
+    {
+      "id": "cadcraft",
+      "name": "cadcraft",
+      "label": "CADCraft: computer-aided design and drafting — an open-sourc",
+      "repo": "storytold/cadcraft",
+      "version": "0.20.1",
+      "sha256": "300e870c50b66d371055915ba95e3ddbfd4c45431466d5214743b5dcab95a0e1",
+      "bridge": "unknown",
+      "accept": "",
+      "enabled": false
+    },
+    {
+      "id": "soundcraft",
+      "name": "soundcraft",
+      "label": "SoundCraft: an open-source, clean-room digital audio worksta",
+      "repo": "storytold/soundcraft",
+      "version": "0.20.1",
+      "sha256": "ca7c03c53cf4b7ec9ae26ef2cbde5d86566d006127040fe694fb95f9773a34e4",
+      "bridge": "unknown",
+      "accept": "",
+      "enabled": false
+    },
+    {
+      "id": "figcraft",
+      "name": "figcraft",
+      "label": "FigCraft: interface design and prototyping; an open-source, ",
+      "repo": "storytold/figcraft",
+      "version": "0.18.1",
+      "sha256": "2fbeb93f5022b0a7cc9d8528f1ed7e2b54c94d213ef79e65128aa898c399f02b",
+      "bridge": "unknown",
+      "accept": "",
+      "enabled": false
+    },
+    {
+      "id": "texturecraft",
+      "name": "texturecraft",
+      "label": "TextureCraft: An open-source, 3D texture painting workflow w",
+      "repo": "storytold/texturecraft",
+      "version": "0.6.1",
+      "sha256": "6dea6a9f77a161cba3258ab4c6db591bdb4dd32b7385d16a7db997ab671a5f3b",
+      "bridge": "unknown",
+      "accept": "",
+      "enabled": false
+    },
+    {
+      "id": "craft-anything",
+      "name": "craft-anything",
+      "label": "Craft Anything: understand how any software works, and craft",
+      "repo": "storytold/craft-anything",
+      "version": "0.6.1",
+      "sha256": "e87273b5c0181785ce9059f5348353be44e18b4ba6485203babc26ef17f71d84",
+      "bridge": "unknown",
+      "accept": "",
+      "enabled": false
+    },
+    {
+      "id": "materialcraft",
+      "name": "materialcraft",
+      "label": "MaterialCraft: An open-source, node-based material designer ",
+      "repo": "storytold/materialcraft",
+      "version": "0.4.1",
+      "sha256": "73b8c319881fd7218737d30b5eeb033801a17427bcf3d31920da32a1fbb1ffec",
+      "bridge": "unknown",
+      "accept": "",
+      "enabled": false
     }
   ]
 }
