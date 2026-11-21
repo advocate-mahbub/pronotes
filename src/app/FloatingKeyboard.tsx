@@ -24,7 +24,6 @@ export function FloatingKeyboard({ children, onDock }: { children: ReactNode; on
     place();
     window.addEventListener('resize', place);
     return () => window.removeEventListener('resize', place);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   return (

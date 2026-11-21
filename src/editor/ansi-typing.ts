@@ -38,9 +38,9 @@ export function marksWithFont(view: EditorView, font: string): readonly Mark[] {
   const { state } = view;
   const base = state.storedMarks ?? state.selection.$from.marks();
   const ts = state.schema.marks.textStyle;
-  const old = base.find((m) => m.type === ts);
+  const old = base.find((m: Mark) => m.type === ts);
   const mark = ts.create({ ...(old?.attrs ?? {}), fontFamily: `"${font}"` });
-  return mark.addToSet(base.filter((m) => m.type !== ts));
+  return mark.addToSet(base.filter((m: Mark) => m.type !== ts));
 }
 
 /** The Bijoy word just before the caret (only text in the Bijoy font, up to a space). */

@@ -1,3 +1,4 @@
+import type { Mark, Node as PMNode } from '@tiptap/pm/model';
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { EditorContent, useEditor, type Editor } from '@tiptap/react';
@@ -249,7 +250,7 @@ export function Workspace(p: Props) {
       scrollMargin: { top: 64, bottom: 72, left: 8, right: 8 },
       scrollThreshold: { top: 64, bottom: 72, left: 8, right: 8 },
     },
-    onUpdate: ({ editor }) => {
+    onUpdate: ({ editor }: { editor: Editor }) => {
       pending.current = true;
       cb.current.onSaveState('saving');
       clearTimeout(timer.current);
@@ -657,14 +658,14 @@ export function Workspace(p: Props) {
       // text already typed in Bijoy (ANSI typing) is passed through, the rest is converted
       const r: Run[] = [];
       let first = true;
-      editor.state.doc.nodesBetween(from, to, (node, pos) => {
+      editor.state.doc.nodesBetween(from, to, (node: PMNode, pos: number) => {
         if (node.isBlock && node.isTextblock) {
           if (!first) r.push({ en: true, text: '\n' });
           first = false;
         }
         if (!node.isText) return;
         const t = node.text!.slice(Math.max(0, from - pos), to - pos);
-        const f = node.marks.find((m) => m.type.name === 'textStyle')?.attrs.fontFamily;
+        const f = node.marks.find((m: Mark) => m.type.name === 'textStyle')?.attrs.fontFamily;
         if (isBijoyFont(f, cb.current.ansiFont)) r.push({ en: false, text: t });
         else {
           const at = Math.max(pos, from);

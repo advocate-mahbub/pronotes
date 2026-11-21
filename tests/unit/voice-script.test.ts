@@ -45,7 +45,22 @@ describe('Hindi and romanised Bangla inside Bangla voice', () => {
     const rewrite = async (s: string) => { seen.push(s); return s.includes('ठीक') ? 'এবার ঠিক আছে।' : 'আবার ঠিক আছে।'; };
     const out = await toBanglaVoice('তুমি কি আমার কথা বুঝতে পারছো? Okay, but the cut. ए बार ठीक अच्छे। Abar theek achhe.', 'bn-BD', rewrite);
     expect(out).toBe('তুমি কি আমার কথা বুঝতে পারছো? Okay, but the cut. এবার ঠিক আছে। আবার ঠিক আছে।');
-    expect(seen).toEqual(['ए बार ठीक अच्छे।', 'Abar theek achhe.']);
+    // first both together; this answer is not line for line, so then each on its own
+    expect(seen.slice(1)).toEqual(['ए बार ठीक अच्छे।', 'Abar theek achhe.']);
+    expect(seen[0]).toContain('[1] ए बार ठीक अच्छे।\n[2] Abar theek achhe.');
+  });
+  it('several wrong sentences: one request, answered line for line (decisions.md 95)', async () => {
+    const seen: string[] = [];
+    const rewrite = async (s: string) => { seen.push(s); return '[1] এবার ঠিক আছে।\n[2] আবার ঠিক আছে।'; };
+    const out = await toBanglaVoice('তুমি কি বুঝলে? ए बार ठीक अच्छे। Abar theek achhe.', 'bn-BD', rewrite);
+    expect(out).toBe('তুমি কি বুঝলে? এবার ঠিক আছে। আবার ঠিক আছে।');
+    expect(seen).toHaveLength(1);
+  });
+  it('a failed batch falls back to one sentence at a time', async () => {
+    let n = 0;
+    const rewrite = async (s: string) => { n++; if (s.includes('[1]')) throw new Error('429'); return 'আবার ঠিক আছে।'; };
+    expect(await toBanglaVoice('Abar theek achhe. Abar theek achhe.', 'bn-BD', rewrite)).toBe('আবার ঠিক আছে। আবার ঠিক আছে।');
+    expect(n).toBe(3);
   });
   it('without a key: Hindi letters become Bengali, Latin stays', async () => {
     expect(await toBanglaVoice('ठीक है। Abar theek achhe.', 'bn-BD')).toBe('ঠীক হৈ। Abar theek achhe.');

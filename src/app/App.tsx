@@ -32,7 +32,7 @@ import { Sidebar } from './Sidebar';
 import { Workspace, type SaveState } from './Workspace';
 import { LawDictionary } from './LawDictionary';
 import { ChartWorkspace } from './ChartWorkspace';
-import { listDriveFonts, uploadDriveFont, downloadDriveFont, planFontSync, currentToken, downloadBackup, DriveError, autoDeviceName, fitDevice, driveBackupName, driveEnabled, KEEP_DEFAULT, listBackups, pruneBackups, signIn, signOut, takeRedirect, trashBackup, uploadBackup, type AfterSignIn, type DriveBackup } from '../storage/gdrive';
+import { listDriveFonts, uploadDriveFont, downloadDriveFont, planFontSync, listDriveLayouts, uploadDriveLayout, downloadDriveLayout, planLayoutSync, currentToken, downloadBackup, DriveError, autoDeviceName, fitDevice, driveBackupName, driveEnabled, KEEP_DEFAULT, listBackups, pruneBackups, signIn, signOut, takeRedirect, trashBackup, uploadBackup, type AfterSignIn, type DriveBackup } from '../storage/gdrive';
 import { CraftWorkspace, type CraftHandoff, type CraftView } from '../craft/CraftWorkspace';
 import { craftApp } from '../craft/bridge';
 import { load, save, allPrefs, restorePrefs } from './prefs';
@@ -768,6 +768,9 @@ export function App() {
     setCustomLayouts(next);
     setLayoutId(added[0].id);
     await saveLayouts(next);
+    // into the user's Drive as well, like fonts (decisions.md 94)
+    const tk = currentToken();
+    if (tk && driveEnabled()) for (const l of added) void uploadDriveLayout(tk, l).catch(() => undefined);
     let msg = tr('{name} লেআউট যোগ হলো', { name: added.map((l) => l.name).join(', ') });
     if (added.some((l) => l.kmx?.enc === 'ansi')) msg += ' ' + tr('এই কিবোর্ড বিজয় (ANSI)-তে লেখে: ইউনিকোড ডকুমেন্টে লিখলে ইউনিকোডে বদলে বসবে।');
     const notes = [...new Set(got.flatMap((l) => l.notes))];
@@ -779,7 +782,43 @@ export function App() {
     await saveLayouts(next);
     setCustomLayouts(next);
     if (layoutId === id) setLayoutId(PRONOTES_LAYOUT_ID);
+    save('device.layoutsGone', [...load<string[]>('device.layoutsGone', []), id]);
+    void syncLayouts();
     say('লেআউট মুছে ফেলা হয়েছে');
+  };
+
+  // ---------- own layouts in the user's Google Drive, like fonts (decisions.md 94) ----------
+  const layoutSyncBusy = useRef(false);
+  const syncLayouts = async () => {
+    const tk = currentToken();
+    if (!tk || !driveEnabled() || layoutSyncBusy.current || !navigator.onLine) return;
+    layoutSyncBusy.current = true;
+    try {
+      const local = await loadLayouts();
+      const gone = load<string[]>('device.layoutsGone', []);
+      const plan = planLayoutSync(local, await listDriveLayouts(tk), gone);
+      for (const r of plan.trash) await trashBackup(tk, r.id);
+      if (plan.trash.length || gone.length) save('device.layoutsGone', []);
+      for (const id of plan.up) {
+        const l = local.find((x) => x.id === id);
+        if (l) await uploadDriveLayout(tk, l);
+      }
+      const got: Layout[] = [];
+      for (const r of plan.down) {
+        const l = await downloadDriveLayout<Layout>(tk, r.id).catch(() => null);
+        if (l && typeof l.id === 'string' && typeof l.name === 'string' && l.map) got.push(l);
+      }
+      if (got.length) {
+        const next = [...(await loadLayouts()), ...got.filter((g) => !local.some((x) => x.id === g.id))];
+        await saveLayouts(next);
+        setCustomLayouts(next);
+        say('Google Drive থেকে {n}টা লেআউট এল', { n: got.length });
+      }
+    } catch {
+      /* Drive away or the sign-in ran out: tried again the next time Drive is on */
+    } finally {
+      layoutSyncBusy.current = false;
+    }
   };
 
   // ---------- fonts ----------
@@ -903,7 +942,7 @@ export function App() {
   };
   syncFontsRef.current = syncFonts;
   // whenever Drive comes on (sign-in, a new session with a token) and once the fonts here are loaded
-  useEffect(() => { if (driveConnected) void syncFonts(); }, [driveConnected]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { if (driveConnected) { void syncFonts(); void syncLayouts(); } }, [driveConnected]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ---------- voice corrections (IndexedDB, debounced) ----------
   const corrTimer = useRef<number>(undefined);

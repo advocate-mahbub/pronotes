@@ -1195,6 +1195,7 @@ export const EN: Record<string, string> = {
   "ফন্ট ফাইলটা অনেক বড় (১৫ MB-এর বেশি)": "The font file is too big (over 15 MB)",
   "ফন্ট মুছে ফেলা হয়েছে": "Font deleted",
   "Google Drive থেকে {n}টা ফন্ট এল": "{n} font(s) came from Google Drive",
+  "Google Drive থেকে {n}টা লেআউট এল": "{n} layout(s) came from Google Drive",
   "মেনু আর কিবোর্ডের কী কোন ফন্টে দেখাবে": "Which font the menus and keyboard keys use",
   "অ্যাপের ফন্ট": "App fonts",
   "ডিভাইসের নিজের": "The device's own",

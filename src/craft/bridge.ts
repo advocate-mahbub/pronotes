@@ -79,7 +79,6 @@ const copyView = (v: ArrayBufferView): ArrayBuffer => {
 
 /** A bare file name: no folders, no control characters, never empty. */
 export function safeName(name: string, appId: string): string {
-  // eslint-disable-next-line no-control-regex
   const n = name.split(/[\\/]/).pop()!.replace(/[\u0000-\u001f]/g, '').trim().slice(0, 200);
   return n || `${appId}-file`;
 }

@@ -4,7 +4,7 @@
  */
 import type { EditorView } from '@tiptap/pm/view';
 import { closeHistory } from '@tiptap/pm/history';
-import type { Node as PMNode } from '@tiptap/pm/model';
+import type { Mark, Node as PMNode } from '@tiptap/pm/model';
 import { isBijoyFont } from '../bijoy';
 
 export function mapDocText(view: EditorView, fn: (s: string) => string, selectionOnly: boolean): number {
@@ -13,9 +13,9 @@ export function mapDocText(view: EditorView, fn: (s: string) => string, selectio
   const a = selectionOnly && !empty ? from : 0;
   const b = selectionOnly && !empty ? to : state.doc.content.size;
   const items: { from: number; to: number; node: PMNode; text: string }[] = [];
-  state.doc.nodesBetween(a, b, (node, pos) => {
+  state.doc.nodesBetween(a, b, (node: PMNode, pos: number) => {
     if (!node.isText) return;
-    const f = node.marks.find((m) => m.type.name === 'textStyle')?.attrs.fontFamily;
+    const f = node.marks.find((m: Mark) => m.type.name === 'textStyle')?.attrs.fontFamily;
     if (isBijoyFont(f)) return;
     const s = Math.max(a, pos);
     const e = Math.min(b, pos + node.nodeSize);

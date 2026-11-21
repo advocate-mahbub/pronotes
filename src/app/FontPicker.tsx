@@ -4,6 +4,7 @@
  * Bangla: Bijoy fonts get Bijoy-encoded text, so nothing looks broken. Names are always in the app's own
  * font. Choosing a font of the other kind converts the selected text (one undo step).
  */
+import type { Mark, Node as PMNode } from '@tiptap/pm/model';
 import { FontSample } from './FontSample';
 import { useMemo, useState } from 'react';
 import type { Editor } from '@tiptap/react';
@@ -112,8 +113,8 @@ export function FontPicker({ ed, lists, defaultFont, ansiTyping, ansiFont, enFon
         const a = tr.mapping.map(from, -1);
         const b = tr.mapping.map(to, 1);
         const ts = state.schema.marks.textStyle;
-        tr.doc.nodesBetween(a, b, (node, pos) => {
-          const old = node.isText ? node.marks.find((m) => m.type === ts) : undefined;
+        tr.doc.nodesBetween(a, b, (node: PMNode, pos: number) => {
+          const old = node.isText ? node.marks.find((m: Mark) => m.type === ts) : undefined;
           if (!old || !old.attrs.fontFamily) return;
           const s0 = Math.max(a, pos);
           const e0 = Math.min(b, pos + node.nodeSize);
@@ -147,14 +148,14 @@ export function FontPicker({ ed, lists, defaultFont, ansiTyping, ansiFont, enFon
     const b = tr.mapping.map(to, 1);
     const ts = state.schema.marks.textStyle;
     // the chosen font on the rest of the selection: Bijoy text only for a Bijoy font, everything but Bijoy for a Unicode one
-    tr.doc.nodesBetween(a, b, (node, pos) => {
+    tr.doc.nodesBetween(a, b, (node: PMNode, pos: number) => {
       if (!node.isText) return;
-      const nf = clean(node.marks.find((m) => m.type === ts)?.attrs.fontFamily);
+      const nf = clean(node.marks.find((m: Mark) => m.type === ts)?.attrs.fontFamily);
       const bj = isBijoyFont(nf, cfg.bijoyFont);
       if (f.ansi ? !bj || nf === enFont : bj) return;
       const s = Math.max(a, pos);
       const e = Math.min(b, pos + node.nodeSize);
-      const old = node.marks.find((m) => m.type === ts);
+      const old = node.marks.find((m: Mark) => m.type === ts);
       tr.addMark(s, e, ts.create({ ...(old?.attrs ?? {}), fontFamily: cssFamily(f.name) }));
     });
     ed.view.dispatch(closeHistory(tr));

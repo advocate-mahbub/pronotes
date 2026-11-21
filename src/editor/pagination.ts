@@ -142,7 +142,7 @@ export function measure(view: EditorView, L: PageLayout): Omit<PState, 'v'> {
   };
 
   const nodes: { node: import('@tiptap/pm/model').Node; offset: number }[] = [];
-  view.state.doc.forEach((node, offset) => nodes.push({ node, offset }));
+  view.state.doc.forEach((node: import('@tiptap/pm/model').Node, offset: number) => nodes.push({ node, offset }));
   for (const { node, offset } of nodes) {
     const dom = view.nodeDOM(offset) as HTMLElement | null;
     if (!dom || !(dom instanceof HTMLElement)) continue;
