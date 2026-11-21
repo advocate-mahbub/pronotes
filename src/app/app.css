@@ -1322,3 +1322,16 @@ body:has(.kb-strip.down) .mic, body:has(.kb-strip.down) .live-mic { bottom: calc
 .kb-colors input[type="color"] { width: 44px; height: 30px; padding: 0; border: 1px solid var(--line); border-radius: 8px; background: none; }
 .kb-preview { display: flex; gap: 6px; padding: 8px; margin: 6px 0; border-radius: 12px; border: 1px solid var(--line); }
 .kb-preview span { flex: 1 1 0; height: 40px; display: flex; align-items: center; justify-content: center; border-radius: 7px; font: 400 20px "PN KB", "PN UI", var(--f-display); }
+/* split keyboard, digit pad (decisions.md 89): the halves at the edges, ⇄ in the middle of the last row */
+.kb.split-num .kb-main { max-width: none; }
+.kb-row.split .gap:has(.num-swap) { display: flex; align-items: center; justify-content: center; }
+.num-swap { width: 52px; height: 36px; border-radius: 18px; border: 1px solid var(--line); background: var(--key); color: var(--fg); font: 600 20px var(--f-sans); cursor: pointer; box-shadow: 0 1.5px 0 var(--key-shadow); }
+/* a phone turned sideways: everything shorter, so the split keyboard is not cut off at the bottom (decisions.md 89) */
+@media (max-height: 500px) and (orientation: landscape) and (pointer: coarse) {
+  .deskwrap { min-height: 32px; }
+  .sug { min-height: 0; }
+  .sug .chip { min-height: 32px; padding: 2px 12px; font-size: 15px; }
+  .sug .tb, .sug button.tb { min-height: 32px; min-width: 36px; }
+  .kb-strip .k, .kb-strip .k.fn { height: 32px; }
+  .dock { gap: 2px; padding-bottom: 2px; }
+}

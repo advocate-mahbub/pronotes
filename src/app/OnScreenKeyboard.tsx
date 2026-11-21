@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import type { Editor } from '@tiptap/react';
 import { TextSelection } from '@tiptap/pm/state';
-import { ANNA_ALT, ANNA_PAD_ROWS, ANNA_SIGNS, NUMPAD_ROWS, PADS, PHONE_ROWS, PHONE_SYMBOL_ROWS, ROWS, US, charFor, hasAltBeyondAnna, hasAltLayer, splitRow, type LayoutMap, type Pad } from '../bornona-engine';
+import { ANNA_ALT, ANNA_PAD_ROWS, ANNA_SIGNS, NUMPAD_ROWS, SPLIT_NUM_ROWS, PADS, PHONE_ROWS, PHONE_SYMBOL_ROWS, ROWS, US, charFor, hasAltBeyondAnna, hasAltLayer, splitRow, type LayoutMap, type Pad } from '../bornona-engine';
 import { typeText, deleteBackward, textBeforeCaret, typeRulesKey, findFraction, plainFraction, FRACTION_SLASH, type BornonaConfig } from '../editor';
 import { load, save } from './prefs';
 import { num, useT } from '../i18n';
@@ -594,7 +594,27 @@ export function OnScreenKeyboard({ editor: ed, target, map, bangla, getConfig, o
   );
   const shown = (c: string, ri: number) => (c !== '#Alt' || altKey) && (c !== '#Live' || Boolean(live))
     && (!c.startsWith('Alt+') || ri === 0 || (bangla && Boolean(charFor(map, baseOf(c), false, true, true))));
-  const rowsEl = rows.map((row0, ri) => {
+  // split keyboard, digit pad: English | Bangla, the halves trade sides with ⇄ (decisions.md 89)
+  const [numSwap, setNumSwap0] = useState<boolean>(() => load('kb.numSwap', false));
+  const setNumSwap = (v: boolean) => { setNumSwap0(v); save('kb.numSwap', v); };
+  const splitNum = split && (pad === 'num' || pad === 'numEn');
+  const numRowsEl = splitNum && SPLIT_NUM_ROWS.map(([en, bn], ri) => {
+    const [l, r] = numSwap ? [bn, en] : [en, bn];
+    const last = ri === SPLIT_NUM_ROWS.length - 1;
+    return (
+      <div className="kb-row split" key={ri}>
+        <div className="half">{l.map(keyEl)}</div>
+        {last ? (
+          <div className="gap">
+            <button type="button" className="num-swap" data-testid="kb-num-swap" aria-label={t('দুই পাশ বদলান')} title={t('দুই পাশ বদলান')}
+              onPointerDown={(e) => { e.preventDefault(); e.stopPropagation(); }} onPointerUp={(e) => e.stopPropagation()} onClick={() => setNumSwap(!numSwap)}>⇄</button>
+          </div>
+        ) : <div className="gap" aria-hidden="true" />}
+        <div className="half">{r.map(keyEl)}{last && !compact && hideEl}</div>
+      </div>
+    );
+  });
+  const rowsEl = numRowsEl || rows.map((row0, ri) => {
     const row = row0.filter((c) => shown(c, ri));
     const last = ri === rows.length - 1;
     if (!split) return <div className="kb-row" key={ri}>{row.map(keyEl)}{last && !compact && hideEl}</div>;
@@ -609,7 +629,7 @@ export function OnScreenKeyboard({ editor: ed, target, map, bangla, getConfig, o
   });
 
   return (
-    <div ref={root} className={'kb' + (sh ? ' shift' : '') + (compact ? ' compact' : '') + (sym ? ' sym' : '') + (pad ? ' num pad-' + pad : '') + (split ? ' split' : '') + (tracking ? ' track' : '') + (hand ? ' hand-' + hand : '')}
+    <div ref={root} className={'kb' + (sh ? ' shift' : '') + (compact ? ' compact' : '') + (sym ? ' sym' : '') + (pad ? ' num pad-' + pad : '') + (split ? ' split' : '') + (splitNum ? ' split-num' : '') + (tracking ? ' track' : '') + (hand ? ' hand-' + hand : '')}
       role="group" aria-label={t('বর্ণনা অন-স্ক্রিন কিবোর্ড')} data-testid="osk"
       onPointerMove={moveTo} onPointerUp={up} onPointerCancel={cancel}>
       {hand === 'right' && <HandStrip t={t} onFull={() => setHand?.(null)} onSwap={() => setHand?.('left')} side="left" />}
