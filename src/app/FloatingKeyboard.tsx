@@ -81,6 +81,43 @@ export function LiftableKeyboard({ children, phone = false, edgeToEdge = false }
     if (wrap.current?.parentElement) ro?.observe(wrap.current.parentElement);
     return () => { window.removeEventListener('resize', place); ro?.disconnect(); };
   }, [edgeToEdge]);
+  // a phone: the keys shrink until the whole keyboard is on screen and the page keeps room to write and
+  // scroll. On a small iPhone (or with Safari's bars showing) the keyboard was cut off at the bottom and
+  // the page was a few lines high. Worked out from the keyboard's natural size each time, so it never
+  // creeps; the height chosen in Settings → কিবোর্ড stays the starting point.
+  useLayoutEffect(() => {
+    const el = wrap.current;
+    if (!phone || !el) return;
+    let raf = 0;
+    const fit = () => {
+      const app = el.closest('.app');
+      const desk = app?.querySelector('.deskwrap');
+      if (!app || !desk) return;
+      el.style.removeProperty('--kb-hs');
+      const rows = Array.from(el.querySelectorAll('.kb-main > .kb-row'));
+      const scaled = rows.reduce((n, r) => n + r.getBoundingClientRect().height, 0);
+      if (!scaled) return;
+      const a = app.getBoundingClientRect();
+      const cut = Math.max(0, el.getBoundingClientRect().bottom - a.bottom);
+      const short = Math.max(0, Math.min(150, a.height * 0.25) - desk.getBoundingClientRect().height);
+      if (cut + short < 1) return;
+      const base = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--kb-hs')) || 1;
+      const s = Math.max(0.6, (scaled - cut - short) / scaled);
+      el.style.setProperty('--kb-hs', String(Math.round(base * s * 1000) / 1000));
+    };
+    const later = () => { cancelAnimationFrame(raf); raf = requestAnimationFrame(fit); };
+    fit();
+    const vv = window.visualViewport;
+    window.addEventListener('resize', later);
+    vv?.addEventListener('resize', later);
+    const ro = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(later) : null;
+    const app = el.closest('.app');
+    if (app) ro?.observe(app);
+    // another keypad (১২৩, ৴৵৶) has other rows: fitted before it is drawn, so the keys never jump under a finger
+    const mo = typeof MutationObserver !== 'undefined' ? new MutationObserver(fit) : null;
+    mo?.observe(el, { childList: true, subtree: true });
+    return () => { cancelAnimationFrame(raf); window.removeEventListener('resize', later); vv?.removeEventListener('resize', later); ro?.disconnect(); mo?.disconnect(); el.style.removeProperty('--kb-hs'); };
+  }, [phone]);
   return (
     <div ref={wrap} className={'kb-liftwrap' + (phone ? ' phone' : '') + (reach ? ' reach' : '')} data-testid="kb-liftwrap"
       style={reach ? { marginLeft: -reach.l, width: reach.w } : undefined}>

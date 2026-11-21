@@ -638,10 +638,14 @@ export function Ribbon(p: Props) {
   {btn('↷', t('Redo (Ctrl/⌘+Y)'), false, () => chain().redo().run(), 'redo')}
         </span>
         <span className="grow" />
+      </div>
+      {/* share, ⌨ and ▴ sit outside the sideways-scrolling row too: on an iPhone they were past the right edge,
+          so the ProNotes keyboard could not be turned on without swiping the row */}
+      <span className="tab-end" data-testid="tab-end">
         {p.end}
         <button type="button" className="tb" data-testid="ribbon-collapse" title={collapsed ? t('সরঞ্জাম দেখান') : t('সরঞ্জাম লুকান')} aria-label={collapsed ? t('সরঞ্জাম দেখান') : t('সরঞ্জাম লুকান')}
           onPointerDown={(e) => e.preventDefault()} onClick={() => setCollapsed((c) => !c)}>{collapsed ? '▾' : '▴'}</button>
-      </div>
+      </span>
       </div>
       {!collapsed && (
         <div className="ribbon-body" role="tabpanel" data-testid={'panel-' + tab}>

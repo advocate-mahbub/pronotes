@@ -1177,9 +1177,9 @@ body:has(.kb-strip.down) .mic, body:has(.kb-strip.down) .live-mic { bottom: calc
 @media (max-width: 640px) {
   .kb-liftwrap.phone .kb.compact { background: var(--ios-kb); border: 0; border-radius: 26px 26px 0 0; padding-top: 4px; padding-left: 3px; padding-right: 3px; }
   .kb.compact:not(.num):not(.pad-anna) .k { height: calc(54px * var(--kb-hs, 1)); }
-  .kb.compact:not(.num):not(.pad-anna) .k::before { inset: 5.65px 3px; border-radius: 8.5px; background: var(--ios-key); box-shadow: none; }
+  .kb.compact:not(.num):not(.pad-anna) .k::before { inset: calc(5.65px * var(--kb-hs, 1)) 3px; border-radius: 8.5px; background: var(--ios-key); box-shadow: none; }
   .kb.compact:not(.num):not(.pad-anna) .k.fn::before { background: var(--ios-fn); box-shadow: none; }
-  .kb.compact .k .m { color: var(--ios-fg); font-weight: 400; font-size: 24px; }
+  .kb.compact .k .m { color: var(--ios-fg); font-weight: 400; font-size: calc(24px * min(1, var(--kb-hs, 1))); }
   .kb.compact .k.fn .m { font: 400 18px -apple-system, "SF Pro Text", var(--f-sans); }
   .kb.compact .k[data-code="#Sym"] .m { font-size: 17px; }
   .kb.compact .k.hit::before, .kb.compact .k:active::before { background: var(--ios-hit); }
@@ -1261,6 +1261,7 @@ body:has(.kb-strip.down) .mic, body:has(.kb-strip.down) .live-mic { bottom: calc
 .ribbon-tabbar .tab-start .tb { min-width: 0; min-height: 36px; padding: 0 12px; border: 0; border-radius: 999px; background: none; box-shadow: none; color: var(--muted); font: 600 18px/1 var(--f-sans); }
 .ribbon-tabbar .tab-start .tb:hover { color: var(--fg); background: none; }
 .ribbon-tabbar .tab-start .tb.on { color: var(--gold); background: none; }
+.ribbon-tabbar .tab-end { flex: none; display: inline-flex; align-items: center; gap: 2px; padding: 6px 8px 2px 2px; }
 /* the top bar folded away: a thin strip with ⌄ */
 .top-mini { position: relative; display: flex; justify-content: center; align-items: center; height: 18px; }
 .top-mini .status { position: absolute; left: 4px; }
