@@ -36,6 +36,7 @@ import { listDriveFonts, uploadDriveFont, downloadDriveFont, planFontSync, curre
 import { CraftWorkspace, type CraftHandoff, type CraftView } from '../craft/CraftWorkspace';
 import { craftApp } from '../craft/bridge';
 import { load, save, allPrefs, restorePrefs } from './prefs';
+import { DB_BLOCKED_EVENT } from '../storage';
 import { applyPalette, loadPalette, applyKbLook, loadKbLook, applyKbHeight, loadKbHeight } from './look';
 import { I18nContext, setUiLangGlobal, translate, tr, type UiLang } from '../i18n';
 import { LOCAL_UNI, WEB_FONTS, ENGLISH_FONTS, isFontAvailable, applyAppFonts, fontFileUrl, DEFAULT_APP_BN, DEFAULT_APP_EN, type AppFonts } from '../fonts';
@@ -129,9 +130,14 @@ export function App() {
   const [lawDictionaryOpen, setLawDictionaryOpen] = useState(false);
   // where the caret was when the dictionary opened, and a word to put there when it closes (decisions.md 92)
   const pendingInsert = useRef<{ text?: string; at?: number } | null>(null);
+  // the caret is read while the draft is still open: from ▦ Apps the editor is already closed (decisions.md 93)
+  const rememberCaret = () => {
+    const ed = editorRef.current;
+    if (ed && !ed.isDestroyed) pendingInsert.current = { at: ed.state.selection.from };
+  };
   const openDictionary = () => {
     const ed = editorRef.current;
-    pendingInsert.current = { at: ed && !ed.isDestroyed ? ed.state.selection.from : undefined };
+    if (ed && !ed.isDestroyed) rememberCaret();
     setLawDictionaryOpen(true);
   };
   // Craft apps workspace; ?app=wordcraft (the /word/ address) opens straight into that app
@@ -226,6 +232,12 @@ export function App() {
   const [geminiModel, setGeminiModel] = useState(() => load('geminiModel', AUTO_MODEL));
   useEffect(() => save('geminiModel', geminiModel), [geminiModel]);
   const [privateWords, setPrivateWordsState] = useState<string[]>([]);
+  // another open copy of ProNotes holds the database on an older version (decisions.md 93)
+  useEffect(() => {
+    const on = () => say('ProNotes আরেকটা জায়গায় খোলা আছে (অন্য ট্যাব বা হোম স্ক্রিনের অ্যাপ) — সেটা বন্ধ করুন বা নতুন করে খুলুন');
+    window.addEventListener(DB_BLOCKED_EVENT, on);
+    return () => window.removeEventListener(DB_BLOCKED_EVENT, on);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
   const setGeminiKey = (k: string) => { setGeminiKeyState(k.trim()); saveAiKey(k).catch(() => say('key সেভ করা যায়নি')); };
   const setPrivateWords = (w: string[]) => { setPrivateWordsState(w); savePrivateWords(w).catch(() => {}); };
   const [needRefresh, setNeedRefresh] = useState(false);
@@ -1042,7 +1054,7 @@ export function App() {
           title={t(bangla ? 'টাইপ: বাংলা — চাপলে English' : 'টাইপ: English — চাপলে বাংলা')}
           aria-label={t(bangla ? 'টাইপ: বাংলা — চাপলে English' : 'টাইপ: English — চাপলে বাংলা')}
           onPointerDown={(e) => e.preventDefault()} onClick={() => setBangla((b) => !b)}>{uiLang === 'en' ? (bangla ? 'BN' : 'EN') : bangla ? 'বা' : 'e'}</button>
-        <button type="button" className={'tb' + (craftOpen ? ' on' : '')} title={t('অ্যাপস: Word, PDF, Sheet, Slides')} aria-label={t('অ্যাপস: Word, PDF, Sheet, Slides')} data-testid="craft-toggle" onClick={() => { setLawDictionaryOpen(false); setCraftOpen((v) => !v); }}>▦</button>
+        <button type="button" className={'tb' + (craftOpen ? ' on' : '')} title={t('অ্যাপস: Word, PDF, Sheet, Slides')} aria-label={t('অ্যাপস: Word, PDF, Sheet, Slides')} data-testid="craft-toggle" onClick={() => { if (!craftOpen) rememberCaret(); setLawDictionaryOpen(false); setCraftOpen((v) => !v); }}>▦</button>
         <button type="button" className="tb theme" data-testid="theme" data-theme-mode={theme} title={t(themeLabel[theme])} aria-label={t(themeLabel[theme])}
           onClick={() => setTheme(themeNext[theme])}>{THEME_ICON[theme]}</button>
         <button type="button" className={'tb' + (settingsOpen ? ' on' : '')} title={t('সেটিংস')} aria-label={t('সেটিংস')} data-testid="settings"

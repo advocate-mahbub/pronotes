@@ -93,6 +93,8 @@ interface Schema extends DBSchema {
 }
 
 export const DB_NAME = 'pronotes';
+/** Fired when another open copy of ProNotes holds the database on an older version. */
+export const DB_BLOCKED_EVENT = 'pronotes-db-blocked';
 export const TRASH_DAYS = 30;
 const DAY = 24 * 60 * 60 * 1000;
 
@@ -100,6 +102,12 @@ let dbp: Promise<IDBPDatabase<Schema>> | null = null;
 export function db(): Promise<IDBPDatabase<Schema>> {
   if (!dbp) {
     dbp = openDB<Schema>(DB_NAME, 5, {
+      // another copy of ProNotes (an old tab, or the home-screen app) is still on the older database:
+      // it is asked to step aside; this one waits (decisions.md 93)
+      blocked() { window.dispatchEvent(new CustomEvent(DB_BLOCKED_EVENT)); },
+      // a newer ProNotes wants the database: this copy lets go and reloads into the new version, so the
+      // newer one does not hang on a blank page
+      blocking() { void dbp?.then((x) => x.close()); dbp = null; location.reload(); },
       upgrade(d, oldVersion) {
         if (oldVersion < 1) {
           const docs = d.createObjectStore('docs', { keyPath: 'id' });
